@@ -90,7 +90,7 @@ export const RevealLayer: React.FC<Props> = ({ scene, image, strokes, penInvisib
           )}
           {/* edgeFeather: 스트로크를 흰색 마스크로 그리고 마스크에만 블러 —
               이미지 내용은 선명 유지, 리빌 "가장자리만" 붓 질감처럼 부드럽게 */}
-          {edgeFeather > 0 && developOpacity < 0.92 && (
+          {edgeFeather > 0 && developOpacity < 0.999 && (
             <mask id={`fm-${patId}`} maskUnits="userSpaceOnUse" x="0" y="0" width={W} height={H}>
               <g filter={`url(#fb-${patId})`}>{strokePaths("mask")}</g>
             </mask>
@@ -108,8 +108,10 @@ export const RevealLayer: React.FC<Props> = ({ scene, image, strokes, penInvisib
             filter={scene.prewashBlur > 0 ? `url(#pw-${patId})` : undefined} />
         )}
 
-        {/* 1단계 faint 리빌 — develop≥0.92면 전체 rect가 덮으므로 생략(렌더 부하↓) */}
-        {developOpacity < 0.92 && (
+        {/* 1단계 faint 리빌 — develop이 사실상 1.0에 도달한 뒤에만 생략(렌더 부하↓).
+            주의: 0.92처럼 이르게 내리면 합성 불투명도가 한 프레임에 뚝 떨어져 "번쩍"이 생긴다
+            (FIELD-LOG 2026-07-11 city-watercolor develop 스파이크 사례 — 어두운 씬일수록 체감 큼) */}
+        {developOpacity < 0.999 && (
           edgeFeather > 0 ? (
             <rect x="0" y="0" width={W} height={H} fill={`url(#${patId})`} mask={`url(#fm-${patId})`} opacity={faint} />
           ) : (
@@ -119,13 +121,12 @@ export const RevealLayer: React.FC<Props> = ({ scene, image, strokes, penInvisib
 
         {/* 2단계 develop — 전체 이미지가 또렷하게 발현 (parallax 시 image 직접 변환) */}
         {developOpacity > 0.001 && (
-          parallaxScale > 1 ? (
-            <g transform={parallaxTransform || undefined} opacity={developOpacity}>
-              <image href={staticFile(image)} x="0" y="0" width={W} height={H} preserveAspectRatio="none" />
-            </g>
-          ) : (
-            <rect x="0" y="0" width={W} height={H} fill={`url(#${patId})`} opacity={developOpacity} />
-          )
+          // 고밀도 반투명 RGBA는 Chromium에서 pattern rect나 transform 없는 image가
+          // 완성 프레임에 사라질 수 있다. identity transform으로 SVG 합성 경로를 강제한다.
+          <g transform={parallaxScale > 1 ? parallaxTransform || "translate(0 0)" : "translate(0 0)"}
+            opacity={developOpacity}>
+            <image href={staticFile(image)} x="0" y="0" width={W} height={H} preserveAspectRatio="none" />
+          </g>
         )}
       </svg>
 
