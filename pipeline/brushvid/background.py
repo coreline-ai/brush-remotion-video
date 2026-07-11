@@ -52,6 +52,54 @@ def clean(image_path: str | Path, out_path: str | Path,
     return out_path
 
 
+PEN_PAPER = (242, 238, 227)  # pen 프로파일 종이 톤 (#f2eee3)
+
+
+def contain_fit(image: Image.Image, size: tuple[int, int] = (W, H),
+                paper: tuple[int, int, int] = PEN_PAPER) -> Image.Image:
+    """이미지를 잘림 없이 contain-fit — 남는 영역은 종이색 패딩 (pen 배경 규칙)."""
+    tw, th = size
+    canvas = Image.new("RGB", (tw, th), paper)
+    im = image.convert("RGB")
+    scale = min(tw / im.width, th / im.height)
+    nw, nh = max(1, int(im.width * scale)), max(1, int(im.height * scale))
+    canvas.paste(im.resize((nw, nh), Image.LANCZOS), ((tw - nw) // 2, (th - nh) // 2))
+    return canvas
+
+
+def separate_ink(bg_path: str | Path, out_alpha_path: str | Path, out_flat_path: str | Path,
+                 paper: tuple[int, int, int] = PEN_PAPER) -> dict:
+    """잉크-알파 분리 (pen 프로파일 핵심): 종이는 항상 보이고 잉크만 리빌되도록.
+
+    contain-fit(잘림 금지) 후 lum/sat 기반 잉크 알파를 계산한다:
+      a_dark = (205 - lum) / 40, a_color = (sat - 45) / 50, alpha = max(둘) 0..1 클램프(경계 그라데이션)
+    산출: out_alpha_path = 잉크 RGBA, out_flat_path = 잉크만 흰 배경(routes 입력용).
+    """
+    src = contain_fit(Image.open(bg_path), paper=paper)
+    arr = np.asarray(src).astype(np.float32)
+    lum = arr.mean(axis=2)
+    sat = arr.max(axis=2) - arr.min(axis=2)
+    a_dark = (205.0 - lum) / 40.0
+    a_color = (sat - 45.0) / 50.0
+    alpha = np.clip(np.maximum(a_dark, a_color), 0.0, 1.0)
+
+    out_alpha_path, out_flat_path = Path(out_alpha_path), Path(out_flat_path)
+    out_alpha_path.parent.mkdir(parents=True, exist_ok=True)
+    out_flat_path.parent.mkdir(parents=True, exist_ok=True)
+
+    rgba = np.dstack([arr.astype(np.uint8), (alpha * 255).astype(np.uint8)])
+    Image.fromarray(rgba, "RGBA").save(out_alpha_path)
+
+    # flat: 잉크를 흰 배경 위에 알파 합성 (콘텐츠 마스크/routes 생성용)
+    white = np.full_like(arr, 255.0)
+    flat = arr * alpha[..., None] + white * (1.0 - alpha[..., None])
+    Image.fromarray(flat.astype(np.uint8)).save(out_flat_path)
+
+    ink_frac = float((alpha > 0.5).mean())
+    log.info("separate_ink: 잉크 %.1f%% -> %s / %s", ink_frac * 100, out_alpha_path.name, out_flat_path.name)
+    return {"alpha": out_alpha_path, "flat": out_flat_path, "inkFraction": ink_frac}
+
+
 def find_codex() -> str | None:
     """작동하는 codex 바이너리 경로 (앱 우선, 없으면 PATH)."""
     if Path(CODEX_APP_BIN).is_file():

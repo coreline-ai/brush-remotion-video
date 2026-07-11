@@ -21,6 +21,7 @@ BG_STRATEGIES = ("imagegen", "preset", "user-images")
 WIDGET_MODES = ("auto", "none", "authored")
 TTS_ENGINES = ("supertonic",)
 TTS_TIMINGS = ("tts", "srt")
+DRAWING_PROFILES = ("brush", "pen")
 
 
 @dataclass
@@ -39,6 +40,7 @@ class ProjectConfig:
     bg_images: list[Path] = field(default_factory=list)
     widgets: str = "none"
     authored_widgets: list[dict] = field(default_factory=list)
+    drawing_profile: str = "brush"  # brush(수묵 리빌) | pen(선화 펜 드로잉)
     ambient_scenes: int = 3
     ambient_cues: list[str] = field(default_factory=list)
     seed: int = 1
@@ -140,6 +142,13 @@ def load_project(yaml_path: str | Path) -> ProjectConfig:
         log.warning("widgets: auto 는 보류 상태 — none 으로 처리합니다")
         widgets_mode = "none"
 
+    # drawing — {profile: brush|pen}. 기본 brush, 오타는 즉시 거부.
+    drawing = raw.get("drawing") or {}
+    _require(isinstance(drawing, dict), "drawing 은 매핑이어야 함")
+    profile = drawing.get("profile", "brush")
+    _require(profile in DRAWING_PROFILES,
+             f"drawing.profile 은 {DRAWING_PROFILES} 중 하나여야 함 (입력: {profile!r})")
+
     amb = raw.get("ambient") or {}
     _require(isinstance(amb, dict), "ambient 는 매핑이어야 함")
     ambient_scenes = int(amb.get("scenes", 3))
@@ -158,6 +167,7 @@ def load_project(yaml_path: str | Path) -> ProjectConfig:
         bg_images=images,
         widgets=widgets_mode,
         authored_widgets=authored,
+        drawing_profile=profile,
         ambient_scenes=ambient_scenes,
         ambient_cues=list(amb.get("cues") or []),
         seed=int(raw.get("seed", 1)),

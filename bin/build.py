@@ -47,6 +47,27 @@ log = logging.getLogger("build")
 
 STAGES = ["stt", "cues", "background", "clean", "routes", "layout", "props", "render", "mux", "qa"]
 
+# pen 프로파일 상수 (dev-plan pen Phase 1 "핵심 발견" 3요소: 잉크-알파 분리 + 정밀 routes + contain 배경)
+PEN_PAPER_HEX = "#f2eee3"
+PEN_BRUSH = {"kind": "pen", "w": 140}
+PEN_SCENE_PRESET = {
+    "faint": 1.0, "edgeFeather": 1, "developFrames": 8,
+    "prewashOpacity": 0, "prewashFrames": 0, "prewashHoldFrames": 0,
+}
+PEN_BRUSH_DYNAMICS = {"drawSpeedScale": 1.0, "touchScale": 1.0, "touchJitter": 0,
+                      "pathJitter": 0, "randomizeOrder": False, "randomReverse": False}
+
+
+def pen_route_params(duration: int, seed: int) -> RouteParams:
+    """pen 프로파일 정밀 routes 파라미터 — drawEnd 를 앞당겨(35%) 감상 구간 확보."""
+    draw_end = round(duration * 0.35)
+    return RouteParams(
+        duration=duration, draw_start=8, draw_end=draw_end, pen_invisible_after=draw_end + 8,
+        seed=seed, analyze_scale=1.5, contour_width=18, rdp_eps=1.5, max_len=300,
+        min_route_len=12, seal_width=24, seal_step=18,
+    )
+
+
 # 앰비언트 모드 기본값
 AMBIENT_SCENE_FRAMES = 300
 AMBIENT_DEFAULT_CUES = [
@@ -191,25 +212,40 @@ class Pipeline:
         return {"strategies": results}
 
     def stage_clean(self) -> dict:
+        if self.cfg.drawing_profile == "pen":
+            # pen: 잉크-알파 분리 (contain + 종이색 패딩, 잘림 금지). flat 은 routes 입력.
+            fracs = []
+            for i in range(len(self._scenes())):
+                bg = self.public_dir / "bg" / f"scene-{i + 1:02d}.png"
+                res = bv_bg.separate_ink(bg, self.public_dir / "bg" / f"scene-{i + 1:02d}-ink.png",
+                                         self.public_dir / "bg" / f"scene-{i + 1:02d}-content.png")
+                fracs.append(round(res["inkFraction"], 4))
+            return {"profile": "pen", "inkFractions": fracs}
         for i in range(len(self._scenes())):
             bg = self.public_dir / "bg" / f"scene-{i + 1:02d}.png"
             bv_bg.clean(bg, self.public_dir / "bg" / f"scene-{i + 1:02d}-content.png")
         return {}
 
     def stage_routes(self) -> dict:
+        pen = self.cfg.drawing_profile == "pen"
         coverages = []
         for i, scene in enumerate(self._scenes()):
             content = self.public_dir / "bg" / f"scene-{i + 1:02d}-content.png"
             d = scene["durationInFrames"]
-            params = RouteParams(
-                duration=d, draw_start=8, draw_end=round(d * 0.73), pen_invisible_after=round(d * 0.76),
-                seed=self.cfg.seed + i * 37, contour_width=40, seal_width=56, seal_step=20,
-            )
-            data = generate_routes(content, params,
-                                   image_rel=f"{self.cfg.project_id}/bg/scene-{i + 1:02d}-content.png")
+            seed = self.cfg.seed + i * 37
+            if pen:
+                params = pen_route_params(d, seed)
+                image_rel = f"{self.cfg.project_id}/bg/scene-{i + 1:02d}-ink.png"  # 리빌 대상은 잉크-알파
+            else:
+                params = RouteParams(
+                    duration=d, draw_start=8, draw_end=round(d * 0.73), pen_invisible_after=round(d * 0.76),
+                    seed=seed, contour_width=40, seal_width=56, seal_step=20,
+                )
+                image_rel = f"{self.cfg.project_id}/bg/scene-{i + 1:02d}-content.png"
+            data = generate_routes(content, params, image_rel=image_rel)
             write_routes(data, self.public_dir / "routes" / f"scene-{i + 1:02d}.routes.json")
             coverages.append(data["meta"]["coverage"])
-        return {"coverages": coverages}
+        return {"coverages": coverages, "profile": self.cfg.drawing_profile}
 
     def stage_layout(self) -> dict:
         if self.cfg.widgets != "authored" or not self.cfg.authored_widgets:
@@ -238,17 +274,26 @@ class Pipeline:
                     kwargs["widgets"] = self.cfg.authored_widgets
                 else:  # 위젯 워크스트림 통합 전 — 스키마에 없으면 제외
                     log.warning("스키마에 scenes[].widgets 없음 — authored 위젯은 props 에서 제외(통합 대기)")
+            pen = self.cfg.drawing_profile == "pen"
+            if pen:
+                kwargs.update(PEN_SCENE_PRESET)  # 즉시 또렷 + 선화 feather + prewash 없음
+                dynamics = {**PEN_BRUSH_DYNAMICS, "seed": self.cfg.seed + i}
+            else:
+                dynamics = {"drawSpeedScale": 1.0, "touchScale": 1.45, "touchJitter": 0.22,
+                            "randomizeOrder": True, "randomReverse": True, "seed": self.cfg.seed + i}
             scene_props.append(build_scene(
                 f"scene-{i + 1:02d}", f"{self.cfg.project_id}/routes/scene-{i + 1:02d}.routes.json",
                 sm["durationInFrames"], cues=sm.get("cues") or None,
-                brush_dynamics={"drawSpeedScale": 1.0, "touchScale": 1.45, "touchJitter": 0.22,
-                                "randomizeOrder": True, "randomReverse": True, "seed": self.cfg.seed + i},
+                brush_dynamics=dynamics,
                 **kwargs,
             ))
+        pen = self.cfg.drawing_profile == "pen"
         props = build_props(self.cfg.project_id, scene_props, title=self.cfg.title,
-                            fmt=self.cfg.fmt, audio=None)  # 오디오는 렌더 후 ffmpeg mux
+                            fmt=self.cfg.fmt, audio=None,  # 오디오는 렌더 후 ffmpeg mux
+                            paper=PEN_PAPER_HEX if pen else "#fbfaf6",
+                            brush=dict(PEN_BRUSH) if pen else None)
         write_props(props, self.props_json)
-        return {"props": str(self.props_json.relative_to(REPO_ROOT))}
+        return {"props": str(self.props_json.relative_to(REPO_ROOT)), "profile": self.cfg.drawing_profile}
 
     def stage_render(self) -> dict:
         composition = "BrushPortrait" if self.cfg.fmt == "shorts" else "BrushLandscape"

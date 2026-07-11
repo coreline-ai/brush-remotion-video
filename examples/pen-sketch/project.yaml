@@ -1,0 +1,13 @@
+# pen 프로파일 E2E — 무입력 앰비언트 1씬, preset 배경을 잉크-알파 분리해 펜으로 그린다
+projectId: pen-sketch-demo
+format: youtube
+drawing:
+  profile: pen
+background:
+  strategy: preset
+  style: ink-watercolor
+widgets: none
+ambient:
+  scenes: 1
+  cues:
+    - "펜 끝에서 생각이 그려진다"
