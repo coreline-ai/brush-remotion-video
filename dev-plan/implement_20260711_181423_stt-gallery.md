@@ -1,0 +1,89 @@
+# implement_20260711_181423_stt-gallery.md
+
+작성 일시: `2026-07-11 18:14:23 KST`
+
+이 문서는 이번 개발의 범위를 고정하고, 구현이 목적 밖으로 확장되지 않도록 하기 위한 작업 문서다.
+
+## 개발 목적
+
+video-builder 검토에서 채택 확정된 2건을 편입한다:
+**B) faster-whisper 전환** — STT 4~8배 속도 + new-video-gen `.venv-whisper` 외부 의존 제거(완전 독립 원칙의 마지막 구멍).
+**A) 씬 갤러리 HTML** — QA 카드뷰(캡처+메타+수정 체크박스)로 "점검→수정요청" 수작업 구간을 없앤다.
+
+## 개발 범위
+
+- **Phase 1 (B — faster-whisper)**:
+  - `pipeline/pyproject.toml` optional extra `stt = ["faster-whisper"]`
+  - `brushvid/stt.py` 백엔드 교체: faster-whisper(WhisperModel small, ko, 자체 venv) 우선,
+    미설치 시 설치 명령 안내 에러 (TTS와 동일 패턴). new-video-gen 경로 의존 코드 제거
+  - SRT 산출 포맷 동일 유지 (cues.py 계약 무변경)
+- **Phase 2 (A — 씬 갤러리)**:
+  - `brushvid/qa.py`: `gallery.html` 생성 — 씬 카드(캡처 이미지, cue 요약, 위젯 타입/개수, topTitle/naturalEffects 뱃지,
+    수정 체크박스: 드로잉/자막/타이틀/위젯/오디오) + 상단 "선택 요약 → scene-fix-request JSON 초안 복사" 버튼
+  - `bin/qa.py`가 기본으로 gallery.html도 생성, brush-qa-review 스킬 문서에 galley 흐름 반영
+  - 데이터 소스는 props.json + capture-manifest.json (video-builder처럼 stack_root 분석 불필요 — 저희 스키마가 단순)
+- pytest: stt 백엔드 선택/미설치 에러(mock), gallery 생성(캡처 3장 fixture → html에 씬 카드 N개·체크박스 존재)
+
+## 제외 범위
+
+- 보이스 클로닝(GPT-SoVITS)·환경음 팩 — 확장 후보 기록만
+- 매크로 존 스트로크 순서(C) — 별도 워크스트림
+- 원조 whisper 폴백 유지 여부: 유지하지 않음 (faster-whisper 단일화 — 이중 경로 금지)
+
+## 참조 문서
+
+- [이전 개발 계획](implement_20260711_171610_pen.md) — pen 프로파일 (완료)
+- 참조(읽기 전용): video-builder `.venv-stt`(faster-whisper 1.2.1 실증), `skills/scene-gallery/SKILL.md`·`scripts/gen-gallery.mjs`(카드뷰 UX — 코드 복사 금지, UX 개념만 채택)
+
+## 공통 진행 규칙
+
+- 체크박스 상태를 실제 진행 상태와 맞게 업데이트한다.
+- 문서에 없는 범위 확장은 하지 않는다.
+- 기존 pytest 59건·vitest 29건·골든 회귀 유지.
+
+## Phase 상태 요약
+
+- [x] Phase 1 완료 (faster-whisper 전환)
+- [x] Phase 2 완료 (씬 갤러리 HTML)
+
+## QA 관점
+
+- [x] whisper 모드 E2E(examples/whisper) 재실행 — 전사 결과 동일(3세그먼트 동일 텍스트), 소요 시간 구 7.32s → 신 3.51s (웜 캐시, 10.3s 음성)
+- [x] new-video-gen 경로 문자열이 리포에서 0건 (`grep -rn "new-video-gen" pipeline/ bin/` → 매치 없음)
+- [x] 미설치 환경 → `pip install -e "pipeline[stt]"` 안내 에러 (침묵 폴백 금지) — test_stt.py mock 검증
+- [x] gallery.html이 캡처 파일 상대경로로 동작 (절대경로 0건 assert + 헤드리스 크롬 실물 확인)
+- [x] 씬 0개/캡처 누락/manifest 부재 시 gallery 크래시 없이 경고 카드 — test_gallery.py 검증
+
+## Phase 1. faster-whisper 전환
+
+### 구현 태스크
+- [x] pyproject extra `stt = ["faster-whisper"]` + stt.py 백엔드 교체(WhisperModel small/cpu/int8, 원조 whisper 폴백 없음) + 설치 안내 에러(`pip install -e "pipeline[stt]"`, TTS 패턴 동일)
+- [x] pipeline/.venv에 faster-whisper 설치 + examples/whisper E2E 재실행 — `--from stt` 전체 23.3s, 전사 결과 동일, mp4 10.28s
+- [x] pytest: 백엔드 미설치 에러(mock) + SRT 포맷 회귀 (test_stt.py 2건 — parse_srt/srt_to_cues 계약 확인)
+
+### 자체 테스트
+- [x] E2E 전사 결과 동등(동일 3세그먼트, diff는 파일 끝 공백 1줄뿐) + 속도 실측: 동일 10.3s 음성 기준 **구 7.32s → 신 3.51s (2.1배, 웜 캐시)** — 모델 로드 비중이 큰 짧은 클립 기준이며 CPU 시간은 대등(int8), 긴 오디오일수록 격차 확대. 모델 캐시 ~/.cache/huggingface (최초 1회 다운로드 ~5분)
+- [x] 외부 경로 0건 — `grep -rn "new-video-gen" pipeline/ bin/` exit 1 (매치 없음)
+
+### 이슈 및 수정
+- [x] 발견 이슈 없음
+
+### 완료 조건
+- [x] 구현 완료 / 자체 테스트 완료 / 다음 Phase 진행 가능
+
+## Phase 2. 씬 갤러리 HTML
+
+### 구현 태스크
+- [x] qa.py `build_gallery()` — 씬 카드(캡처 클릭 확대 라이트박스, cue 요약, 위젯 타입/개수, topTitle/naturalEffects/프로파일 뱃지) + 수정 체크박스 5종(드로잉/자막/타이틀/위젯/오디오) + 메모 + 상단 "선택 요약 → scene-fix-request JSON 초안 복사" 버튼(qa-review 스키마 포맷: kind/severity/frame/problem/fix). 캡처는 프레임 오프셋으로 씬에 매핑(manifest 포맷 무변경)
+- [x] bin/qa.py 기본 생성 + build.py stage_qa 통합 + tts-script-demo 실물 생성 확인 (data/tts-script-demo/qa/gallery.html — 씬 카드 2·캡처 6·체크박스 10)
+- [x] skill/qa-review/SKILL.md에 gallery 흐름 반영 (워크플로 0단계 + 입력 계약에 gallery.html 추가, manifest 계약을 실제 포맷으로 정정)
+- [x] pytest: fixture 기반 생성 검증 (test_gallery.py 3건 — 카드/체크박스/상대경로/프로파일 뱃지, 씬 0개 경고, manifest·캡처 누락 경고)
+
+### 자체 테스트
+- [x] gallery.html 실물 확인 — 헤드리스 크롬 스크린샷으로 카드 전부·체크박스·복사 버튼·미리보기 렌더 확인. pytest 전체 64 passed (기존 59건 회귀 없음)
+
+### 이슈 및 수정
+- [x] 스킬 문서의 manifest 계약(`[{sceneId, ...}]`)이 실제 산출 포맷과 달랐음 → 갤러리는 프레임 오프셋 매핑으로 포맷 비종속으로 구현하고, SKILL.md 계약 표기를 실제 포맷으로 정정
+
+### 완료 조건
+- [x] 구현 완료 / 자체 테스트 완료 / Phase 완료 커밋 (메인 검수 후)

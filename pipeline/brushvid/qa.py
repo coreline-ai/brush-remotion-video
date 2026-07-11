@@ -81,3 +81,193 @@ def contact_sheet(out_dir: str | Path, out_path: str | Path | None = None, *,
     out.parent.mkdir(parents=True, exist_ok=True)
     sheet.save(out)
     return out
+
+
+# ── 씬 갤러리 (QA 카드뷰) ──────────────────────────────────────────────
+
+_GALLERY_KINDS = [("drawing", "드로잉"), ("subtitle", "자막"), ("title", "타이틀"),
+                  ("widget", "위젯"), ("audio", "오디오")]
+
+
+def _scene_cards(props: dict, captures: list[dict]) -> tuple[list[dict], list[str]]:
+    """props 씬 + manifest 캡처(프레임 오프셋 매핑) → 카드 데이터 / 경고 목록."""
+    warnings: list[str] = []
+    scenes = props.get("scenes") or []
+    if not scenes:
+        warnings.append("props.json 에 씬이 없습니다 — 빌드/props 스테이지를 먼저 확인하세요.")
+    cards = []
+    offset = 0
+    for i, s in enumerate(scenes):
+        d = int(s.get("durationInFrames", 0))
+        caps = [c for c in captures if offset <= int(c.get("frame", -1)) < offset + d]
+        if not caps:
+            warnings.append(f"{s.get('id', f'scene-{i + 1:02d}')}: 캡처 없음 — bin/qa.py 재실행 필요")
+        cards.append({
+            "sceneId": s.get("id", f"scene-{i + 1:02d}"),
+            "offset": offset, "duration": d,
+            "cues": s.get("cues") or [],
+            "topTitle": s.get("topTitle"),
+            "naturalEffects": s.get("naturalEffects"),
+            "widgets": s.get("widgets") or [],
+            "captures": caps,
+        })
+        offset += d
+    return cards, warnings
+
+
+def build_gallery(props_path: str | Path, qa_dir: str | Path,
+                  out_path: str | Path | None = None) -> Path:
+    """씬 갤러리 HTML 생성 — 카드(캡처·메타·수정 체크박스) + fix-request JSON 초안 복사.
+
+    이미지 경로는 qa_dir 기준 상대경로만 사용한다 (폴더째 옮겨도 열림).
+    """
+    import html as html_mod
+
+    qa_dir = Path(qa_dir)
+    props = json.loads(Path(props_path).read_text(encoding="utf-8"))
+    manifest_path = qa_dir / "capture-manifest.json"
+    captures: list[dict] = []
+    warnings: list[str] = []
+    if manifest_path.is_file():
+        captures = json.loads(manifest_path.read_text(encoding="utf-8")).get("captures", [])
+    else:
+        warnings.append("capture-manifest.json 이 없습니다 — bin/qa.py 로 캡처를 먼저 생성하세요.")
+
+    cards, card_warnings = _scene_cards(props, captures)
+    warnings += card_warnings
+    for card in cards:
+        for c in card["captures"]:
+            if not (qa_dir / c["file"]).is_file():
+                warnings.append(f"{card['sceneId']}: 캡처 파일 누락 — {c['file']}")
+
+    project_id = props.get("projectId", "?")
+    profile = "pen" if (props.get("brush") or {}).get("kind") == "pen" else "brush"
+
+    def esc(s):
+        return html_mod.escape(str(s), quote=True)
+
+    kind_boxes = "".join(
+        f'<label class="kind"><input type="checkbox" data-kind="{k}"> {label}</label>'
+        for k, label in _GALLERY_KINDS)
+
+    card_html = []
+    for card in cards:
+        cues = card["cues"]
+        cue_sum = f"cue {len(cues)}개"
+        if cues:
+            cue_sum += f' — “{esc(cues[0]["text"])}”' + (f' … “{esc(cues[-1]["text"])}”' if len(cues) > 1 else "")
+        badges = [f'<span class="badge profile">{profile}</span>']
+        if card["topTitle"]:
+            badges.append(f'<span class="badge">title: {esc(" / ".join(card["topTitle"].get("lines", [])))}</span>')
+        if card["naturalEffects"]:
+            badges.append(f'<span class="badge">fx: {esc(card["naturalEffects"].get("kind", "?"))}</span>')
+        if card["widgets"]:
+            types = {}
+            for w in card["widgets"]:
+                types[w.get("type", "?")] = types.get(w.get("type", "?"), 0) + 1
+            badges.append('<span class="badge">widgets: '
+                          + esc(", ".join(f"{t}×{n}" for t, n in types.items())) + "</span>")
+        else:
+            badges.append('<span class="badge dim">widgets 0</span>')
+        thumbs = "".join(
+            f'<figure><img src="{esc(c["file"])}" loading="lazy" alt="f{c["frame"]}" '
+            f'onclick="openLightbox(this.src, \'{esc(c.get("label") or "")} (f{c["frame"]})\')">'
+            f'<figcaption>f{c["frame"]} {esc(c.get("label") or "")}</figcaption></figure>'
+            for c in card["captures"]) or '<p class="warn">캡처 없음</p>'
+        rep_frame = card["captures"][0]["frame"] if card["captures"] else card["offset"] + 12
+        card_html.append(f"""
+  <section class="card" data-scene="{esc(card['sceneId'])}" data-frame="{rep_frame}">
+    <header><h2>{esc(card['sceneId'])}</h2>
+      <span class="meta">{card['duration']}f (f{card['offset']}~f{card['offset'] + card['duration'] - 1})</span></header>
+    <div class="badges">{''.join(badges)}</div>
+    <p class="cues">{cue_sum}</p>
+    <div class="thumbs">{thumbs}</div>
+    <div class="fix">{kind_boxes}
+      <input type="text" class="memo" placeholder="문제/수정 메모 (fix-request problem 필드)">
+    </div>
+  </section>""")
+
+    warn_html = "".join(f'<div class="warncard">⚠ {esc(w)}</div>' for w in warnings)
+    html_text = f"""<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{esc(project_id)} — 씬 갤러리 QA</title>
+<style>
+  :root {{ color-scheme: dark; }}
+  body {{ margin: 0; padding: 24px; background: #17181b; color: #e8e6e1;
+         font: 14px/1.5 -apple-system, "Apple SD Gothic Neo", sans-serif; }}
+  h1 {{ font-size: 20px; margin: 0 0 4px; }}
+  .sub {{ color: #9a968e; margin-bottom: 16px; }}
+  .toolbar {{ position: sticky; top: 0; background: #17181bee; padding: 10px 0; z-index: 5; }}
+  button {{ background: #4f6df5; color: #fff; border: 0; border-radius: 8px;
+            padding: 8px 14px; font-size: 14px; cursor: pointer; }}
+  .warncard {{ background: #3a2d18; border: 1px solid #8a6d2f; border-radius: 8px;
+               padding: 10px 14px; margin: 8px 0; }}
+  .card {{ background: #202127; border: 1px solid #33343c; border-radius: 12px;
+           padding: 16px; margin: 14px 0; }}
+  .card header {{ display: flex; align-items: baseline; gap: 10px; }}
+  .card h2 {{ font-size: 16px; margin: 0; }}
+  .meta {{ color: #9a968e; font-size: 12px; }}
+  .badge {{ display: inline-block; background: #2c2e36; border-radius: 999px;
+            padding: 2px 10px; margin: 2px 4px 2px 0; font-size: 12px; }}
+  .badge.profile {{ background: #4f6df5; }}
+  .badge.dim {{ color: #77747d; }}
+  .cues {{ color: #c9c5bd; margin: 6px 0; }}
+  .thumbs {{ display: flex; gap: 10px; flex-wrap: wrap; }}
+  .thumbs figure {{ margin: 0; }}
+  .thumbs img {{ width: 300px; max-width: 100%; border-radius: 8px; cursor: zoom-in;
+                 border: 1px solid #33343c; }}
+  figcaption {{ font-size: 11px; color: #9a968e; margin-top: 2px; }}
+  .fix {{ margin-top: 10px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }}
+  .kind {{ user-select: none; }}
+  .memo {{ flex: 1 1 260px; background: #17181b; color: #e8e6e1; border: 1px solid #33343c;
+           border-radius: 8px; padding: 6px 10px; }}
+  .warn {{ color: #e2b34c; }}
+  dialog {{ border: 0; background: #000c; padding: 16px; border-radius: 12px; max-width: 92vw; }}
+  dialog img {{ max-width: 88vw; max-height: 82vh; }}
+  dialog p {{ color: #ddd; text-align: center; margin: 8px 0 0; }}
+  pre {{ background: #101114; border: 1px solid #33343c; border-radius: 8px;
+        padding: 12px; overflow-x: auto; white-space: pre-wrap; }}
+</style></head><body>
+<h1>{esc(project_id)} — 씬 갤러리 QA <span class="badge profile">{profile}</span></h1>
+<p class="sub">씬 {len(cards)}개 · 캡처 {len(captures)}장 · 체크 후 아래 버튼으로 scene-fix-request JSON 초안을 복사하세요.</p>
+<div class="toolbar"><button onclick="copyFixRequest()">선택 요약 → scene-fix-request JSON 초안 복사</button></div>
+{warn_html}
+{''.join(card_html)}
+<h2>fix-request 미리보기</h2>
+<pre id="preview">(체크박스 선택 후 버튼을 누르면 여기에 표시됩니다)</pre>
+<dialog id="lightbox" onclick="this.close()"><img id="lightbox-img" src="" alt=""><p id="lightbox-cap"></p></dialog>
+<script>
+function openLightbox(src, cap) {{
+  document.getElementById('lightbox-img').src = src;
+  document.getElementById('lightbox-cap').textContent = cap;
+  document.getElementById('lightbox').showModal();
+}}
+function buildFixRequest() {{
+  const scenes = [];
+  document.querySelectorAll('.card').forEach(card => {{
+    const memo = card.querySelector('.memo').value.trim();
+    const issues = [];
+    card.querySelectorAll('input[data-kind]:checked').forEach(cb => {{
+      issues.push({{ kind: cb.dataset.kind, severity: 'mid',
+                    frame: parseInt(card.dataset.frame, 10),
+                    problem: memo || '(메모 미작성)', fix: '' }});
+    }});
+    if (issues.length) scenes.push({{ sceneId: card.dataset.scene, issues }});
+  }});
+  return {{ projectId: {json.dumps(project_id, ensure_ascii=False)},
+           reviewedAt: new Date().toISOString().slice(0, 10), scenes }};
+}}
+function copyFixRequest() {{
+  const json = JSON.stringify(buildFixRequest(), null, 2);
+  document.getElementById('preview').textContent = json;
+  if (navigator.clipboard) navigator.clipboard.writeText(json);
+}}
+</script>
+</body></html>
+"""
+    out = Path(out_path) if out_path else qa_dir / "gallery.html"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(html_text, encoding="utf-8")
+    log.info("gallery: 씬 %d개, 캡처 %d장, 경고 %d건 -> %s", len(cards), len(captures), len(warnings), out)
+    return out

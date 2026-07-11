@@ -329,7 +329,9 @@ class Pipeline:
         bv_qa.write_manifest(entries, qa_dir, project_id=self.cfg.project_id,
                              props=str(self.props_json.relative_to(REPO_ROOT)))
         sheet = bv_qa.contact_sheet(qa_dir, cols=3)
-        return {"captures": len(entries), "contactSheet": str(sheet.relative_to(REPO_ROOT))}
+        gallery = bv_qa.build_gallery(self.props_json, qa_dir)  # 씬 갤러리(카드뷰)
+        return {"captures": len(entries), "contactSheet": str(sheet.relative_to(REPO_ROOT)),
+                "gallery": str(gallery.relative_to(REPO_ROOT))}
 
 
 def main() -> None:

@@ -16,8 +16,9 @@ description: >-
 
 ```
 data/{projectId}/qa/
-├── capture-manifest.json   # [{sceneId, frame, file, note?}, ...]
+├── capture-manifest.json   # {projectId, props, captures: [{frame, file, label}]}
 ├── contact-sheet.png       # 전 캡처 콘택트시트
+├── gallery.html            # 씬 갤러리 카드뷰 (캡처+메타+수정 체크박스)
 └── *.png                   # 씬별 스틸
 ```
 
@@ -31,7 +32,11 @@ python3 bin/qa.py <projectId> --frames 120 240   # 특정 프레임 커스텀
 
 ## 리뷰 워크플로
 
-1. contact-sheet.png와 캡처를 보고 씬별 이슈를 확인한다 — 점검 항목:
+0. **gallery.html을 브라우저로 연다** (상대경로라 폴더째 옮겨도 열림) —
+   씬 카드에서 캡처를 클릭해 확대 확인하고, 이슈 유형(드로잉/자막/타이틀/위젯/오디오)을
+   체크 + 메모 입력 후 상단 버튼으로 **scene-fix-request JSON 초안을 복사**한다.
+   초안의 severity/fix 필드는 스키마 문서를 참고해 다듬는다.
+1. (수동 검토 시) contact-sheet.png와 캡처를 보고 씬별 이슈를 확인한다 — 점검 항목:
    - 드로잉: 커버리지 공백, develop 타이밍, 붓 커서 이상
    - 연출: 자막 싱크/겹침, topTitle 위치·색, 이펙트 과다
    - 위젯: 겹침, 자막 밴드 침범, 여백 <90px

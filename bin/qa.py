@@ -50,17 +50,18 @@ def main() -> None:
     if not pipe.props_json.is_file():
         raise SystemExit(f"props 없음: {pipe.props_json} — 먼저 bin/build.py 를 실행하세요")
 
+    qa_dir = pipe.data_dir / "qa"
     if a.frames:
         frames = [int(f) for f in a.frames.split(",")]
         composition = "BrushPortrait" if cfg.fmt == "shorts" else "BrushLandscape"
-        qa_dir = pipe.data_dir / "qa"
         entries = bv_qa.capture_frames(pipe.props_json, frames, qa_dir, composition=composition)
         bv_qa.write_manifest(entries, qa_dir, project_id=cfg.project_id, props=str(pipe.props_json))
         sheet = bv_qa.contact_sheet(qa_dir, cols=3)
     else:
         result = pipe.stage_qa()
         sheet = result["contactSheet"]
-    log.info("QA 완료 → %s", sheet)
+    gallery = bv_qa.build_gallery(pipe.props_json, qa_dir)  # 씬 갤러리(카드뷰)도 기본 생성
+    log.info("QA 완료 → %s / %s", sheet, gallery)
 
 
 if __name__ == "__main__":

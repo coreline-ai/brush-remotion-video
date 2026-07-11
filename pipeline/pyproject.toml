@@ -15,6 +15,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest"]
 tts = ["supertonic"]
+stt = ["faster-whisper"]
 
 [build-system]
 requires = ["setuptools>=68"]
