@@ -29,6 +29,22 @@ cd pipeline
 | `brushvid/props.py` | render-props 빌더 + `schema/render-props.schema.json` jsonschema 검증 |
 | `brushvid/render.py` | `npx remotion render` 호출, 세그먼트 concat, ffmpeg 오디오 mux |
 | `brushvid/qa.py` | 프레임 캡처 → `capture-manifest.json` → 콘택트시트 |
+| `brushvid/project.py` | project.yaml 로드/검증 + 모드 판정 (narration/whisper/ambient) |
+| `brushvid/stt.py` | 더빙 오디오 → 로컬 whisper(small, ko) → SRT |
+| `brushvid/audio.py` | 앰비언트 BGM 합성(numpy/wave) + 오디오-씬 길이 정합 |
+
+## SRT-first 자동화 (bin/build.py)
+
+`project.yaml` 하나로 완성 mp4 를 만든다. 스테이지 캐시(`data/{pid}/stages/`)와
+`--from <stage>` 재개를 지원한다.
+
+```bash
+pipeline/.venv/bin/python bin/build.py examples/narration/project.yaml   # SRT 제공
+pipeline/.venv/bin/python bin/build.py examples/whisper/project.yaml     # audio만 → whisper
+pipeline/.venv/bin/python bin/build.py examples/ambient/project.yaml     # 입력 없음 → 앰비언트
+pipeline/.venv/bin/python bin/build.py examples/ambient/project.yaml --from render  # 재개
+pipeline/.venv/bin/python bin/qa.py examples/ambient/project.yaml        # QA 단독 재실행
+```
 
 ## 사용 예 (routes 생성 → props → 렌더)
 

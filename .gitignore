@@ -4,3 +4,15 @@ __pycache__/
 .venv*/
 .DS_Store
 *.tsbuildinfo
+
+# build.py가 생성하는 프로젝트 산출물은 커밋하지 않는다 (골든/공용 에셋만 추적)
+data/*
+!data/golden-single/
+!data/golden-multi/
+!data/golden-widgets/
+!data/pipeline-smoke/
+public/*
+!public/brush-draw/
+!public/winter-snow-pine-demo/
+!public/golden-multi/
+!public/pipeline-smoke/

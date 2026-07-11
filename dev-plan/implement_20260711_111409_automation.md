@@ -39,19 +39,19 @@
 
 ## Phase 상태 요약
 
-- [ ] Phase 1 완료 (project.py + stt.py + audio.py)
-- [ ] Phase 2 완료 (bin/build.py 오케스트레이션 + 캐시/재개)
-- [ ] Phase 3 완료 (E2E 3모드 + bin/qa.py + examples)
+- [x] Phase 1 완료 (project.py + stt.py + audio.py)
+- [x] Phase 2 완료 (bin/build.py 오케스트레이션 + 캐시/재개)
+- [x] Phase 3 완료 (E2E 3모드 + bin/qa.py + examples)
 
 ## QA 관점
 
-- [ ] TC-4.1: srt+audio 제공 → 내레이션 모드 (whisper 미호출)
-- [ ] TC-4.2: audio만 → stt 스테이지 실행, SRT 생성
-- [ ] TC-4.3: 둘 다 없음 → 앰비언트 (scenes N×300f)
-- [ ] TC-4.E1: format 오타 → yaml 검증 즉시 실패 (파이프라인 미진입)
-- [ ] TC-4.E2: 오디오 duration vs scenes 합산 불일치 >1s → 경고+자동 보정
-- [ ] `--from render` 재실행 시 앞 스테이지 스킵 (로그 확인)
-- [ ] 명령 1회 → output/{projectId}.mp4 + QA 산출물, 수동 개입 0회
+- [x] TC-4.1: srt+audio 제공 → 내레이션 모드 (whisper 미호출) — 단위 테스트 + narration-demo E2E 로그(`stt: narration 모드 — 해당 없음`)
+- [x] TC-4.2: audio만 → stt 스테이지 실행, SRT 생성 — whisper-demo E2E (say -v Yuna 10.28s → whisper small 정확 전사)
+- [x] TC-4.3: 둘 다 없음 → 앰비언트 (scenes 3×300f) — ambient-demo E2E (mp4 30.000s)
+- [x] TC-4.E1: format 오타 → yaml 검증 즉시 실패 (파이프라인 미진입) — 단위 테스트
+- [x] TC-4.E2: 오디오 duration vs scenes 합산 불일치 >1s → 경고+자동 보정 — 단위 테스트 3건 (연장/허용오차/축소 하한)
+- [x] `--from render` 재실행 시 앞 스테이지 스킵 (로그 확인) — ambient-demo 실측 (stt~props 7개 [skip])
+- [x] 명령 1회 → output/{projectId}.mp4 + QA 산출물, 수동 개입 0회 — 3모드 모두 build.py 1회 실행으로 완주
 
 ## Phase 1. project.py + stt.py + audio.py
 
@@ -73,36 +73,38 @@
 ## Phase 2. bin/build.py 오케스트레이션
 
 ### 구현 태스크
-- [ ] 스테이지 정의 + 순차 실행 + 산출물 캐시(data/{projectId}/stages/) + `--from` 재개
-- [ ] 내레이션 경로: SRT→cues→씬 분할(길이 상·하한)→배경 N장→clean→routes→props
-- [ ] 앰비언트 경로: N씬×300f + BGM 합성 + 시적 cue
-- [ ] mux: 영상 렌더 후 오디오 합성 (render-props audio는 null로 렌더 → ffmpeg mux)
-- [ ] TC-4.E2: 오디오 duration 자동 보정
+- [x] 스테이지 정의 + 순차 실행 + 산출물 캐시(data/{projectId}/stages/) + `--from` 재개 (StageLedger + Pipeline)
+- [x] 내레이션 경로: SRT→cues→씬 분할(길이 상·하한)→배경 N장→clean→routes→props
+- [x] 앰비언트 경로: N씬×300f + BGM 합성 + 시적 cue
+- [x] mux: 영상 렌더 후 오디오 합성 (render-props audio는 null로 렌더 → ffmpeg mux, 오디오 없으면 복사)
+- [x] TC-4.E2: 오디오 duration 자동 보정 (audio.reconcile_scenes_with_audio — cues 스테이지에서 호출)
 
 ### 자체 테스트
-- [ ] pytest (스테이지 스킵/캐시 로직 단위 테스트)
-- [ ] `--from render` 재실행 시 앞 스테이지 스킵 로그 확인
+- [x] pytest (스테이지 스킵/캐시 로직 단위 테스트 — test_build.py 5건 포함 총 43 passed)
+- [x] `--from render` 재실행 시 앞 스테이지 스킵 로그 확인 (ambient-demo 실측: stt~props 7개 `[skip] … (캐시)`, render/mux/qa만 재실행)
 
 ### 이슈 및 수정
-- [ ] 발견 이슈 없음
+- [x] 발견 이슈 없음
 
 ### 완료 조건
-- [ ] 구현 완료 / 자체 테스트 완료 / 다음 Phase 진행 가능
+- [x] 구현 완료 / 자체 테스트 완료 / 다음 Phase 진행 가능
 
 ## Phase 3. E2E 3모드 + qa.py + examples
 
 ### 구현 태스크
-- [ ] examples/narration/project.yaml (SRT 제공 모드, 배경 strategy: preset) + 실행
-- [ ] examples/ambient/project.yaml (앰비언트 3씬) + 실행
-- [ ] whisper 모드: 테스트 음성(say -v Yuna 합성 가능) → SRT 생성 확인 → 빌드
-- [ ] bin/qa.py 단독 실행 검증
+- [x] examples/narration/project.yaml (SRT 제공 모드, 배경 strategy: preset) + 실행 (ai-coding-future.srt 복사본 → 31씬 12810f)
+- [x] examples/ambient/project.yaml (앰비언트 3씬) + 실행 (3×300f + 합성 BGM)
+- [x] whisper 모드: 테스트 음성(say -v Yuna, 10.28s) → whisper small 정확 전사(SRT 3항목) → 빌드 (examples/whisper/)
+- [x] bin/qa.py 단독 실행 검증 (씬별 기본 캡처 + --frames 커스텀 캡처 모두 동작)
 
 ### 자체 테스트
-- [ ] 3모드 각각 output/{projectId}.mp4 산출 (ffprobe 스트림/길이 확인)
-- [ ] QA 산출물 (capture-manifest.json + 콘택트시트) 생성
+- [x] 3모드 각각 output/{projectId}.mp4 산출 (ffprobe: narration-demo 427.05s / whisper-demo 10.28s / ambient-demo 30.00s — 모두 h264+aac)
+- [x] QA 산출물 (capture-manifest.json + 콘택트시트) 생성 — narration 93캡처 / whisper 3 / ambient 9, 스틸 육안 확인(타이틀·자막·드로잉 정상)
 
 ### 이슈 및 수정
-- [ ] 발견 이슈 없음
+- [x] whisper 첫 실행 시 small 모델(461MB) 다운로드 발생 — ~/.cache/whisper 에 캐시되어 이후 재사용
+- [x] bin/qa.py --frames 커스텀 실행이 manifest 를 대체(의도된 동작) → ambient-demo 는 기본 모드 재실행으로 씬별 manifest 복원
+- [x] mux 는 -shortest 라 whisper-demo 최종 길이가 오디오(10.28s)에 맞춰짐 — 씬 합산(11.23s)과의 차 0.95s 는 허용오차(1s) 내라 무보정
 
 ### 완료 조건
-- [ ] 구현 완료 / 자체 테스트 완료 / E2E 게이트 통과 (커밋은 메인 세션 검수 후)
+- [x] 구현 완료 / 자체 테스트 완료 / E2E 게이트 통과 (커밋은 메인 세션 검수 후)

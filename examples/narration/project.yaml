@@ -1,0 +1,11 @@
+# 내레이션 모드 예시 — SRT 제공 (whisper 미호출), 배경은 preset 절차 합성
+projectId: narration-demo
+format: youtube
+title: AI 코딩의 미래
+input:
+  srt: ai-coding-future.srt
+background:
+  strategy: preset
+  subject: a developer's desk with ideas flowing
+widgets: none
+seed: 42

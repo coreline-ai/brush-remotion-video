@@ -1,0 +1,11 @@
+# whisper 모드 예시 — audio 만 제공: 로컬 whisper(small, ko)로 SRT 생성 후 내레이션 빌드
+projectId: whisper-demo
+format: youtube
+title: 붓 그림 파이프라인
+input:
+  audio: voice.mp3
+background:
+  strategy: preset
+  subject: an ink brush painting on paper
+widgets: none
+seed: 11
