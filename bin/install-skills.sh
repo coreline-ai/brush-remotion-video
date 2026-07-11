@@ -19,3 +19,4 @@ install_link() {
 install_link "$REPO/skill/brush-video" "brush-video"
 install_link "$REPO/skill/qa-review" "brush-qa-review"
 install_link "$REPO/skill/director" "brush-director"
+install_link "$REPO/skill/pen-video" "pen-video"

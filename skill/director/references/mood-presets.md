@@ -49,3 +49,11 @@ topTitle: { wash: true, fontSize: 44, enterAt: 12 }
 ```
 
 > 쇼츠(`format: shorts`)일 때: 위젯·타이틀 좌표는 1080×1920 기준으로 재배치, 자막 bottom 여유 확대.
+
+## ✒️ 펜 스케치 (빠른 설명형 — pen-video 스킬로 위임)
+```yaml
+drawing: { profile: pen }   # 잉크-알파 분리 + 정밀 routes + 펜 커서 자동
+background: { strategy: imagegen }   # 선화 프롬프트 (background-prompt.md ✒️ 섹션)
+# 특징: 종이 항상 보임, 잉크 선만 빠르게(씬의 35%) 그려짐, faint 1.0 즉시 또렷
+# 무드가 "펜/스케치/화이트보드/설명"이면 이 프리셋 — 실행은 pen-video 스킬
+```
