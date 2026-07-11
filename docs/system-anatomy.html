@@ -1,0 +1,772 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>brush_remotion_video — 시스템 해부</title>
+<style>
+  :root{
+    --paper:#fbfaf6; --paper2:#f3eee2; --card:#fffdf9;
+    --sumi:#3b3129; --ink:#35291f; --ink2:#6f6050; --ink3:#9b8b77;
+    --line:rgba(80,64,48,.16); --line-soft:rgba(80,64,48,.09);
+    --gold:#a77735; --gold-strong:#8f6320; --gold-soft:rgba(167,119,53,.12);
+    --green:#4f8c6d; --blue:#407b91; --purple:#8b7cc8; --amber:#c98f2e; --red:#b45a4a;
+    --chip-bg:rgba(80,64,48,.06);
+    --shadow:0 1px 2px rgba(60,45,30,.05),0 8px 28px rgba(60,45,30,.07);
+    --serif:"Nanum Myeongjo","Apple Myungjo",AppleMyungjo,"Noto Serif KR","Noto Serif CJK KR",Batang,"Times New Roman",serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",Pretendard,"Noto Sans KR","Malgun Gothic",sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Nanum Gothic Coding",monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --paper:#1b1510; --paper2:#241c14; --card:#221a12;
+      --sumi:#e9decb; --ink:#ede4d4; --ink2:#b3a28c; --ink3:#84745f;
+      --line:rgba(237,228,212,.16); --line-soft:rgba(237,228,212,.08);
+      --gold:#d9a555; --gold-strong:#e8bd77; --gold-soft:rgba(217,165,85,.13);
+      --green:#6fae8c; --blue:#6aa3b8; --purple:#a897dd; --amber:#dfa94e; --red:#cf8172;
+      --chip-bg:rgba(237,228,212,.07);
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#1b1510; --paper2:#241c14; --card:#221a12;
+    --sumi:#e9decb; --ink:#ede4d4; --ink2:#b3a28c; --ink3:#84745f;
+    --line:rgba(237,228,212,.16); --line-soft:rgba(237,228,212,.08);
+    --gold:#d9a555; --gold-strong:#e8bd77; --gold-soft:rgba(217,165,85,.13);
+    --green:#6fae8c; --blue:#6aa3b8; --purple:#a897dd; --amber:#dfa94e; --red:#cf8172;
+    --chip-bg:rgba(237,228,212,.07);
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+  }
+  :root[data-theme="light"]{
+    --paper:#fbfaf6; --paper2:#f3eee2; --card:#fffdf9;
+    --sumi:#3b3129; --ink:#35291f; --ink2:#6f6050; --ink3:#9b8b77;
+    --line:rgba(80,64,48,.16); --line-soft:rgba(80,64,48,.09);
+    --gold:#a77735; --gold-strong:#8f6320; --gold-soft:rgba(167,119,53,.12);
+    --green:#4f8c6d; --blue:#407b91; --purple:#8b7cc8; --amber:#c98f2e; --red:#b45a4a;
+    --chip-bg:rgba(80,64,48,.06);
+    --shadow:0 1px 2px rgba(60,45,30,.05),0 8px 28px rgba(60,45,30,.07);
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+       font-size:16px;line-height:1.7;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+  a{color:var(--gold-strong)}
+
+  .eyebrow{font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:.22em;
+           color:var(--gold);text-transform:uppercase;margin-bottom:14px}
+  h1,h2,h3{font-family:var(--serif);color:var(--ink);text-wrap:balance;line-height:1.32;margin:0}
+  h1{font-size:clamp(30px,5vw,46px);font-weight:700}
+  h2{font-size:clamp(23px,3.2vw,30px);font-weight:700}
+  h3{font-size:18px;font-weight:700}
+  .lede{color:var(--ink2);max-width:41em;margin:16px 0 0}
+  section{padding:64px 0 8px}
+  .sec-head{margin-bottom:28px}
+  .sec-head p{color:var(--ink2);max-width:44em;margin:10px 0 0}
+
+  /* ---------- hero ---------- */
+  header.hero{padding:56px 0 20px;border-bottom:1px solid var(--line-soft);
+    background:
+      radial-gradient(900px 340px at 82% -60px, var(--gold-soft), transparent 70%),
+      var(--paper)}
+  .hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:40px;align-items:center}
+  @media (max-width:860px){.hero-grid{grid-template-columns:1fr}}
+  .stats{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:10px;
+        padding:10px 14px;box-shadow:var(--shadow)}
+  .stat b{display:block;font-size:20px;font-family:var(--serif);color:var(--gold-strong);
+          font-variant-numeric:tabular-nums;line-height:1.2}
+  .stat span{font-size:12.5px;color:var(--ink2)}
+
+  /* demo */
+  .demo{background:var(--card);border:1px solid var(--line);border-radius:14px;
+        box-shadow:var(--shadow);overflow:hidden}
+  .demo svg{display:block;width:100%;height:auto}
+  .demo-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+            padding:12px 14px;border-top:1px dashed var(--line)}
+  .beat{font-size:12px;font-weight:600;color:var(--ink3);padding:4px 11px;border-radius:999px;
+        border:1px solid var(--line-soft);transition:all .3s}
+  .beat.on{color:var(--paper);background:var(--gold);border-color:var(--gold)}
+  .replay{margin-left:auto;font:600 12.5px var(--sans);color:var(--gold-strong);
+          background:var(--gold-soft);border:1px solid var(--line);border-radius:8px;
+          padding:6px 12px;cursor:pointer}
+  .replay:hover{filter:brightness(1.05)}
+  .replay:focus-visible,.beat:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  .demo-note{font-size:13px;color:var(--ink3);margin:10px 2px 0}
+
+  /* ---------- toc ---------- */
+  nav.toc{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--paper) 88%,transparent);
+          backdrop-filter:blur(10px);border-bottom:1px solid var(--line-soft)}
+  nav.toc .wrap{display:flex;gap:6px;overflow-x:auto;padding-top:10px;padding-bottom:10px}
+  nav.toc a{flex:none;font-size:13px;font-weight:600;color:var(--ink2);text-decoration:none;
+            padding:5px 12px;border-radius:999px;border:1px solid transparent}
+  nav.toc a:hover{color:var(--gold-strong);border-color:var(--line);background:var(--card)}
+  .theme-btn{flex:none;margin-left:auto;font:600 12.5px var(--sans);color:var(--ink2);
+             background:var(--card);border:1px solid var(--line);border-radius:999px;
+             padding:5px 12px;cursor:pointer;white-space:nowrap}
+  .theme-btn:hover{color:var(--gold-strong)}
+  .theme-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+  /* ---------- common blocks ---------- */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+        padding:20px 22px;box-shadow:var(--shadow)}
+  .chip{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--ink2);
+        background:var(--chip-bg);border:1px solid var(--line-soft);border-radius:6px;
+        padding:2px 8px;white-space:nowrap}
+  .tag{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.06em;
+       border-radius:999px;padding:3px 10px;white-space:nowrap}
+  .t-gold{color:var(--gold-strong);background:var(--gold-soft)}
+  .t-green{color:var(--green);background:color-mix(in srgb,var(--green) 13%,transparent)}
+  .t-blue{color:var(--blue);background:color-mix(in srgb,var(--blue) 13%,transparent)}
+  .t-purple{color:var(--purple);background:color-mix(in srgb,var(--purple) 15%,transparent)}
+  .t-amber{color:var(--amber);background:color-mix(in srgb,var(--amber) 15%,transparent)}
+  .t-red{color:var(--red);background:color-mix(in srgb,var(--red) 13%,transparent)}
+  .muted{color:var(--ink2)} .small{font-size:13.5px}
+  .callout{border-left:3px solid var(--gold);background:var(--gold-soft);
+           border-radius:0 10px 10px 0;padding:14px 18px;margin-top:20px}
+  .callout b{color:var(--gold-strong)}
+
+  /* ---------- 큰 그림 ---------- */
+  .big3{display:grid;grid-template-columns:1fr auto 1.35fr auto 1fr;gap:12px;align-items:stretch}
+  @media (max-width:860px){.big3{grid-template-columns:1fr}.big-arrow{transform:rotate(90deg);justify-self:center}}
+  .big3 .card{display:flex;flex-direction:column;gap:8px}
+  .big-arrow{align-self:center;color:var(--ink3);font-size:22px}
+  .io-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:7px}
+  .io-list li{display:flex;gap:8px;align-items:baseline;font-size:14px}
+  .io-list .dot{flex:none;width:7px;height:7px;border-radius:50%;transform:translateY(-1px)}
+
+  /* ---------- 타임라인/게이트 바 ---------- */
+  .beats-bar{display:flex;height:56px;border-radius:10px;overflow:hidden;
+             border:1px solid var(--line);margin:18px 0 8px}
+  .beats-bar div{display:flex;align-items:center;justify-content:center;
+                 font-size:12.5px;font-weight:700;color:var(--paper);min-width:0}
+  .beats-bar span{padding:0 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .frames{display:flex;justify-content:space-between;font-family:var(--mono);
+          font-size:11.5px;color:var(--ink3);margin-bottom:26px}
+
+  /* ---------- 스테이지 ---------- */
+  .stage{position:relative;display:grid;grid-template-columns:44px 1fr;gap:16px;padding:0 0 26px}
+  .stage:not(:last-child)::before{content:"";position:absolute;left:21px;top:44px;bottom:0;
+    width:2px;background:linear-gradient(var(--line),var(--line-soft))}
+  .stage-n{width:44px;height:44px;border-radius:50%;background:var(--card);border:1.5px solid var(--gold);
+    color:var(--gold-strong);font:700 15px var(--serif);display:flex;align-items:center;justify-content:center;
+    box-shadow:var(--shadow);z-index:1}
+  .stage-body{background:var(--card);border:1px solid var(--line);border-radius:12px;
+              padding:14px 18px;box-shadow:var(--shadow)}
+  .stage-top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}
+  .stage-top h3{margin-right:2px}
+  .stage-io{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px;
+            color:var(--ink3);margin-top:8px}
+  .stage-io .arr{color:var(--gold);font-weight:700}
+  .stage p{margin:6px 0 0;font-size:14.5px;color:var(--ink2)}
+
+  /* ---------- 렌더 구조 ---------- */
+  .comps{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:16px}
+  @media (max-width:820px){.comps{grid-template-columns:1fr}}
+  .comp .ratio{border:1.5px solid var(--gold);border-radius:5px;margin-bottom:10px;background:var(--gold-soft)}
+  .r169{width:56px;height:32px}.r916{width:32px;height:56px}
+  .comp h3{font-family:var(--mono);font-size:15px;font-weight:700}
+  .comp p{font-size:13.5px;color:var(--ink2);margin:7px 0 0}
+  .treeline{font-family:var(--mono);font-size:13px;color:var(--ink2);
+            background:var(--paper2);border:1px solid var(--line-soft);border-radius:10px;
+            padding:14px 18px;overflow-x:auto;white-space:pre;line-height:1.9;margin-top:16px}
+  .layers{margin-top:26px;display:flex;flex-direction:column;gap:0}
+  .layer{display:grid;grid-template-columns:96px 1fr auto;gap:12px;align-items:center;
+         background:var(--card);border:1px solid var(--line);border-radius:10px;
+         padding:9px 16px;margin-bottom:7px;box-shadow:var(--shadow)}
+  @media (max-width:640px){.layer{grid-template-columns:1fr;gap:4px}}
+  .layer .z{font-family:var(--mono);font-size:11.5px;color:var(--ink3)}
+  .layer .nm{font-weight:700;font-size:14.5px}
+  .layer .nm small{font-weight:500;color:var(--ink2);margin-left:8px}
+  .layers-axis{display:flex;justify-content:space-between;font-size:12px;color:var(--ink3);margin:4px 2px 8px}
+
+  /* ---------- 위젯/그리드 ---------- */
+  .wgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  @media (max-width:820px){.wgrid{grid-template-columns:1fr}}
+  .wcard h3{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .wcard .cnt{font-family:var(--serif);font-size:26px;color:var(--gold-strong)}
+  .wcard p{font-size:13.5px;color:var(--ink2);margin:8px 0 10px}
+  .chips{display:flex;flex-wrap:wrap;gap:5px}
+  .chips .chip{font-size:11.5px}
+  .catgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-top:12px}
+  .cat{background:var(--paper2);border:1px solid var(--line-soft);border-radius:10px;padding:10px 12px}
+  .cat b{font-size:12.5px;color:var(--ink);display:block;margin-bottom:6px}
+  .cat b i{font-style:normal;color:var(--ink3);font-weight:600}
+
+  /* ---------- 스키마 체인/코드 ---------- */
+  .chain{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:10px;align-items:stretch;margin-bottom:8px}
+  @media (max-width:860px){.chain{grid-template-columns:1fr}.chain .big-arrow{transform:rotate(90deg);justify-self:center}}
+  .fcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
+  .fcard .fp{font-family:var(--mono);font-size:12.5px;color:var(--gold-strong);word-break:break-all;font-weight:600}
+  .fcard p{font-size:13px;color:var(--ink2);margin:8px 0 0}
+  .chain .big-arrow{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+  .chain .big-arrow .via{font-family:var(--mono);font-size:11px;color:var(--ink3);white-space:nowrap}
+  pre.code{background:var(--paper2);border:1px solid var(--line-soft);border-radius:12px;
+      padding:18px 20px;overflow-x:auto;font-family:var(--mono);font-size:12.8px;line-height:1.75;
+      color:var(--ink);margin:20px 0 0}
+  .ck{color:var(--gold-strong)} .cs{color:var(--green)} .cn{color:var(--blue)} .cc{color:var(--ink3);font-style:italic}
+
+  /* ---------- 표 ---------- */
+  .tbl-wrap{overflow-x:auto;margin-top:16px}
+  table.tbl{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);
+            border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:13.5px}
+  .tbl th{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--gold-strong);
+          text-align:left;padding:10px 14px;border-bottom:1.5px solid var(--line);background:var(--gold-soft)}
+  .tbl td{padding:9px 14px;border-bottom:1px solid var(--line-soft);color:var(--ink2);vertical-align:top}
+  .tbl td:first-child{color:var(--ink);font-weight:700;white-space:nowrap}
+  .tbl tr:last-child td{border-bottom:0}
+
+  .modes{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media (max-width:860px){.modes{grid-template-columns:1fr}}
+  .mode ol{margin:10px 0 0;padding-left:20px;font-size:14px;color:var(--ink2);display:flex;flex-direction:column;gap:6px}
+  .mode .exs{margin-top:12px}
+
+  footer{margin-top:70px;padding:26px 0 46px;border-top:1px solid var(--line-soft);
+         color:var(--ink3);font-size:13px}
+
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow">brush_remotion_video · System Anatomy</div>
+        <h1>project.yaml 하나가<br>붓 그림 영상이 되기까지</h1>
+        <p class="lede">
+          new-video-gen을 스펙 참고로만 삼아 <b>완전히 새로 지은</b> 화이트 붓 드로잉 영상 시스템입니다.
+          이 페이지는 완성된 시스템의 <b>빌드 파이프라인 → 렌더 구조 → 위젯 → 스키마 → 검증 체계 → 스킬</b>을 해부합니다.
+        </p>
+        <div class="stats">
+          <div class="stat"><b>1개</b><span>진입점 — bin/build.py</span></div>
+          <div class="stat"><b>0.06~0.17%</b><span>골든 파리티 (기준 2%)</span></div>
+          <div class="stat"><b>71건 + 골든 3세트</b><span>vitest 28 · pytest 43</span></div>
+          <div class="stat"><b>3모드 E2E</b><span>내레이션·whisper·앰비언트</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="demo">
+          <svg id="demoSvg" viewBox="0 0 640 360" role="img" aria-label="붓 리빌 데모: 스트로크가 그림을 연하게 드러낸 뒤 전체가 또렷해지는 4박자 애니메이션">
+            <defs>
+              <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+                <feGaussianBlur stdDeviation="9"/>
+              </filter>
+            </defs>
+            <rect width="640" height="360" fill="var(--paper)"/>
+            <g id="washes" opacity="0">
+              <circle cx="520" cy="85" r="40" fill="var(--amber)" opacity=".38" filter="url(#soft)"/>
+              <ellipse cx="150" cy="212" rx="60" ry="30" fill="var(--green)" opacity=".33" filter="url(#soft)"/>
+              <ellipse cx="410" cy="306" rx="95" ry="17" fill="var(--blue)" opacity=".3" filter="url(#soft)"/>
+              <ellipse cx="320" cy="215" rx="180" ry="34" fill="var(--gold)" opacity=".14" filter="url(#soft)"/>
+            </g>
+            <g id="inkGroup" fill="none" stroke="var(--sumi)" stroke-linecap="round" stroke-linejoin="round" opacity=".45">
+              <path class="stk" pathLength="1" stroke-width="5"   d="M20 240 Q150 130 300 200 T620 180"/>
+              <path class="stk" pathLength="1" stroke-width="3.5" d="M0 275 Q120 215 260 250 T640 235"/>
+              <path class="stk" pathLength="1" stroke-width="4.5" d="M150 268 C148 220 152 190 149 152"/>
+              <path class="stk" pathLength="1" stroke-width="3"   d="M149 170 L112 184 M149 158 L186 172 M150 190 L120 202 M150 186 L182 199"/>
+              <path class="stk" pathLength="1" stroke-width="3"   d="M118 150 Q135 126 152 138 Q170 118 178 140"/>
+              <circle class="stk" pathLength="1" stroke-width="3.5" cx="520" cy="85" r="30"/>
+              <path class="stk" pathLength="1" stroke-width="2.5" d="M340 300 Q370 292 400 300 T460 300 M360 318 Q390 310 420 318 T480 318"/>
+              <path class="stk" pathLength="1" stroke-width="2.5" d="M470 120 q10 -10 20 0 q10 -10 20 0 M520 145 q8 -8 16 0 q8 -8 16 0"/>
+            </g>
+            <circle id="pen" r="5" fill="var(--gold)" opacity="0"/>
+          </svg>
+          <div class="demo-bar" aria-hidden="true">
+            <span class="beat" id="b0">① prewash</span>
+            <span class="beat" id="b1">② 붓 리빌 <span style="font-weight:500">(faint)</span></span>
+            <span class="beat" id="b2">③ develop</span>
+            <span class="beat" id="b3">④ outro</span>
+            <button class="replay" id="replay" type="button">↻ 다시 보기</button>
+          </div>
+        </div>
+        <p class="demo-note">
+          실제 씬과 같은 4박자입니다. 렌더에서 붓선은 잉크가 아니라 <b>배경 그림을 드러내는 마스크</b>로
+          쓰입니다 — RevealLayer가 이 원리를 구현하고, 신규 구현은 기존 렌더와 <b>픽셀 diff 0.17% 이내</b>로 검증됐습니다.
+        </p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+  <a href="#overview">30초 큰 그림</a>
+  <a href="#pipeline">빌드 10 스테이지</a>
+  <a href="#render">렌더 구조</a>
+  <a href="#widgets">위젯 15종</a>
+  <a href="#schema">스키마 v1</a>
+  <a href="#verify">검증 체계</a>
+  <a href="#skills">스킬 2종</a>
+  <a href="#history">개발 기록</a>
+  <button class="theme-btn" id="themeBtn" type="button" aria-label="테마 전환">◐ 테마</button>
+</div></nav>
+
+<main class="wrap">
+
+  <!-- ================= 30초 큰 그림 ================= -->
+  <section id="overview">
+    <div class="sec-head">
+      <div class="eyebrow">Overview</div>
+      <h2>30초 큰 그림 — 명령 한 번, 영상 하나</h2>
+      <p>사용자 접점은 project.yaml 하나입니다. 나머지는 전부 자동 — 수동 개입 0회가 E2E로 검증된 흐름입니다.</p>
+    </div>
+    <div class="big3">
+      <div class="card">
+        <span class="tag t-blue">입력 — project.yaml</span>
+        <ul class="io-list">
+          <li><span class="dot" style="background:var(--blue)"></span>SRT 자막 <span class="muted">(내레이션 모드)</span></li>
+          <li><span class="dot" style="background:var(--blue)"></span>더빙.mp3만 <span class="muted">(→ whisper가 SRT 생성)</span></li>
+          <li><span class="dot" style="background:var(--blue)"></span>아무것도 없이 <span class="muted">(앰비언트 — BGM까지 합성)</span></li>
+        </ul>
+      </div>
+      <div class="big-arrow">→</div>
+      <div class="card">
+        <span class="tag t-gold">bin/build.py — 10 스테이지</span>
+        <ul class="io-list">
+          <li><span class="dot" style="background:var(--gold)"></span>배경 생성 → 종이색 키잉 → 붓 경로(routes) 추출</li>
+          <li><span class="dot" style="background:var(--gold)"></span>SRT → 씬 분할 → frame 단위 cue 배치</li>
+          <li><span class="dot" style="background:var(--gold)"></span>props 조립 + <span class="chip">JSON Schema 검증</span></li>
+          <li><span class="dot" style="background:var(--gold)"></span>Remotion 렌더 → 오디오 mux → QA 캡처</li>
+        </ul>
+      </div>
+      <div class="big-arrow">→</div>
+      <div class="card">
+        <span class="tag t-green">출력</span>
+        <ul class="io-list">
+          <li><span class="dot" style="background:var(--green)"></span>output/{projectId}.mp4 <span class="muted">(16:9 / 9:16)</span></li>
+          <li><span class="dot" style="background:var(--green)"></span>data/{projectId}/qa/ <span class="muted">캡처·콘택트시트</span></li>
+          <li><span class="dot" style="background:var(--green)"></span>스테이지 캐시 <span class="muted">(--from 재개)</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout small">
+      <b>설계 제1원칙:</b> 이 리포가 유일한 소스입니다. new-video-gen은 읽기 전용 스펙 참고였고 코드는 전부 신규 작성
+      — 튜닝된 <b>값</b>(이징 곡선·faint 0.6 등)과 routes JSON <b>포맷</b>만 채택했습니다.
+      스킬도 코드 사본 없이 이 리포를 실행 대상으로 지정합니다 (드리프트 원천 차단).
+    </div>
+  </section>
+
+  <!-- ================= 빌드 파이프라인 ================= -->
+  <section id="pipeline">
+    <div class="sec-head">
+      <div class="eyebrow">Build Pipeline</div>
+      <h2>빌드 10 스테이지 — 각 단계는 캐시되고, 어디서든 재개된다</h2>
+      <p>
+        전부 <span class="chip">pipeline/brushvid/</span> 파이썬 모듈. 스테이지 산출물은
+        <span class="chip">data/{pid}/stages/</span>에 기록(StageLedger)되어 <b>--from &lt;stage&gt;</b>로 실패 지점부터 재개합니다.
+      </p>
+    </div>
+
+    <div class="stage">
+      <div class="stage-n">1·2</div>
+      <div class="stage-body">
+        <div class="stage-top"><h3>stt → cues</h3><span class="chip">brushvid.stt · brushvid.cues</span></div>
+        <p>audio만 있으면 로컬 whisper(small·ko)로 SRT 생성. SRT를 fps30 frame으로 환산하고, 긴 문장은 한글 글리프 폭 비례로 분할, 씬 경계로 그룹핑(길이 상·하한).</p>
+        <div class="stage-io"><span class="chip">더빙.mp3 / SRT</span><span class="arr">→</span><span class="chip">씬 타이밍 + cues[]</span></div>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="stage-n">3·4</div>
+      <div class="stage-body">
+        <div class="stage-top"><h3>background → clean</h3><span class="chip">brushvid.background</span><span class="tag t-purple">API 키 불필요</span></div>
+        <p>전략 3종 — <b>imagegen</b>(codex exec 내장), <b>preset</b>(PIL 절차 합성·시드 결정적, imagegen 불가 시 자동 폴백), <b>user-images</b>(contain-fit). 이어서 종이색 키잉으로 빈 영역이 리빌되지 않게 전처리.</p>
+        <div class="stage-io"><span class="chip">주제/이미지</span><span class="arr">→</span><span class="chip">씬별 content.png</span></div>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="stage-n">5</div>
+      <div class="stage-body">
+        <div class="stage-top"><h3>routes — 붓 경로 추출</h3><span class="chip">brushvid.routes</span><span class="tag t-gold">파이프라인의 심장</span></div>
+        <p>콘텐츠 마스크 → <b>골격화(skeletonize) → 폴리라인 추적 → RDP 단순화 → seal 밴드</b>로 커버리지 보장 → 이동 최소화 순서 → drawStart→drawEnd 타이밍 배분. 검증 실측: <b>커버리지 100%, 스트로크 256개</b>(기준 303±20% 내).</p>
+        <div class="stage-io"><span class="chip">content.png</span><span class="arr">→</span><span class="chip">routes.json {meta, strokes[]}</span></div>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="stage-n">6·7</div>
+      <div class="stage-body">
+        <div class="stage-top"><h3>layout → props</h3><span class="chip">brushvid.layout · brushvid.props</span><span class="tag t-red">검증 FAIL 시 중단</span></div>
+        <p>위젯 배치 검증(위젯↔위젯/자막존/타이틀존 겹침 hard-fail, 여백≥90px) 후 render-props v1을 조립하고 <b>schema/render-props.schema.json으로 검증</b>. 이 JSON Schema는 TS Zod에서 내보낸 것 — 파이썬은 소비만 합니다(이중 정의 금지).</p>
+        <div class="stage-io"><span class="chip">routes + cues + widgets</span><span class="arr">→</span><span class="chip">data/{pid}/props.json</span></div>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="stage-n">8·9</div>
+      <div class="stage-body">
+        <div class="stage-top"><h3>render → mux</h3><span class="chip">brushvid.render</span></div>
+        <p>npx remotion render (장편은 세그먼트 렌더+concat). props는 audio null로 렌더한 뒤 ffmpeg로 오디오 합성 — 씬 합산과 오디오 길이가 1초 이상 어긋나면 경고 후 자동 보정.</p>
+        <div class="stage-io"><span class="chip">props.json</span><span class="arr">→</span><span class="chip">output/{pid}.mp4</span></div>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="stage-n">10</div>
+      <div class="stage-body">
+        <div class="stage-top"><h3>qa — 리뷰 루프의 시작</h3><span class="chip">brushvid.qa · bin/qa.py</span></div>
+        <p>씬별 start/mid/end 스틸 캡처 → <b>capture-manifest.json</b> + 콘택트시트. 이 산출물이 brush-qa-review 스킬의 입력 계약이 됩니다 (씬별 이슈 → scene-fix-request JSON → 해당 스테이지 재빌드).</p>
+        <div class="stage-io"><span class="chip">mp4</span><span class="arr">→</span><span class="chip">data/{pid}/qa/contact-sheet.png</span><span class="arr">→</span><span class="chip">수정 → --from 재빌드</span></div>
+      </div>
+    </div>
+
+    <h3 style="margin-top:30px">입력 모드 3가지 — 전부 E2E 실측 완료</h3>
+    <div class="modes" style="margin-top:14px">
+      <div class="card mode">
+        <span class="tag t-blue">A. 내레이션 — SRT가 시계</span>
+        <ol>
+          <li>SRT 구간 → 씬 경계 + cue</li>
+          <li>배경 N장 생성 → routes N개</li>
+          <li>제공 오디오 mux</li>
+        </ol>
+        <p class="exs small muted">실측: SRT 94항목 → 31씬 · 427초 mp4</p>
+      </div>
+      <div class="card mode">
+        <span class="tag t-purple">B. whisper — 음성만으로</span>
+        <ol>
+          <li>더빙.mp3 → whisper(small·ko) → SRT</li>
+          <li>이후 내레이션과 동일</li>
+        </ol>
+        <p class="exs small muted">실측: 합성 음성 정확 전사 → 10초 mp4</p>
+      </div>
+      <div class="card mode">
+        <span class="tag t-green">C. 앰비언트 — 무입력</span>
+        <ol>
+          <li>300프레임(10초) × N씬 고정</li>
+          <li>BGM 합성 (numpy · 시드 결정적)</li>
+          <li>시적 한 줄 cue 수동 배치</li>
+        </ol>
+        <p class="exs small muted">실측: 3씬 · 30초 mp4 + 합성 BGM</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 렌더 구조 ================= -->
+  <section id="render">
+    <div class="sec-head">
+      <div class="eyebrow">Render Tree</div>
+      <h2>렌더 구조 — 조립은 씬이, 그리기는 레이어가</h2>
+      <p>
+        참조 시스템의 761줄 모놀리스를 <b>단일 책임 레이어들</b>로 해체했습니다.
+        BrushScene은 데이터 로드와 타임라인 파생만 하고(조립 전용), 그리기는 각 레이어가 담당합니다.
+      </p>
+    </div>
+
+    <div class="treeline">src/index.ts                  ← registerRoot (입구)
+└─ Root.tsx                    ← 컴포지션 2종 등록 + calculateMetadata(스키마 parse → 기본값 채움 → duration 합산)
+   └─ SceneSequence            ← scenes[] → Sequence 연결 + 공용 Audio 1트랙 (씬 경계 무끊김)
+      └─ BrushScene            ← routes 로드(Zod 검증) + drawFrame 파생 + 레이어 조립
+         ├─ RevealLayer        ← faint 리빌 → develop (+prewash/outro/edgeFeather/parallax)
+         ├─ EffectLayer        ← naturalEffects 6종 (seed deterministic)
+         ├─ WidgetLayer        ← CardShell + registry 바디 15종
+         ├─ TitleLayer         ← 골드 kicker + firstWordColor
+         ├─ CursorLayer        ← getPenPose → 붓 이미지 커서
+         └─ SubtitleLayer      ← cues[] + 단어 하이라이트</div>
+
+    <div class="comps">
+      <div class="card comp">
+        <div class="ratio r169"></div>
+        <h3>BrushLandscape</h3>
+        <p>1920×1080 · 30fps · 유튜브형<br>duration = scenes 합산 자동 (calculateMetadata)</p>
+      </div>
+      <div class="card comp">
+        <div class="ratio r916"></div>
+        <h3>BrushPortrait</h3>
+        <p>1080×1920 · 30fps · 쇼츠형<br>project.yaml의 format: shorts가 자동 선택</p>
+      </div>
+    </div>
+
+    <h3 style="margin-top:36px">씬 내부 — z-index로 쌓인 레이어</h3>
+    <div class="layers-axis"><span>▲ 화면 맨 위</span><span>화면 맨 아래 ▼</span></div>
+    <div class="layers">
+      <div class="layer"><span class="z">z 80</span><span class="nm">outro 워시 <small>씬 끝 종이 dissolve — 모든 레이어를 덮음</small></span><span class="tag t-blue">선택</span></div>
+      <div class="layer"><span class="z">z 40</span><span class="nm">SubtitleLayer <small>미니멀 자막 + cue 구간 단어 하이라이트</small></span><span class="tag t-gold">frame 단위</span></div>
+      <div class="layer"><span class="z">z 30</span><span class="nm">CursorLayer <small>그리는 순간에만 보이는 붓 (brush 없으면 생략)</small></span><span class="tag t-gold">brush.png</span></div>
+      <div class="layer"><span class="z">z 23</span><span class="nm">TitleLayer <small>kicker + 제목, 첫 단어는 배경 인상색</small></span><span class="tag t-amber">wash 패널</span></div>
+      <div class="layer"><span class="z">z 22</span><span class="nm">WidgetLayer <small>단일 registry — CardShell + 바디 15종</small></span><span class="tag t-green">신규 통합</span></div>
+      <div class="layer"><span class="z">z 18</span><span class="nm">EffectLayer <small>mist·starTwinkle 등 6종 — 자막 영역 회피</small></span><span class="tag t-purple">선택</span></div>
+      <div class="layer"><span class="z">z 10</span><span class="nm">RevealLayer <small>routes 마스크 리빌 + develop — 시스템의 심장</small></span><span class="tag t-gold">핵심</span></div>
+      <div class="layer"><span class="z">바닥</span><span class="nm">종이 배경 <small>paper #fbfaf6 + 질감 그라디언트</small></span><span></span></div>
+    </div>
+
+    <h3 style="margin-top:36px">한 씬(300프레임 = 10초)의 4박자</h3>
+    <div class="beats-bar" aria-label="씬 타임라인: prewash, 붓 리빌, develop과 홀드, outro 순서">
+      <div style="flex:1.2;background:var(--purple)"><span>① prewash — 흐린 예고</span></div>
+      <div style="flex:6;background:var(--gold)"><span>② 붓 리빌 — faint 0.6, 마스크로 드러남</span></div>
+      <div style="flex:2.2;background:var(--green)"><span>③ develop + 홀드</span></div>
+      <div style="flex:1;background:var(--blue)"><span>④ outro</span></div>
+    </div>
+    <div class="frames"><span>0f</span><span>drawStart</span><span>penInvisibleAfter</span><span>+developFrames</span><span>300f</span></div>
+
+    <div class="callout small">
+      <b>순수 함수 lib 3종이 레이어를 받친다:</b> <span class="chip">geometry</span>(pointOnPolyline·toPath) ·
+      <span class="chip">easing</span>(sharedProgress — 72% 조기완성 스냅 포함) ·
+      <span class="chip">dynamics</span>(buildDynamicStrokes — seed 기반 deterministic, Math.random 금지).
+      렌더 없이 vitest만으로 검증되는 구조라 수식 오류가 레이어 디버깅으로 번지지 않습니다.
+    </div>
+  </section>
+
+  <!-- ================= 위젯 ================= -->
+  <section id="widgets">
+    <div class="sec-head">
+      <div class="eyebrow">Widgets</div>
+      <h2>위젯 15종 — 3중 체계를 단일 registry로</h2>
+      <p>
+        참조 시스템의 3중 위젯 체계(레거시 4 + Azure 9 + 카탈로그 50, 레이어 3개)를
+        <b>CardShell 카드 시스템 + 단일 registry</b>로 통합했습니다.
+        핵심셋은 추측이 아니라 <b>실사용 12개 프로젝트의 사용 빈도 집계</b>로 확정했습니다.
+      </p>
+    </div>
+    <div class="wgrid">
+      <div class="card wcard">
+        <h3><span class="cnt">4</span> 레거시 계열 <span class="tag t-blue">고유 필드</span></h3>
+        <p>가장 많이 쓰인 기본 지표 위젯 — 카드 시스템으로 재설계. 괄호는 실사용 횟수.</p>
+        <div class="chips"><span class="chip">text (41)</span><span class="chip">stat (35)</span><span class="chip">donut (19)</span><span class="chip">bars (15)</span></div>
+      </div>
+      <div class="card wcard">
+        <h3><span class="cnt">11</span> 카탈로그 상위 <span class="tag t-green">items 데이터 구동</span></h3>
+        <p>공통 카드 스펙(title·kicker·caption·items[])을 공유. 참조가 하드코딩 샘플을 그리던 것을 <b>items/value 데이터 구동으로 개선</b>.</p>
+        <div class="chips">
+          <span class="chip">FlowDiagram (37)</span><span class="chip">TimelineStepper (31)</span><span class="chip">DataTable (25)</span>
+          <span class="chip">ProcessStepCard (19)</span><span class="chip">WarningCard (19)</span><span class="chip">PersonAvatar (19)</span>
+          <span class="chip">ChatBubble (13)</span><span class="chip">CompareBars (13)</span><span class="chip">BulletList (13)</span>
+          <span class="chip">QuoteText (13)</span><span class="chip">Headline (13)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="catgrid">
+      <div class="cat"><b>스키마 <i>· strict union</i></b><span class="small muted">타입별 필드 혼입(donut에 values 등)은 parse 단계에서 거부. 미등록 타입은 placeholder + 경고(크래시 금지).</span></div>
+      <div class="cat"><b>구조 <i>· 파일당 1위젯</i></b><span class="small muted">shared.tsx(팔레트·CardShell·아톰) + registry.tsx + bodies/ 15파일 — 각 20~50줄.</span></div>
+      <div class="cat"><b>배치 규칙</b><span class="small muted">절대좌표(x/y/w/h) + enterAt 등장 모션. 자막 밴드·타이틀 존 침범 금지, 여백≥90px (layout.py가 hard-fail로 강제).</span></div>
+      <div class="cat"><b>확장</b><span class="small muted">나머지 ~35종과 컨테이너는 수요 발생 시 registry에 추가. 전수 데모: data/golden-widgets (15종 2씬).</span></div>
+    </div>
+  </section>
+
+  <!-- ================= 스키마 ================= -->
+  <section id="schema">
+    <div class="sec-head">
+      <div class="eyebrow">Schema v1</div>
+      <h2>스키마 v1 — Zod 하나가 유일한 진실</h2>
+      <p>
+        5세대 하위호환을 승계하지 않고 <span class="chip">schemaVersion: 1</span>로 초기화했습니다.
+        기본값(faint 0.6 등)도 스키마에 단일 정의 — calculateMetadata가 parse하며 채워서 컴포넌트로 전달합니다.
+      </p>
+    </div>
+
+    <div class="chain">
+      <div class="fcard">
+        <span class="tag t-gold">설계도</span>
+        <div class="fp" style="margin-top:8px">data/{pid}/props.json</div>
+        <p>schemaVersion·projectId·format·audio·paper·brush + <b>scenes[]</b> (리빌 파라미터·cues·topTitle·widgets)</p>
+      </div>
+      <div class="big-arrow"><span>→</span><span class="via">scenes[].routes</span></div>
+      <div class="fcard">
+        <span class="tag t-green">붓 경로</span>
+        <div class="fp" style="margin-top:8px">public/{pid}/routes.json</div>
+        <p>meta{drawStart·drawEnd·penInvisibleAfter·coverage…} + strokes[] — <b>참조 시스템과 포맷 호환</b> (소수 프레임 타이밍)</p>
+      </div>
+      <div class="big-arrow"><span>→</span><span class="via">meta.image</span></div>
+      <div class="fcard">
+        <span class="tag t-blue">배경 그림</span>
+        <div class="fp" style="margin-top:8px">public/{pid}/bg/scene-NN.png</div>
+        <p>클린 처리된 잉크+수채 그림. 전부 public/ 기준 상대경로 (staticFile 규약)</p>
+      </div>
+    </div>
+
+    <pre class="code"><span class="cc">// v1 씬 하나 — golden-multi 실물 축약</span>
+{
+  <span class="ck">"id"</span>: <span class="cs">"scene-01"</span>,
+  <span class="ck">"routes"</span>: <span class="cs">"winter-snow-pine-demo/routes.json"</span>,
+  <span class="ck">"durationInFrames"</span>: <span class="cn">300</span>,
+  <span class="ck">"faint"</span>: <span class="cn">0.68</span>, <span class="ck">"edgeFeather"</span>: <span class="cn">12</span>, <span class="ck">"linearDraw"</span>: <span class="cn">true</span>, <span class="ck">"developFrames"</span>: <span class="cn">20</span>,
+  <span class="ck">"prewashOpacity"</span>: <span class="cn">0.65</span>, <span class="ck">"prewashFrames"</span>: <span class="cn">36</span>,   <span class="cc">// ① 박자</span>
+  <span class="ck">"outroFadeFrames"</span>: <span class="cn">18</span>,                          <span class="cc">// ④ 박자</span>
+  <span class="ck">"brushDynamics"</span>: { <span class="ck">"touchScale"</span>: <span class="cn">1.45</span>, <span class="ck">"touchJitter"</span>: <span class="cn">0.22</span>,
+                      <span class="ck">"randomizeOrder"</span>: <span class="cn">true</span>, <span class="ck">"seed"</span>: <span class="cn">7701</span> },  <span class="cc">// deterministic</span>
+  <span class="ck">"topTitle"</span>: { <span class="ck">"kicker"</span>: <span class="cs">"WINTER · GOLDEN"</span>, <span class="ck">"lines"</span>: [<span class="cs">"겨울 소나무 가지"</span>],
+                <span class="ck">"firstWordColor"</span>: <span class="cs">"#6b8499"</span>, <span class="ck">"wash"</span>: <span class="cn">true</span> },
+  <span class="ck">"cues"</span>: [ { <span class="ck">"text"</span>: <span class="cs">"첫눈이 소나무 가지에 내려앉습니다"</span>, <span class="ck">"from"</span>: <span class="cn">60</span>, <span class="ck">"to"</span>: <span class="cn">150</span> } ],
+  <span class="ck">"widgets"</span>: [ { <span class="ck">"type"</span>: <span class="cs">"stat"</span>, <span class="ck">"title"</span>: <span class="cs">"자동화 씬"</span>, <span class="ck">"value"</span>: <span class="cs">"87%"</span>,
+                 <span class="ck">"x"</span>: <span class="cn">90</span>, <span class="ck">"y"</span>: <span class="cn">80</span>, <span class="ck">"w"</span>: <span class="cn">320</span>, <span class="ck">"h"</span>: <span class="cn">210</span>, <span class="ck">"enterAt"</span>: <span class="cn">20</span> } ],
+  <span class="ck">"naturalEffects"</span>: { <span class="ck">"kind"</span>: <span class="cs">"mist"</span>, <span class="ck">"opacity"</span>: <span class="cn">0.035</span>, <span class="ck">"seed"</span>: <span class="cn">42</span> }
+}</pre>
+
+    <div class="callout small">
+      <b>스키마 공유는 단방향:</b> <span class="chip">src/schema.ts</span>(Zod)
+      → <span class="chip">npm run export-schema</span> → <span class="chip">schema/render-props.schema.json</span>
+      → 파이썬 props.py가 <b>소비만</b>. 두 언어가 같은 스키마를 각자 정의하는 드리프트를 구조적으로 막습니다.
+    </div>
+  </section>
+
+  <!-- ================= 검증 체계 ================= -->
+  <section id="verify">
+    <div class="sec-head">
+      <div class="eyebrow">Verification</div>
+      <h2>검증 체계 — "잘 나온다"가 아니라 숫자로</h2>
+      <p>1일차부터 골든 픽셀 diff 게이트를 세웠고, 모든 Phase가 객관 게이트를 통과해야 전진했습니다.</p>
+    </div>
+
+    <div class="tbl-wrap"><table class="tbl">
+      <tr><th>게이트</th><th>기준</th><th>실측</th></tr>
+      <tr><td>골든 파리티 (리빌 코어)</td><td>기존 렌더 스틸 5프레임 diff ≤ 2%</td><td><b>0.057~0.174%</b> — 기준의 1/10</td></tr>
+      <tr><td>재현성</td><td>동일 프레임 2회 렌더 diff 0</td><td>0.0000% (seed deterministic)</td></tr>
+      <tr><td>routes 생성</td><td>커버리지 ≥95% · 스트로크 303±20%</td><td>커버리지 1.0000 · 256개</td></tr>
+      <tr><td>단위 테스트</td><td>—</td><td>vitest 28건 + pytest 43건</td></tr>
+      <tr><td>E2E</td><td>명령 1회 → mp4, 수동 개입 0회</td><td>3모드 전부 통과 (427s/10s/30s)</td></tr>
+      <tr><td>회귀</td><td>골든 3세트(single/multi/widgets) 상시 ≤2%</td><td>매 워크스트림 재확인 통과</td></tr>
+    </table></div>
+
+    <pre class="code"><span class="cc"># 언제든 재검증</span>
+npm run typecheck && npm test                      <span class="cc"># TS</span>
+pipeline/.venv/bin/pytest pipeline/tests/          <span class="cc"># Python</span>
+npx remotion render src/index.ts BrushLandscape output/golden-single.mp4 --props=data/golden-single/props.json
+python3 tests/golden/diff.py --baseline tests/golden/baseline --candidate &lt;스틸 폴더&gt;   <span class="cc"># --update로 기준 갱신(의도적 변경 시에만)</span></pre>
+  </section>
+
+  <!-- ================= 스킬 ================= -->
+  <section id="skills">
+    <div class="sec-head">
+      <div class="eyebrow">Skills</div>
+      <h2>스킬 2종 — 코드 사본 0, symlink 설치</h2>
+      <p>
+        구 brush-draw-reveal 스킬은 코드 사본을 내장하다 라이브와 한 세대(390줄 vs 761줄) 어긋났습니다.
+        새 스킬은 <b>코드를 내장하지 않고</b> 이 리포를 실행 대상으로 지정합니다 — 검사로 강제: <span class="chip">find skill/ -name "*.tsx" -o -name "*.py" → 0건</span>
+      </p>
+    </div>
+    <div class="wgrid">
+      <div class="card wcard">
+        <h3>brush-video <span class="tag t-gold">생성</span></h3>
+        <p>요청 → project.yaml 작성 → <span class="chip">bin/build.py</span> 실행 → QA 확인. references: 배경 프롬프트 가이드 · project.yaml 필드 가이드 · 위젯 카탈로그 15종.</p>
+        <div class="chips"><span class="chip">~/.claude/skills/brush-video → skill/brush-video</span></div>
+      </div>
+      <div class="card wcard">
+        <h3>brush-qa-review <span class="tag t-green">리뷰</span></h3>
+        <p>capture-manifest.json 계약 기반 씬별 리뷰 → scene-fix-request JSON(kind→수정 위치→재빌드 스테이지 매핑) → <span class="chip">--from</span> 재빌드로 수정 루프.</p>
+        <div class="chips"><span class="chip">~/.claude/skills/brush-qa-review → skill/qa-review</span></div>
+      </div>
+    </div>
+    <div class="callout small">
+      <b>구 스킬 처리:</b> brush-draw-reveal 2곳(사용자·new-video-gen)에 deprecated 안내를 넣었습니다.
+      설치·재설치는 <span class="chip">bash bin/install-skills.sh</span> 한 번.
+    </div>
+  </section>
+
+  <!-- ================= 개발 기록 ================= -->
+  <section id="history">
+    <div class="sec-head">
+      <div class="eyebrow">History</div>
+      <h2>개발 기록 — 7 커밋, 게이트 통과 순서 그대로</h2>
+      <p>워크스트림별 dev-plan 문서(dev-plan/implement_*.md)에 체크박스·이슈·실측이 기록되어 있습니다.</p>
+    </div>
+    <div class="tbl-wrap"><table class="tbl">
+      <tr><th>커밋</th><th>워크스트림</th><th>게이트</th></tr>
+      <tr><td>6966700</td><td>스캐폴드 + Zod 스키마 v1</td><td>빈 컴포지션 렌더 + 스키마 테스트</td></tr>
+      <tr><td>2d8a899</td><td>리빌 코어 (lib 3종 + Reveal/Cursor)</td><td>골든 파리티 0.06~0.17%</td></tr>
+      <tr><td>ca4f9e6</td><td>연출 레이어 (자막·타이틀·이펙트·시퀀서)</td><td>2씬 540f + 오디오 연속 + 회귀 유지</td></tr>
+      <tr><td>fab660b</td><td>brushvid 파이프라인 (routes 심장부)</td><td>커버리지 100% · 스트로크 ±20% 내</td></tr>
+      <tr><td>7b3ba71</td><td>위젯 registry 15종</td><td>실사용 통계 기반 · strict union · 전수 데모</td></tr>
+      <tr><td>fd92409</td><td>bin/build.py 자동화</td><td>E2E 3모드 · pytest 43 · --from 재개</td></tr>
+      <tr><td>364d86a</td><td>얇은 스킬 2종</td><td>스킬 내 실행 코드 0건</td></tr>
+    </table></div>
+    <p class="small muted" style="margin-top:16px">
+      설계 원본: <span class="chip">docs/impl-plan-brush-remotion-video.md</span> ·
+      참조 시스템 해부(제작 전 분석): <span class="chip">docs/source-anatomy.html</span> ·
+      스키마/파이프라인 명세: <span class="chip">docs/schema.md</span> <span class="chip">docs/pipeline.md</span>
+    </p>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    2026-07-11 · brush_remotion_video 완성 시점 기준 시스템 해부 ·
+    new-video-gen은 읽기 전용 스펙 참고 — 코드는 전부 신규 작성 · 수치는 검증 시점 실측입니다.
+  </div>
+</footer>
+
+<script>
+(function(){
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var svg = document.getElementById('demoSvg');
+  var strokes = Array.prototype.slice.call(svg.querySelectorAll('.stk'));
+  var inkGroup = document.getElementById('inkGroup');
+  var washes = document.getElementById('washes');
+  var beats = [0,1,2,3].map(function(i){return document.getElementById('b'+i)});
+  var timers = [];
+
+  var plan = [[900,1400],[1500,1200],[2500,700],[3100,900],[3800,800],[4400,900],[5000,800],[5600,600]];
+  var T = 10400;
+
+  function setFinal(){
+    strokes.forEach(function(p){ p.style.strokeDasharray='none'; p.style.strokeDashoffset='0'; });
+    inkGroup.setAttribute('opacity','1');
+    washes.setAttribute('opacity','1');
+    beats.forEach(function(b){ b.classList.remove('on'); });
+    beats[2].classList.add('on');
+  }
+  function beat(i,at){ timers.push(setTimeout(function(){
+    beats.forEach(function(b,j){ b.classList.toggle('on', i===j); });
+  },at)); }
+
+  function play(){
+    timers.forEach(clearTimeout); timers=[];
+    svg.style.opacity='1';
+    inkGroup.setAttribute('opacity','0');
+    washes.setAttribute('opacity','0');
+    strokes.forEach(function(p){ p.style.strokeDasharray='1'; p.style.strokeDashoffset='1'; });
+
+    inkGroup.animate([{opacity:0},{opacity:.16,offset:.45},{opacity:.05}],{duration:900,fill:'forwards'});
+    timers.push(setTimeout(function(){ inkGroup.setAttribute('opacity','.45'); },900));
+    beat(0,0);
+
+    beat(1,900);
+    strokes.forEach(function(p,i){
+      p.animate([{strokeDashoffset:1},{strokeDashoffset:0}],
+        {duration:plan[i][1], delay:plan[i][0], fill:'forwards', easing:'cubic-bezier(.4,.1,.4,1)'});
+    });
+
+    beat(2,6500);
+    timers.push(setTimeout(function(){
+      inkGroup.animate([{opacity:.45},{opacity:1}],{duration:700,fill:'forwards'});
+      washes.animate([{opacity:0},{opacity:1}],{duration:900,fill:'forwards'});
+    },6500));
+
+    beat(3,9300);
+    timers.push(setTimeout(function(){
+      svg.animate([{opacity:1},{opacity:.12}],{duration:800,fill:'forwards'});
+    },9400));
+
+    timers.push(setTimeout(play, T));
+  }
+
+  document.getElementById('replay').addEventListener('click', function(){
+    if(reduce){ setFinal(); } else { play(); }
+  });
+
+  if(reduce){ setFinal(); } else { play(); }
+})();
+
+(function(){
+  var root=document.documentElement, btn=document.getElementById('themeBtn');
+  if(!btn) return;
+  var KEY='sa-theme', order=['','dark','light'];
+  var saved=localStorage.getItem(KEY);
+  if(saved==='dark'||saved==='light') root.setAttribute('data-theme',saved);
+  function label(){
+    var t=root.getAttribute('data-theme');
+    btn.textContent = t==='dark' ? '☾ 다크' : t==='light' ? '☀ 라이트' : '◐ 테마';
+  }
+  btn.addEventListener('click',function(){
+    var cur=root.getAttribute('data-theme')||'';
+    var next=order[(order.indexOf(cur)+1)%order.length];
+    if(next){ root.setAttribute('data-theme',next); localStorage.setItem(KEY,next); }
+    else { root.removeAttribute('data-theme'); localStorage.removeItem(KEY); }
+    label();
+  });
+  label();
+})();
+</script>
+
+</body>
+</html>
