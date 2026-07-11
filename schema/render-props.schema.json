@@ -1,0 +1,358 @@
+{
+  "$ref": "#/definitions/RenderProps",
+  "definitions": {
+    "RenderProps": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "projectId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "youtube",
+            "shorts"
+          ],
+          "default": "youtube"
+        },
+        "audio": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "paper": {
+          "type": "string",
+          "default": "#fbfaf6"
+        },
+        "brush": {
+          "type": "object",
+          "properties": {
+            "src": {
+              "type": "string"
+            },
+            "w": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "h": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "tipx": {
+              "type": "number"
+            },
+            "tipy": {
+              "type": "number"
+            },
+            "visible": {
+              "type": "boolean",
+              "default": true
+            },
+            "opacity": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 1
+            }
+          },
+          "required": [
+            "src",
+            "w",
+            "h",
+            "tipx",
+            "tipy"
+          ],
+          "additionalProperties": false
+        },
+        "scenes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "routes": {
+                "type": "string"
+              },
+              "durationInFrames": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              },
+              "faint": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "default": 0.6
+              },
+              "edgeFeather": {
+                "type": "number",
+                "minimum": 0,
+                "default": 0
+              },
+              "linearDraw": {
+                "type": "boolean",
+                "default": false
+              },
+              "developFrames": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "prewashOpacity": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "default": 0
+              },
+              "prewashFrames": {
+                "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/developFrames",
+                "default": 0
+              },
+              "prewashHoldFrames": {
+                "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/developFrames",
+                "default": 6
+              },
+              "prewashBlur": {
+                "type": "number",
+                "minimum": 0,
+                "default": 12
+              },
+              "outroFadeFrames": {
+                "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/developFrames",
+                "default": 0
+              },
+              "outroWashOpacity": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "default": 0.88
+              },
+              "outroBlur": {
+                "type": "number",
+                "minimum": 0,
+                "default": 0
+              },
+              "brushDynamics": {
+                "type": "object",
+                "properties": {
+                  "drawSpeedScale": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "default": 1
+                  },
+                  "touchScale": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "default": 1
+                  },
+                  "touchJitter": {
+                    "type": "number",
+                    "minimum": 0,
+                    "default": 0
+                  },
+                  "pathJitter": {
+                    "type": "number",
+                    "minimum": 0,
+                    "default": 0
+                  },
+                  "randomizeOrder": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "randomReverse": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "seed": {
+                    "type": "integer",
+                    "default": 1
+                  }
+                },
+                "additionalProperties": false
+              },
+              "cues": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "from": {
+                      "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/developFrames"
+                    },
+                    "to": {
+                      "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/developFrames"
+                    }
+                  },
+                  "required": [
+                    "text",
+                    "from",
+                    "to"
+                  ],
+                  "additionalProperties": false
+                },
+                "default": []
+              },
+              "topTitle": {
+                "type": "object",
+                "properties": {
+                  "kicker": {
+                    "type": "string"
+                  },
+                  "lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "minItems": 1
+                  },
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  },
+                  "width": {
+                    "type": "number"
+                  },
+                  "align": {
+                    "type": "string",
+                    "enum": [
+                      "left",
+                      "center",
+                      "right"
+                    ],
+                    "default": "left"
+                  },
+                  "enterAt": {
+                    "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/developFrames",
+                    "default": 0
+                  },
+                  "accent": {
+                    "type": "string"
+                  },
+                  "firstWordColor": {
+                    "type": "string"
+                  },
+                  "fontSize": {
+                    "type": "number"
+                  },
+                  "kickerFontSize": {
+                    "type": "number"
+                  },
+                  "wash": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                },
+                "required": [
+                  "lines"
+                ],
+                "additionalProperties": false
+              },
+              "subtitleStyle": {
+                "type": "object",
+                "properties": {
+                  "bottom": {
+                    "type": "number"
+                  },
+                  "fontSize": {
+                    "type": "number"
+                  },
+                  "maxWidth": {
+                    "type": "number"
+                  },
+                  "paddingX": {
+                    "type": "number"
+                  },
+                  "paddingY": {
+                    "type": "number"
+                  },
+                  "color": {
+                    "type": "string"
+                  },
+                  "highlightColor": {
+                    "type": "string"
+                  },
+                  "background": {
+                    "type": "string"
+                  },
+                  "border": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "naturalEffects": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "mist",
+                      "forestDust",
+                      "streamSparkle",
+                      "meadowWind",
+                      "sunsetGlow",
+                      "starTwinkle"
+                    ]
+                  },
+                  "opacity": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "default": 0.05
+                  },
+                  "parallaxScale": {
+                    "type": "number",
+                    "default": 1
+                  },
+                  "seed": {
+                    "type": "integer",
+                    "default": 1
+                  },
+                  "endFadeOpacity": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "id",
+              "durationInFrames"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "projectId",
+        "scenes"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

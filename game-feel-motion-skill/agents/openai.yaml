@@ -1,0 +1,4 @@
+interface:
+  display_name: "Game Feel Motion Skill"
+  short_description: "Game feel, motion assets, and polish pipeline."
+  default_prompt: "Use game-feel-motion-skill to design a polished game motion pipeline."
