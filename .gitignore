@@ -15,5 +15,6 @@ data/*
 public/*
 !public/brush-draw/
 !public/winter-snow-pine-demo/
+!public/winter-fullcanvas/
 !public/golden-multi/
 !public/pipeline-smoke/

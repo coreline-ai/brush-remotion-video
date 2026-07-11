@@ -13,7 +13,7 @@
   "scenes": [
     {
       "id": "scene-01",
-      "routes": "winter-snow-pine-demo/routes.json",
+      "routes": "winter-fullcanvas/routes.json",
       "durationInFrames": 300,
       "faint": 0.68,
       "edgeFeather": 12,
