@@ -1,0 +1,50 @@
+# implement_20260711_165017_director.md
+
+작성 일시: `2026-07-11 16:50:17 KST`
+
+이 문서는 이번 개발의 범위를 고정하고, 구현이 목적 밖으로 확장되지 않도록 하기 위한 작업 문서다.
+
+## 개발 목적
+
+일반 사용자의 요청("잔잔한 겨울밤 느낌으로")을 **전문 연출 용어 브리프 + project.yaml/props 초안**으로
+번역하는 별도 스킬 `brush-director`를 만든다. 코드 없는 순수 문서 스킬 — brush-video의 앞단.
+
+## 개발 범위
+
+- `skill/director/SKILL.md` — 의도 축 5개 추출 → 매핑 → 출력 계약(브리프 표 + yaml 초안 + 질문 ≤2개) + 변환 예시 2개
+- `skill/director/references/glossary.md` — 용어 사전 (사용자 제공 용어집의 v1 정정판, 3축: 시각/청각/파이프라인)
+- `skill/director/references/intent-map.md` — 일반 표현 → 파라미터 매핑 (실측 1,500+ 씬 분포 근거 권장값)
+- `skill/director/references/mood-presets.md` — 무드 프리셋 6종 (실측 조합)
+- `bin/install-skills.sh`에 brush-director 추가 + 설치
+- 근거 데이터: 레퍼런스 전 프로젝트 파라미터 분포 실측 (faint med 0.72 / edgeFeather 10~14 / linearDraw 99% /
+  developFrames med 18 / drawSpeedScale med 1.06 / touchScale med 1.46 / touchJitter med 0.22 / pathJitter 10~48 /
+  outroFadeFrames med 18·washOpacity med 0.9·blur med 1.4 / prewash는 첫 씬 전용(med 0) / naturalEffects opacity med 0.03, mist 최다)
+
+## 제외 범위
+
+- 파이프라인/렌더 코드 수정 없음, 환경음 팩(빗소리 등) 구현 없음 (사전에 "확장 후보"로만 표기)
+- 스킬 폴더에 실행 코드 금지
+
+## Phase 상태 요약
+
+- [x] Phase 1 완료 — 2026-07-11
+
+## QA 관점
+
+- [x] 권장값 전부 실측 분포 기재 (분포 스캔 결과를 개발 범위에 기록)
+- [x] 환경음·크로스페이드는 "확장 후보" 명시 + 대안 제시 규칙화
+- [x] 변환 예시 2개 yaml — project.yaml 스키마(project.py 검증 대상) 형태 확인
+- [x] TC: skill/director 내 실행 코드 0건 (실측)
+
+## Phase 1
+
+### 구현 태스크
+- [x] glossary.md(3축 사전 + 구용어 번역표) / intent-map.md(6분류) / mood-presets.md(6종) / SKILL.md(워크플로+출력계약+예시 2)
+- [x] install-skills.sh 갱신 + 실행 (brush-director symlink)
+- [x] 변환 예시 2개 자체 검증
+
+### 이슈 및 수정
+- [x] 실측에서 pathJitter 실전값(10~48, med 44)이 직관(4~8)과 크게 달라 초안 정정 — 실측 우선 원칙 확인
+
+### 완료 조건
+- [x] 설치 확인 + QA 관점 통과 + 커밋
