@@ -102,3 +102,80 @@ widgets:
 """))
     assert cfg.widgets == "authored"
     assert cfg.authored_widgets[0]["type"] == "stat"
+
+
+# ── TTS 모드 매트릭스 ──
+
+TTS_BLOCK = """
+  tts:
+    engine: supertonic
+    voice: F1
+    pauseMs: 250
+"""
+
+
+def test_tts_mode_srt_plus_tts(tmp_path, media):
+    """srt + tts → tts 모드 (SRT 는 텍스트 소스)."""
+    cfg = load_project(_write_yaml(tmp_path, """
+projectId: demo
+input:
+  srt: voice.srt
+""" + TTS_BLOCK))
+    assert cfg.mode == "tts"
+    assert cfg.tts == {"engine": "supertonic", "voice": "F1", "pauseMs": 250, "timing": "tts"}
+    assert "안녕" in cfg.tts_text()
+
+
+def test_tts_mode_script_plus_tts(tmp_path):
+    """script + tts → tts 모드."""
+    (tmp_path / "script.txt").write_text("첫 문장. 둘째 문장.", encoding="utf-8")
+    cfg = load_project(_write_yaml(tmp_path, """
+projectId: demo
+input:
+  script: script.txt
+""" + TTS_BLOCK))
+    assert cfg.mode == "tts"
+    assert cfg.tts_text() == "첫 문장. 둘째 문장."
+
+
+def test_tts_ignored_when_real_audio(tmp_path, media, caplog):
+    """srt + audio + tts → narration (실더빙 우선, TTS 무시 경고)."""
+    with caplog.at_level(logging.WARNING, logger="brushvid.project"):
+        cfg = load_project(_write_yaml(tmp_path, """
+projectId: demo
+input:
+  srt: voice.srt
+  audio: voice.mp3
+""" + TTS_BLOCK))
+    assert cfg.mode == "narration"
+    assert any("실더빙 우선" in r.message for r in caplog.records)
+
+
+def test_script_without_tts_rejected(tmp_path):
+    """script 만 있고 tts 없음 → 검증 실패 (더빙/타이밍 소스 없음)."""
+    (tmp_path / "script.txt").write_text("문장.", encoding="utf-8")
+    with pytest.raises(ValueError, match="input.tts"):
+        load_project(_write_yaml(tmp_path, """
+projectId: demo
+input:
+  script: script.txt
+"""))
+
+
+def test_tts_bad_engine_and_timing_rejected(tmp_path, media):
+    with pytest.raises(ValueError, match="engine"):
+        load_project(_write_yaml(tmp_path, """
+projectId: demo
+input:
+  srt: voice.srt
+  tts:
+    engine: eleven
+"""))
+    with pytest.raises(ValueError, match="timing"):
+        load_project(_write_yaml(tmp_path, """
+projectId: demo
+input:
+  srt: voice.srt
+  tts:
+    timing: srtt
+"""))

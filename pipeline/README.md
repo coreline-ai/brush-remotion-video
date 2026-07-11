@@ -29,9 +29,10 @@ cd pipeline
 | `brushvid/props.py` | render-props 빌더 + `schema/render-props.schema.json` jsonschema 검증 |
 | `brushvid/render.py` | `npx remotion render` 호출, 세그먼트 concat, ffmpeg 오디오 mux |
 | `brushvid/qa.py` | 프레임 캡처 → `capture-manifest.json` → 콘택트시트 |
-| `brushvid/project.py` | project.yaml 로드/검증 + 모드 판정 (narration/whisper/ambient) |
+| `brushvid/project.py` | project.yaml 로드/검증 + 모드 판정 (narration/tts/whisper/ambient) |
 | `brushvid/stt.py` | 더빙 오디오 → 로컬 whisper(small, ko) → SRT |
 | `brushvid/audio.py` | 앰비언트 BGM 합성(numpy/wave) + 오디오-씬 길이 정합 |
+| `brushvid/tts.py` | Supertonic TTS: 대본/자막 텍스트 → 더빙 wav + 타이밍 SRT (설치: `pip install -e "pipeline[tts]"`) |
 
 ## SRT-first 자동화 (bin/build.py)
 

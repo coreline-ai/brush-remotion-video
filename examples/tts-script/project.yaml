@@ -1,0 +1,16 @@
+# TTS 모드 예시 — 대본(script)만으로 Supertonic 더빙 + 자막 + 영상 자동 생성
+projectId: tts-script-demo
+format: youtube
+title: 대본 한 장이면 됩니다
+input:
+  script: script.txt
+  tts:
+    engine: supertonic
+    voice: F1
+    pauseMs: 300
+    timing: tts
+background:
+  strategy: preset
+  subject: a quiet writing desk by the window
+widgets: none
+seed: 23

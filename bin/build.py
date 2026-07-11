@@ -36,6 +36,7 @@ from brushvid import background as bv_bg
 from brushvid import qa as bv_qa
 from brushvid import render as bv_render
 from brushvid import stt as bv_stt
+from brushvid import tts as bv_tts
 from brushvid.cues import FPS, group_scenes, srt_to_cues, title_color
 from brushvid.layout import validate_layout
 from brushvid.project import ProjectConfig, load_project
@@ -128,15 +129,28 @@ class Pipeline:
         self.scenes_json.write_text(json.dumps(scenes, ensure_ascii=False, indent=2), encoding="utf-8")
 
     def _audio_path(self) -> Path | None:
-        """mux 대상 오디오 (내레이션/whisper: 더빙, 앰비언트: 합성 BGM)."""
+        """mux 대상 오디오 (내레이션/whisper: 더빙, tts: 합성 더빙, 앰비언트: 합성 BGM)."""
         if self.cfg.audio is not None:
             return self.cfg.audio
+        if self.cfg.mode == "tts":
+            return self.data_dir / "tts" / "narration.wav"
         if self.cfg.mode == "ambient":
             return self.data_dir / "bgm.wav"
         return None
 
     # ── 스테이지 ──
     def stage_stt(self) -> dict:
+        """stt 자리 분기: whisper 는 전사, tts 는 더빙 합성 (둘 다 SRT 산출)."""
+        if self.cfg.mode == "tts":
+            res = bv_tts.synthesize_narration(
+                self.cfg.tts_text(),
+                self.data_dir / "tts" / "narration.wav",
+                self.data_dir / "tts" / "narration.srt",
+                engine=self.cfg.tts["engine"], voice=self.cfg.tts["voice"],
+                pause_ms=self.cfg.tts["pauseMs"],
+            )
+            return {"srt": res["srt"], "wav": res["wav"], "durationSec": res["durationSec"],
+                    "sentences": len(res["entries"])}
         if self.cfg.mode != "whisper":
             log.info("stt: %s 모드 — 해당 없음", self.cfg.mode)
             return {"skippedReason": self.cfg.mode}
@@ -154,13 +168,16 @@ class Pipeline:
                     "cues": [{"text": text, "from": 40, "to": AMBIENT_SCENE_FRAMES - 40}],
                 })
         else:
+            # tts/whisper 는 stt 스테이지 산출 SRT 사용 (tts 모드는 TTS duration이 타이밍의 시계)
             srt_path = self.cfg.srt if self.cfg.mode == "narration" \
                 else Path(self.ledger.payload("stt")["srt"])
             cues = srt_to_cues(srt_path.read_text(encoding="utf-8"), fps=FPS)
             scenes = group_scenes(cues)
-            # TC-4.E2: 오디오 길이와 씬 합산 정합 (>1s 불일치 시 경고+보정)
-            if self.cfg.audio is not None:
-                bv_audio.reconcile_scenes_with_audio(scenes, bv_audio.probe_duration(self.cfg.audio), fps=FPS)
+            # TC-4.E2: 더빙 오디오 길이와 씬 합산 정합 (>1s 불일치 시 경고+보정)
+            timing_audio = self.cfg.audio if self.cfg.audio is not None \
+                else (self._audio_path() if self.cfg.mode == "tts" else None)
+            if timing_audio is not None:
+                bv_audio.reconcile_scenes_with_audio(scenes, bv_audio.probe_duration(timing_audio), fps=FPS)
         self._write_scenes(scenes)
         return {"sceneCount": len(scenes), "totalFrames": sum(s["durationInFrames"] for s in scenes)}
 
