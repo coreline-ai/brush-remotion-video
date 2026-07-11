@@ -54,11 +54,17 @@ description: >-
 - `strategy: preset` — PIL 절차 합성 (로컬·시드 결정적). imagegen 불가 환경 폴백.
 - `strategy: user-images` — 사용자가 준 이미지를 contain-fit.
 
+## 상단 타이틀 (선택)
+
+씬 좌상단의 골드 kicker + 제목은 props의 `scenes[].topTitle`로 정의한다.
+필드·기본값·검증된 프리셋·위젯과의 배치 관계는 [references/title-guide.md](references/title-guide.md) 참조.
+배경 그림 위에 얹을 때는 `wash: true`, 첫 단어 강조색은 배경 인상색을 쓴다.
+
 ## 위젯 (선택)
 
 씬의 빈 여백에 카드 위젯을 얹을 수 있다 (`widgets: authored` + props의 `scenes[].widgets[]`).
 사용 가능한 15종과 필드는 [references/widget-catalog.md](references/widget-catalog.md) 참조.
-네온·다크 글래스 금지, 자막·타이틀 영역 침범 금지.
+네온·다크 글래스 금지, 자막·타이틀 영역 침범 금지 (타이틀이 있으면 위젯 y ≥ 230 권장).
 
 ## 환경 요구사항
 
