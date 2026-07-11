@@ -4,9 +4,9 @@ import { type CalculateMetadataFunction, Composition } from "remotion";
 import { FPS, RenderPropsSchema, type RenderProps } from "./schema";
 import { BrushScene } from "./scene/BrushScene";
 
-// Phase 2에서 SceneSequence로 교체된다. 지금은 paper 배경만 렌더하는 자리표시자.
+// 멀티씬 SceneSequence는 다음 워크스트림(연출 레이어)에서 추가된다. 지금은 첫 씬만 렌더.
 const MainVideo: React.FC<RenderProps> = (props) => {
-  return <BrushScene paper={props.paper} />;
+  return <BrushScene scene={props.scenes[0]} paper={props.paper} brush={props.brush} />;
 };
 
 // duration = scenes 합산. props는 여기서 parse되어 스키마 기본값이 채워진 채 컴포넌트로 전달된다.

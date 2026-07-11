@@ -8,6 +8,8 @@ export const SCHEMA_VERSION = 1;
 export const FPS = 30;
 
 const frame = z.number().int().min(0);
+// routes의 스트로크 타이밍은 소수 프레임(예: 8.07)이다 — 실측(winter-snow-pine-demo) 기준. int 금지.
+const fractionalFrame = z.number().min(0);
 
 // ---------- routes JSON (참조 시스템과 포맷 호환 — 골든 샘플 재사용을 위해) ----------
 
@@ -15,8 +17,8 @@ export const StrokeSchema = z.object({
   id: z.string(),
   kind: z.string(), // "contour" | "seal" 등 — 렌더는 구분하지 않으므로 열어둔다
   width: z.number().positive(),
-  start: frame,
-  end: frame,
+  start: fractionalFrame,
+  end: fractionalFrame,
   points: z.array(z.tuple([z.number(), z.number()])).min(1),
 });
 
@@ -26,10 +28,10 @@ export const RoutesMetaSchema = z
     width: z.number().positive(),
     height: z.number().positive(),
     fps: z.number().positive(),
-    durationInFrames: frame,
-    drawStart: frame,
-    drawEnd: frame,
-    penInvisibleAfter: frame,
+    durationInFrames: fractionalFrame,
+    drawStart: fractionalFrame,
+    drawEnd: fractionalFrame,
+    penInvisibleAfter: fractionalFrame,
     routeCount: z.number().int().min(0),
   })
   .passthrough(); // coverage 등 부가 메타는 통과
