@@ -5,7 +5,10 @@ import { AbsoluteFill, continueRender, delayRender, staticFile, useCurrentFrame,
 import { buildDynamicStrokes } from "../lib/dynamics";
 import { RoutesDataSchema, type Brush, type RoutesData, type Scene } from "../schema";
 import { CursorLayer } from "./CursorLayer";
+import { EffectLayer } from "./EffectLayer";
 import { RevealLayer } from "./RevealLayer";
+import { SubtitleLayer } from "./SubtitleLayer";
+import { TitleLayer } from "./TitleLayer";
 
 // 종이 질감 — 참조 시스템과 동일 값 (골든 파리티 전제, 임의 변경 금지)
 const PAPER_TEXTURE =
@@ -76,6 +79,17 @@ export const BrushScene: React.FC<{ scene: Scene; paper: string; brush?: Brush }
             W={W}
             H={H}
           />
+          {scene.naturalEffects && (
+            <EffectLayer
+              frame={frame}
+              drawFrame={drawFrame}
+              penInvisibleAfter={dynamic.penInvisibleAfter}
+              routesDuration={data.meta.durationInFrames}
+              W={W}
+              H={H}
+              spec={scene.naturalEffects}
+            />
+          )}
           <CursorLayer
             frame={frame}
             drawFrame={drawFrame}
@@ -88,6 +102,8 @@ export const BrushScene: React.FC<{ scene: Scene; paper: string; brush?: Brush }
           />
         </>
       )}
+      {scene.topTitle && <TitleLayer frame={frame} spec={scene.topTitle} />}
+      <SubtitleLayer frame={frame} cues={scene.cues} style={scene.subtitleStyle} />
     </AbsoluteFill>
   );
 };

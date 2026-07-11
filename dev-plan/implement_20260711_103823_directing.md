@@ -1,0 +1,93 @@
+# implement_20260711_103823_directing.md
+
+작성 일시: `2026-07-11 10:38:23 KST`
+
+이 문서는 이번 개발의 범위를 고정하고, 구현이 목적 밖으로 확장되지 않도록 하기 위한 작업 문서다.
+
+## 개발 목적
+
+리빌 코어(완료) 위에 **연출 레이어(자막·타이틀·이펙트)와 멀티씬 시퀀서**를 얹어,
+단일 씬이 "연출된 씬"이 되고 여러 씬이 오디오와 함께 하나의 영상으로 조립되게 한다.
+(구현계획서 Phase 2에 해당. 파이프라인 워크스트림과 병렬 — 접점은 schema.ts뿐)
+
+## 개발 범위
+
+- `src/scene/SubtitleLayer.tsx` — frame 기반 cues[] 자막, subtitleStyle 9필드, 미니멀 스타일
+- `src/scene/TitleLayer.tsx` — topTitle: kicker+lines, align, enterAt 등장 모션, firstWordColor, wash
+- `src/scene/EffectLayer.tsx` — naturalEffects 6종(mist/forestDust/streamSparkle/meadowWind/sunsetGlow/starTwinkle), seed 기반 deterministic, develop 후 parallax
+- `src/scene/SceneSequence.tsx` — scenes[] → `<Sequence>` 연결 + 공용 `<Audio>` 1트랙, Root의 MainVideo 교체
+- `BrushScene.tsx` 최종 조립 (z-order: Reveal(10) < Effect < Title(23) < Subtitle < Cursor(30) < outro(80))
+- `data/golden-multi/` — 2씬 + cues + topTitle + naturalEffects props, 골든 스틸 3프레임 추가
+- 스펙 소스(읽기 전용): new-video-gen BrushDrawScene.tsx L307(Subtitles)/L332(TopTitle)/L416~553(NaturalEffectLayer), BrushDrawSequence.tsx
+
+## 제외 범위
+
+- 위젯 렌더 (Phase 5 워크스트림)
+- Python 파이프라인 (병렬 워크스트림 — implement_20260711_103823_pipeline.md)
+- build.py / project.yaml (Phase 4)
+- new-video-gen 수정 금지, 스킬 구버전 사본 참조 금지
+
+## 참조 문서
+
+- [상세 구현계획서](../docs/impl-plan-brush-remotion-video.md) — Phase 2 섹션
+- [이전 개발 계획](implement_20260711_095315.md) — 리빌 코어 (완료)
+
+## 공통 진행 규칙
+
+- 각 Phase는 앞선 Phase의 자체 테스트 완료 후에만 시작한다.
+- 구현 중 발생한 이슈는 해당 Phase에서 수정하고 기록한다.
+- 체크박스 상태를 실제 진행 상태와 맞게 업데이트한다.
+- 문서에 없는 범위 확장은 하지 않는다.
+- 코드 복사 금지 — 로직은 새로 작성하되 이징·기본값·수식은 라이브 코드에서 채택한다.
+- 기존 골든(golden-single) diff 게이트가 계속 통과해야 한다 (회귀 방지).
+
+## Phase 상태 요약
+
+- [x] Phase 1 완료 (자막 + 타이틀 레이어) — 2026-07-11
+- [x] Phase 2 완료 (이펙트 + 시퀀서 + golden-multi) — 2026-07-11
+
+## QA 관점
+
+- [x] cue 경계: f50(cue 앞) 자막 없음 / f100(구간 내) 자막+하이라이트 표시 — 스틸 육안 확인
+- [x] 오디오 연속성: 공용 Audio 1트랙, ffprobe audio 스트림 1개, duration 18.048s(540f) 확인
+- [x] EffectLayer seed deterministic: particleCoord sin-hash 기반, Math.random 미사용 (코드 검증) + 리빌 코어 2회 렌더 diff 0 선행 확인
+- [x] golden-single 회귀: SceneSequence 경유 재렌더 5프레임 diff 0.037~0.086% 유지
+- [x] calculateMetadata: scenes [300,240] → 540프레임 렌더 확인
+
+## Phase 1. 자막 + 타이틀 레이어
+
+### 구현 태스크
+- [x] `SubtitleLayer.tsx` — cues 검색(frame ∈ [from,to)), 6f 페이드/8f rise, 단어 하이라이트 이동, subtitleStyle 9필드
+- [x] `TitleLayer.tsx` — enterAt 18f 페이드/20f rise, kicker 좌우 구분선(align 3종), firstWordColor, wash 패널
+- [x] `BrushScene.tsx` 조립 (Effect z18 < Title z23 < Cursor z30 < Subtitle z40 < outro z80)
+
+### 자체 테스트
+- [x] cue 경계: golden-multi cue {from:60,to:150} → f50 자막 없음 / f100 표시 (스틸 육안)
+- [x] topTitle enterAt=20 → f50 완전 표시 확인
+- [x] cues 빈 배열 + topTitle 없음 → golden-single 회귀 diff 0.037~0.086% (레이어 무영향)
+
+### 이슈 및 수정
+- [x] 발견 이슈 없음
+
+### 완료 조건
+- [x] 구현 완료 / 자체 테스트 완료 / 다음 Phase 진행 가능
+
+## Phase 2. 이펙트 + 시퀀서 + golden-multi
+
+### 구현 태스크
+- [x] `EffectLayer.tsx` — 6종(mist/forestDust/streamSparkle/meadowWind/sunsetGlow/starTwinkle), particleCoord seed 해시, endFadeOpacity
+- [x] `SceneSequence.tsx` — Sequence 연결 + 공용 Audio 1트랙, Root component 교체 + RevealLayer parallax(develop 후) 추가
+- [x] `data/golden-multi/` 2씬 props (씬1: 타이틀+자막2+mist+outro / 씬2: seed 다른 재드로잉) + 440Hz 18s wav
+- [x] 골든 스틸 4프레임 baseline-multi 등록 (f50 타이틀 / f100 자막 / f302 씬 전환 직후 / f345)
+
+### 자체 테스트
+- [x] scenes [300,240] → 540프레임 + duration 18.048s (ffprobe)
+- [x] 씬 경계(302f): 2번째 씬 빈 종이 시작 정상 (스틸 육안)
+- [x] naturalEffects.kind 오타 → Zod 거부 (vitest 22건 통과)
+- [x] golden-single 5프레임 회귀 diff 0.037~0.086% ≤ 2%
+
+### 이슈 및 수정
+- [x] 발견 이슈 없음
+
+### 완료 조건
+- [x] 구현 완료 / 자체 테스트 완료 / 골든(단일+멀티) 전부 통과 / Phase 완료 커밋

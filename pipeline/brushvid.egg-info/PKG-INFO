@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: brushvid
+Version: 0.1.0
+Summary: brush_remotion_video 파이프라인 — 이미지 1장을 routes JSON + 검증된 render-props로 변환
+Requires-Python: >=3.11
+Requires-Dist: pillow
+Requires-Dist: numpy
+Requires-Dist: scipy
+Requires-Dist: scikit-image
+Requires-Dist: pyyaml
+Requires-Dist: jsonschema
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"

@@ -3,7 +3,7 @@
 // 수식·구조는 참조 시스템의 튜닝 결과를 채택 — 임의 변경 시 골든 diff가 깨진다.
 import React, { useId } from "react";
 import { AbsoluteFill, interpolate, staticFile } from "remotion";
-import { clamp, easeDevelop, sharedProgress } from "../lib/easing";
+import { clamp, easeDevelop, easeTravel, sharedProgress } from "../lib/easing";
 import { toPath, type Point } from "../lib/geometry";
 import type { Scene, Stroke } from "../schema";
 
@@ -36,6 +36,20 @@ export const RevealLayer: React.FC<Props> = ({ scene, image, strokes, penInvisib
   const dStart = penInvisibleAfter;
   const dEnd = scene.developFrames != null ? dStart + scene.developFrames : routesDuration - 4;
   const developOpacity = interpolate(drawFrame, [dStart, dEnd], [0, 1], easeDevelop);
+
+  // develop 후 미세 parallax (naturalEffects.parallaxScale > 1일 때만)
+  const parallaxScale = scene.naturalEffects?.parallaxScale ?? 1;
+  let parallaxTransform = "";
+  if (parallaxScale > 1) {
+    const pStart = dEnd + 4;
+    const pEnd = Math.max(pStart + 1, routesDuration - 12);
+    const p = interpolate(drawFrame, [pStart, pEnd], [0, 1], easeTravel);
+    const scale = 1 + (Math.min(1.03, parallaxScale) - 1) * p;
+    const seed = scene.naturalEffects?.seed ?? 1;
+    const dx = Math.sin((drawFrame + seed * 11) * 0.012) * 5.5 * p;
+    const dy = Math.cos((drawFrame + seed * 7) * 0.010) * 4.5 * p;
+    parallaxTransform = `translate(${W / 2} ${H / 2}) scale(${scale}) translate(${-W / 2 + dx} ${-H / 2 + dy})`;
+  }
 
   const outroFrames = Math.max(0, Math.round(scene.outroFadeFrames));
   const outroAlpha = outroFrames > 0
@@ -103,9 +117,15 @@ export const RevealLayer: React.FC<Props> = ({ scene, image, strokes, penInvisib
           )
         )}
 
-        {/* 2단계 develop — 전체 이미지가 또렷하게 발현 */}
+        {/* 2단계 develop — 전체 이미지가 또렷하게 발현 (parallax 시 image 직접 변환) */}
         {developOpacity > 0.001 && (
-          <rect x="0" y="0" width={W} height={H} fill={`url(#${patId})`} opacity={developOpacity} />
+          parallaxScale > 1 ? (
+            <g transform={parallaxTransform || undefined} opacity={developOpacity}>
+              <image href={staticFile(image)} x="0" y="0" width={W} height={H} preserveAspectRatio="none" />
+            </g>
+          ) : (
+            <rect x="0" y="0" width={W} height={H} fill={`url(#${patId})`} opacity={developOpacity} />
+          )
         )}
       </svg>
 

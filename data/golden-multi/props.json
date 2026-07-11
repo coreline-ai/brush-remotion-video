@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "projectId": "golden-multi",
+  "format": "youtube",
+  "paper": "#fbfaf6",
+  "audio": "golden-multi/audio.wav",
+  "brush": {
+    "src": "brush-draw/brush.png",
+    "w": 556,
+    "h": 344,
+    "tipx": 25,
+    "tipy": 315
+  },
+  "scenes": [
+    {
+      "id": "scene-01",
+      "routes": "winter-snow-pine-demo/routes.json",
+      "durationInFrames": 300,
+      "faint": 0.68,
+      "edgeFeather": 12,
+      "linearDraw": true,
+      "developFrames": 20,
+      "prewashOpacity": 0.65,
+      "prewashFrames": 36,
+      "prewashHoldFrames": 10,
+      "prewashBlur": 12,
+      "outroFadeFrames": 18,
+      "brushDynamics": {
+        "touchScale": 1.45,
+        "touchJitter": 0.22,
+        "randomizeOrder": true,
+        "randomReverse": true,
+        "seed": 7701
+      },
+      "topTitle": {
+        "kicker": "WINTER · GOLDEN",
+        "lines": ["겨울 소나무 가지"],
+        "x": 110,
+        "y": 74,
+        "width": 700,
+        "align": "left",
+        "enterAt": 20,
+        "accent": "#6b8499",
+        "firstWordColor": "#6b8499",
+        "fontSize": 44,
+        "kickerFontSize": 16,
+        "wash": true
+      },
+      "cues": [
+        { "text": "첫눈이 소나무 가지에 내려앉습니다", "from": 60, "to": 150 },
+        { "text": "붓끝에서 겨울이 피어납니다", "from": 170, "to": 260 }
+      ],
+      "subtitleStyle": {
+        "bottom": 42,
+        "fontSize": 30,
+        "maxWidth": 1420,
+        "color": "#3d4a56",
+        "highlightColor": "#7a8fa3",
+        "background": "rgba(255,255,255,0.52)"
+      },
+      "naturalEffects": {
+        "kind": "mist",
+        "opacity": 0.035,
+        "seed": 42
+      }
+    },
+    {
+      "id": "scene-02",
+      "routes": "winter-snow-pine-demo/routes.json",
+      "durationInFrames": 240,
+      "faint": 0.68,
+      "edgeFeather": 12,
+      "linearDraw": true,
+      "developFrames": 20,
+      "brushDynamics": {
+        "touchScale": 1.45,
+        "touchJitter": 0.22,
+        "randomizeOrder": true,
+        "randomReverse": true,
+        "seed": 3302
+      },
+      "cues": [{ "text": "같은 그림도 seed가 다르면 다르게 그려집니다", "from": 40, "to": 130 }]
+    }
+  ]
+}

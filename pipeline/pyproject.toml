@@ -1,0 +1,26 @@
+[project]
+name = "brushvid"
+version = "0.1.0"
+description = "brush_remotion_video 파이프라인 — 이미지 1장을 routes JSON + 검증된 render-props로 변환"
+requires-python = ">=3.11"
+dependencies = [
+    "pillow",
+    "numpy",
+    "scipy",
+    "scikit-image",
+    "pyyaml",
+    "jsonschema",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["brushvid"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

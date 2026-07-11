@@ -44,6 +44,12 @@ describe("RenderPropsSchema", () => {
   it("scenes가 비어 있으면 거부한다", () => {
     expect(RenderPropsSchema.safeParse({ ...validProps, scenes: [] }).success).toBe(false);
   });
+
+  it("TC-2.E2: naturalEffects.kind 오타는 parse 단계에서 거부된다", () => {
+    const bad = structuredClone(validProps) as Record<string, unknown> & typeof validProps;
+    (bad.scenes[0] as Record<string, unknown>).naturalEffects = { kind: "mistt" };
+    expect(RenderPropsSchema.safeParse(bad).success).toBe(false);
+  });
 });
 
 describe("RoutesDataSchema (기존 포맷 호환)", () => {
