@@ -45,6 +45,14 @@ describe("RenderPropsSchema", () => {
     expect(RenderPropsSchema.safeParse({ ...validProps, scenes: [] }).success).toBe(false);
   });
 
+  it("brush kind 'pen'은 src 없이 통과, 'image'는 src/w/h/tip 필수", () => {
+    expect(RenderPropsSchema.safeParse({ ...validProps, brush: { kind: "pen" } }).success).toBe(true);
+    expect(RenderPropsSchema.safeParse({ ...validProps, brush: { kind: "image" } }).success).toBe(false);
+    // kind 미지정(기존 props) → image 기본 + 필수 필드 강제
+    const legacy = RenderPropsSchema.parse({ ...validProps, brush: { src: "brush-draw/brush.png", w: 556, h: 344, tipx: 25, tipy: 315 } });
+    expect(legacy.brush?.kind).toBe("image");
+  });
+
   it("TC-2.E2: naturalEffects.kind 오타는 parse 단계에서 거부된다", () => {
     const bad = structuredClone(validProps) as Record<string, unknown> & typeof validProps;
     (bad.scenes[0] as Record<string, unknown>).naturalEffects = { kind: "mistt" };

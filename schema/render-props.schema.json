@@ -37,6 +37,14 @@
         "brush": {
           "type": "object",
           "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "image",
+                "pen"
+              ],
+              "default": "image"
+            },
             "src": {
               "type": "string"
             },
@@ -65,13 +73,6 @@
               "default": 1
             }
           },
-          "required": [
-            "src",
-            "w",
-            "h",
-            "tipx",
-            "tipy"
-          ],
           "additionalProperties": false
         },
         "scenes": {

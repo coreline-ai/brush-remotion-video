@@ -49,15 +49,20 @@ export const CueSchema = z.object({
   to: frame,
 });
 
-export const BrushSchema = z.object({
-  src: z.string(), // 붓 커서 PNG (public/ 기준 상대경로)
-  w: z.number().positive(),
-  h: z.number().positive(),
-  tipx: z.number(), // 붓끝 픽셀 좌표 (디스플레이 px)
-  tipy: z.number(),
-  visible: z.boolean().default(true),
-  opacity: z.number().min(0).max(1).default(1),
-});
+export const BrushSchema = z
+  .object({
+    kind: z.enum(["image", "pen"]).default("image"), // pen = 내장 벡터 펜 스프라이트 (src 불필요)
+    src: z.string().optional(), // 커서 이미지 (public/ 기준 상대경로) — kind: image일 때 필수
+    w: z.number().positive().optional(), // pen은 기본 140
+    h: z.number().positive().optional(),
+    tipx: z.number().optional(), // 붓끝 픽셀 좌표 (디스플레이 px)
+    tipy: z.number().optional(),
+    visible: z.boolean().default(true),
+    opacity: z.number().min(0).max(1).default(1),
+  })
+  .refine((b) => b.kind === "pen" || (b.src != null && b.w != null && b.h != null && b.tipx != null && b.tipy != null), {
+    message: 'kind "image" 커서는 src/w/h/tipx/tipy가 필수다',
+  });
 
 export const BrushDynamicsSchema = z.object({
   drawSpeedScale: z.number().positive().default(1), // >1이면 더 천천히 그림 (1.12~1.18 권장)
