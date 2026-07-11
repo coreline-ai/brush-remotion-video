@@ -59,6 +59,7 @@ class _Route:
     cx: float = 0.0
     cy: float = 0.0
     length: float = 0.0
+    zone: int | None = None  # 드로잉 순서 기준 존 인덱스 (group_by_zone 경로에서만)
 
 
 def rdp(points: list[Point], eps: float) -> list[Point]:
@@ -309,15 +310,16 @@ def _compute_zones(content: np.ndarray, merge_r: int) -> tuple[np.ndarray, list[
 
 
 def _order_by_zone(routes: list[_Route], content: np.ndarray, aw: int, ah: int, up: float,
-                   seed: int, merge_px: float) -> tuple[list[_Route], int]:
+                   seed: int, merge_px: float) -> tuple[list[_Route], int, list[dict]]:
     """매크로 존 단위 순서: 존 배정 → 최좌상 존 시작 근접 순회(결정적) → 존 내부 기존 순회.
 
-    반환: (정렬된 routes, zoneCount). 존 체이닝으로 순간이동은 존 수 - 1 회.
+    반환: (정렬된 routes, zoneCount, 드로잉 순서 존 정보). 존 간 순간이동은 존 수 - 1 회.
+    존 정보: [{zone, inkPixels(분석 px), bbox(target px [x0,y0,x1,y1]), strokeCount}]
     """
     merge_r = max(1, int(round(merge_px / up)))
     lbl, centers = _compute_zones(content, merge_r)
     if not centers:
-        return _order_routes(routes, aw, ah, up, seed), 0
+        return _order_routes(routes, aw, ah, up, seed), 0, []
 
     def assign(rt: _Route) -> int:
         y, x = min(ah - 1, max(0, int(rt.cy))), min(aw - 1, max(0, int(rt.cx)))
@@ -344,12 +346,22 @@ def _order_by_zone(routes: list[_Route], content: np.ndarray, aw: int, ah: int, 
         cur = min(remaining, key=lambda z: ((centers[z][0] - cx) ** 2 + (centers[z][1] - cy) ** 2, z))
 
     ordered_all: list[_Route] = []
+    zone_infos: list[dict] = []
     last_pt: Point | None = None
-    for z in zone_order:
+    for zi, z in enumerate(zone_order):
         ordered = _order_routes(groups[z], aw, ah, up, seed, start_pt=last_pt)
+        for rt in ordered:
+            rt.zone = zi
         ordered_all.extend(ordered)
         last_pt = ordered[-1].pts[-1]
-    return ordered_all, len(centers)
+        # 존 잉크 질량/바운딩박스 (분석 해상도 → bbox 는 target px 로 환산)
+        zmask = (lbl == z + 1) & content
+        ys, xs = np.nonzero(zmask)
+        bbox = [int(xs.min() * up), int(ys.min() * up),
+                int((xs.max() + 1) * up), int((ys.max() + 1) * up)] if len(xs) else [0, 0, 0, 0]
+        zone_infos.append({"zone": zi, "inkPixels": int(zmask.sum()), "bbox": bbox,
+                           "strokeCount": len(ordered)})
+    return ordered_all, len(centers), zone_infos
 
 
 def _assign_timing(ordered: list[_Route], up: float, draw_start: float, draw_end: float) -> list[dict]:
@@ -371,10 +383,13 @@ def _assign_timing(ordered: list[_Route], up: float, draw_start: float, draw_end
         st = t
         t += draws[i] * scale
         pts_t = [[round(x * up, 1), round(y * up, 1)] for (x, y) in rt.pts]
-        strokes.append({
+        stroke = {
             "id": f"s{i:04d}", "kind": rt.kind, "width": round(rt.width, 1),
             "start": round(st, 2), "end": round(t, 2), "points": pts_t,
-        })
+        }
+        if rt.zone is not None:  # 존 그룹핑 경로에서만 — brush 산출물 불변 (TS parse 는 추가 필드 무시)
+            stroke["zone"] = rt.zone
+        strokes.append(stroke)
     return strokes
 
 
@@ -450,25 +465,36 @@ def generate_routes(image_path: str | Path, params: RouteParams | None = None,
         rt.cx, rt.cy = sum(xs) / len(xs), sum(ys) / len(ys)
         rt.length = polyline_len(rt.pts)
 
+    zone_infos: list[dict] = []
     if p.group_by_zone:
-        ordered, zone_count = _order_by_zone(routes, content, aw, ah, up, p.seed, p.zone_merge_px)
+        ordered, zone_count, zone_infos = _order_by_zone(routes, content, aw, ah, up,
+                                                         p.seed, p.zone_merge_px)
     else:
         ordered, zone_count = _order_routes(routes, aw, ah, up, p.seed), None
     strokes = _assign_timing(ordered, up, draw_start, draw_end)
+
+    # 존 정보에 타이밍(첫/마지막 스트로크) 채움 — zones.json/동기 배분용
+    for zi in zone_infos:
+        zs = [s for s in strokes if s.get("zone") == zi["zone"]]
+        zi["start"] = zs[0]["start"] if zs else None
+        zi["end"] = zs[-1]["end"] if zs else None
 
     covered_final = _raster(routes, aw, ah, up)
     inside = int((content & covered_final).sum())
     missing = content_count - inside
     coverage = inside / max(1, content_count)
-    return {"meta": build_meta(strokes, len(contour), len(seal), coverage, missing, zone_count),
-            "strokes": strokes}
+    result = {"meta": build_meta(strokes, len(contour), len(seal), coverage, missing, zone_count),
+              "strokes": strokes}
+    if p.group_by_zone:
+        result["zones"] = zone_infos  # write_routes 는 meta/strokes 만 기록 (routes 포맷 불변)
+    return result
 
 
 def write_routes(data: dict, out_path: str | Path) -> Path:
-    """routes JSON 저장."""
+    """routes JSON 저장 — 포맷 계약 유지를 위해 meta/strokes 만 기록."""
     out = Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(data), encoding="utf-8")
+    out.write_text(json.dumps({"meta": data["meta"], "strokes": data["strokes"]}), encoding="utf-8")
     return out
 
 

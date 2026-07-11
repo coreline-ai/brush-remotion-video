@@ -56,6 +56,27 @@ pipeline/.venv/bin/python bin/build.py <project.yaml>
 4. 배경은 **선화(line-art)** 가 최적 — 수채·그라데이션은 잉크 분리 시 사라지므로 imagegen 프롬프트는
    [brush-video/references/background-prompt.md](../brush-video/references/background-prompt.md)의 "✒️ pen 프로파일용" 섹션을 쓸 것
 
+## 내레이션 동기 드로잉 (자동)
+
+pen 프로파일 + 내레이션(srt/tts/whisper)이면 **기본으로 동기가 켜진다** (`drawing.sync: auto`) —
+펜이 "지금 말하는 요소"를 그 문장(cue) 구간에 그린다:
+
+- 자동 배분: 존(그림 덩어리)을 드로잉 순서대로 문장들에 순차 배정 (존 잉크 양 ↔ 문장 길이 비례)
+- 배정 문장 구간 안으로 스트로크 리타이밍 — 문장 사이에는 펜이 자연스럽게 들림 (휴지)
+- 끄기: `drawing: { sync: off }` (기존 pen 타이밍과 완전 동일)
+
+**정밀 매핑 (Claude가 직접 짝짓기)** — 자동 배분이 어색하면:
+
+1. 빌드가 산출한 존 크롭을 본다: `data/{pid}/zones/scene-XX/zone-NN.png` (+ `zones.json` 메타)
+2. 각 크롭 이미지를 Read로 보고 어떤 문장과 어울리는지 판단해 `data/{pid}/sync-map.json` 작성:
+   ```json
+   { "scenes": [ { "sceneId": "scene-01", "zoneToCue": { "0": 0, "3": 1, "7": 2 } } ] }
+   ```
+   (미지정 존은 자동 배분으로 폴백)
+3. `--from sync`로 재빌드 — 동기 스테이지만 다시 돈다
+
+실물 예시: `examples/pen-sync/` (대본 3문장 + TTS + 동기 — E2E 검증, cue 구간 포함율 100%)
+
 ## 미세 조정 (props 직접 수정 후 `--from render`)
 
 - 더 빠르게/느리게: routes 재생성이 정석 (`--from routes` 전에 project.yaml duration 조정).

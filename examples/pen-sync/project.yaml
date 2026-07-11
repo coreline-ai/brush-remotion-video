@@ -1,0 +1,18 @@
+# 내레이션 동기 pen E2E — 대본 3문장 + TTS + pen-ref 배경(user-images), 존이 cue 구간에 맞춰 그려진다
+projectId: pen-sync-demo
+format: youtube
+input:
+  script: script.txt
+  tts:
+    engine: supertonic
+    voice: F1
+    pauseMs: 300
+background:
+  strategy: user-images
+  images:
+    - ../../public/pen-ref-demo/bg.png
+drawing:
+  profile: pen
+  sync: auto
+widgets: none
+seed: 20260711

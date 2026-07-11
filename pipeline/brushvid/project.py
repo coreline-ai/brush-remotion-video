@@ -22,6 +22,7 @@ WIDGET_MODES = ("auto", "none", "authored")
 TTS_ENGINES = ("supertonic",)
 TTS_TIMINGS = ("tts", "srt")
 DRAWING_PROFILES = ("brush", "pen")
+DRAWING_SYNCS = ("auto", "off")
 
 
 @dataclass
@@ -41,6 +42,7 @@ class ProjectConfig:
     widgets: str = "none"
     authored_widgets: list[dict] = field(default_factory=list)
     drawing_profile: str = "brush"  # brush(수묵 리빌) | pen(선화 펜 드로잉)
+    drawing_sync: str = "auto"      # 내레이션 동기 드로잉 auto|off (pen+cue 있을 때만 동작)
     ambient_scenes: int = 3
     ambient_cues: list[str] = field(default_factory=list)
     seed: int = 1
@@ -148,6 +150,11 @@ def load_project(yaml_path: str | Path) -> ProjectConfig:
     profile = drawing.get("profile", "brush")
     _require(profile in DRAWING_PROFILES,
              f"drawing.profile 은 {DRAWING_PROFILES} 중 하나여야 함 (입력: {profile!r})")
+    sync = drawing.get("sync", "auto")
+    if isinstance(sync, bool):  # YAML bare off/on 은 불리언으로 파싱됨
+        sync = "auto" if sync else "off"
+    _require(sync in DRAWING_SYNCS,
+             f"drawing.sync 는 {DRAWING_SYNCS} 중 하나여야 함 (입력: {sync!r})")
 
     amb = raw.get("ambient") or {}
     _require(isinstance(amb, dict), "ambient 는 매핑이어야 함")
@@ -168,6 +175,7 @@ def load_project(yaml_path: str | Path) -> ProjectConfig:
         widgets=widgets_mode,
         authored_widgets=authored,
         drawing_profile=profile,
+        drawing_sync=sync,
         ambient_scenes=ambient_scenes,
         ambient_cues=list(amb.get("cues") or []),
         seed=int(raw.get("seed", 1)),

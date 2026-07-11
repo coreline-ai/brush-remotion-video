@@ -42,10 +42,11 @@ from brushvid.layout import validate_layout
 from brushvid.project import ProjectConfig, load_project
 from brushvid.props import build_props, build_scene, load_schema, write_props
 from brushvid.routes import RouteParams, generate_routes, write_routes
+from brushvid.sync import apply_sync
 
 log = logging.getLogger("build")
 
-STAGES = ["stt", "cues", "background", "clean", "routes", "layout", "props", "render", "mux", "qa"]
+STAGES = ["stt", "cues", "background", "clean", "routes", "sync", "layout", "props", "render", "mux", "qa"]
 
 # pen 프로파일 상수 (dev-plan pen Phase 1 "핵심 발견" 3요소: 잉크-알파 분리 + 정밀 routes + contain 배경)
 PEN_PAPER_HEX = "#f2eee3"
@@ -245,8 +246,58 @@ class Pipeline:
                 image_rel = f"{self.cfg.project_id}/bg/scene-{i + 1:02d}-content.png"
             data = generate_routes(content, params, image_rel=image_rel)
             write_routes(data, self.public_dir / "routes" / f"scene-{i + 1:02d}.routes.json")
+            if pen:
+                self._export_zone_assets(i, data)  # 존 크롭 + zones.json (Claude 매핑 계약)
             coverages.append(data["meta"]["coverage"])
         return {"coverages": coverages, "profile": self.cfg.drawing_profile}
+
+    def _export_zone_assets(self, scene_idx: int, routes_data: dict) -> None:
+        """존 크롭 PNG + zones.json 산출 — sync-map(수동/Claude 매핑) 작성용 계약."""
+        from PIL import Image
+        zones = routes_data.get("zones") or []
+        out_dir = self.data_dir / "zones" / f"scene-{scene_idx + 1:02d}"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        ink = Image.open(self.public_dir / "bg" / f"scene-{scene_idx + 1:02d}-ink.png")
+        pad = 12
+        for z in zones:
+            x0, y0, x1, y1 = z["bbox"]
+            crop = ink.crop((max(0, x0 - pad), max(0, y0 - pad),
+                             min(ink.width, x1 + pad), min(ink.height, y1 + pad)))
+            crop.save(out_dir / f"zone-{z['zone']:02d}.png")
+        (out_dir / "zones.json").write_text(json.dumps({
+            "sceneId": f"scene-{scene_idx + 1:02d}",
+            "image": routes_data["meta"]["image"],
+            "zones": zones,
+        }, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def stage_sync(self) -> dict:
+        """내레이션 동기 드로잉 — pen + cue 있는 씬의 routes 를 cue 구간으로 리타이밍."""
+        if self.cfg.drawing_profile != "pen" or self.cfg.drawing_sync == "off":
+            log.info("sync: profile=%s sync=%s — 해당 없음 (routes 불변)",
+                     self.cfg.drawing_profile, self.cfg.drawing_sync)
+            return {"skippedReason": f"{self.cfg.drawing_profile}/{self.cfg.drawing_sync}"}
+        sync_map_path = self.data_dir / "sync-map.json"
+        sync_maps: dict[str, dict] = {}
+        if sync_map_path.is_file():
+            raw = json.loads(sync_map_path.read_text(encoding="utf-8"))
+            sync_maps = {s["sceneId"]: s for s in raw.get("scenes", [])}
+            log.info("sync: sync-map.json 사용 (%d씬)", len(sync_maps))
+        synced = []
+        for i, scene in enumerate(self._scenes()):
+            scene_id = f"scene-{i + 1:02d}"
+            cues = scene.get("cues") or []
+            zones_path = self.data_dir / "zones" / scene_id / "zones.json"
+            routes_path = self.public_dir / "routes" / f"{scene_id}.routes.json"
+            if not cues:
+                log.info("sync: %s cue 0개 — 자동 off", scene_id)
+                synced.append(None)
+                continue
+            zones = json.loads(zones_path.read_text(encoding="utf-8"))["zones"]
+            data = json.loads(routes_path.read_text(encoding="utf-8"))
+            out = apply_sync(data, zones, cues, sync_map=sync_maps.get(scene_id))
+            write_routes(out, routes_path)
+            synced.append(out["meta"].get("zoneCueAssignment"))
+        return {"synced": synced, "syncMap": bool(sync_maps)}
 
     def stage_layout(self) -> dict:
         if self.cfg.widgets != "authored" or not self.cfg.authored_widgets:
