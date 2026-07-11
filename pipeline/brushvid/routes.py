@@ -47,6 +47,8 @@ class RouteParams:
     max_len: float = 560.0        # 이보다 길면 분할 (target px)
     min_route_len: float = 26.0   # 이보다 짧은 contour는 버리고 seal이 커버 (target px)
     close: int = 2                # content mask closing disk 반경
+    group_by_zone: bool = False   # 매크로 존(오브젝트) 단위 순서 — pen 프로파일에서 True
+    zone_merge_px: float = 12.0   # 존 병합 팽창 반경 (target px — 글자 조각은 합치고 오브젝트는 분리)
 
 
 @dataclass
@@ -243,8 +245,12 @@ def _seal_bands(missing: np.ndarray, step: int, seal_width: float, axis: str) ->
     return out
 
 
-def _order_routes(routes: list[_Route], aw: int, ah: int, up: float, seed: int) -> list[_Route]:
-    """source-inspired ordering: 이동 anchor 순회 + travel/재방문 penalty."""
+def _order_routes(routes: list[_Route], aw: int, ah: int, up: float, seed: int,
+                  start_pt: Point | None = None) -> list[_Route]:
+    """source-inspired ordering: 이동 anchor 순회 + travel/재방문 penalty.
+
+    start_pt 지정 시 시작 위치만 그 점으로 잇는다 (존 체이닝용 — 기본 동작 불변).
+    """
     rng = np.random.default_rng(seed)
     anchors_norm = [(0.16, 0.22), (0.82, 0.2), (0.5, 0.5), (0.22, 0.8),
                     (0.8, 0.82), (0.5, 0.24), (0.3, 0.6), (0.72, 0.62), (0.16, 0.5)]
@@ -259,7 +265,7 @@ def _order_routes(routes: list[_Route], aw: int, ah: int, up: float, seed: int) 
 
     remaining = routes[:]
     ordered: list[_Route] = []
-    last_pt = anchors[0]
+    last_pt = start_pt if start_pt is not None else anchors[0]
     ai = 0
     same_zone_run = 0
     last_zone = -1
@@ -290,6 +296,60 @@ def _order_routes(routes: list[_Route], aw: int, ah: int, up: float, seed: int) 
         if len(ordered) % advance_every == 0:
             ai += 1
     return ordered
+
+
+def _compute_zones(content: np.ndarray, merge_r: int) -> tuple[np.ndarray, list[tuple[float, float]]]:
+    """잉크 마스크 팽창(근접 성분 병합) 후 연결 성분 라벨링 → (라벨 배열, 존 중심 목록)."""
+    from scipy import ndimage
+    dilated = ndimage.binary_dilation(content, structure=np.ones((3, 3), bool),
+                                      iterations=max(1, merge_r))
+    lbl, n = ndimage.label(dilated, structure=np.ones((3, 3), int))
+    centers = ndimage.center_of_mass(dilated, lbl, range(1, n + 1))  # [(y, x), ...]
+    return lbl, [(float(x), float(y)) for (y, x) in centers]
+
+
+def _order_by_zone(routes: list[_Route], content: np.ndarray, aw: int, ah: int, up: float,
+                   seed: int, merge_px: float) -> tuple[list[_Route], int]:
+    """매크로 존 단위 순서: 존 배정 → 최좌상 존 시작 근접 순회(결정적) → 존 내부 기존 순회.
+
+    반환: (정렬된 routes, zoneCount). 존 체이닝으로 순간이동은 존 수 - 1 회.
+    """
+    merge_r = max(1, int(round(merge_px / up)))
+    lbl, centers = _compute_zones(content, merge_r)
+    if not centers:
+        return _order_routes(routes, aw, ah, up, seed), 0
+
+    def assign(rt: _Route) -> int:
+        y, x = min(ah - 1, max(0, int(rt.cy))), min(aw - 1, max(0, int(rt.cx)))
+        z = int(lbl[y, x])
+        if z > 0:
+            return z - 1
+        d2 = [(rt.cx - cx) ** 2 + (rt.cy - cy) ** 2 for (cx, cy) in centers]
+        return int(np.argmin(d2))
+
+    groups: dict[int, list[_Route]] = {}
+    for rt in routes:
+        groups.setdefault(assign(rt), []).append(rt)
+
+    # 존 순회: 최좌상(cx+cy 최소) 존에서 시작, 중심 근접 그리디 (seed 무관 결정적)
+    remaining = sorted(groups.keys())
+    zone_order: list[int] = []
+    cur = min(remaining, key=lambda z: centers[z][0] + centers[z][1])
+    while True:
+        zone_order.append(cur)
+        remaining.remove(cur)
+        if not remaining:
+            break
+        cx, cy = centers[cur]
+        cur = min(remaining, key=lambda z: ((centers[z][0] - cx) ** 2 + (centers[z][1] - cy) ** 2, z))
+
+    ordered_all: list[_Route] = []
+    last_pt: Point | None = None
+    for z in zone_order:
+        ordered = _order_routes(groups[z], aw, ah, up, seed, start_pt=last_pt)
+        ordered_all.extend(ordered)
+        last_pt = ordered[-1].pts[-1]
+    return ordered_all, len(centers)
 
 
 def _assign_timing(ordered: list[_Route], up: float, draw_start: float, draw_end: float) -> list[dict]:
@@ -338,8 +398,8 @@ def generate_routes(image_path: str | Path, params: RouteParams | None = None,
         s = str(image_path).replace("\\", "/")
         image_rel = s.split("public/", 1)[1] if "public/" in s else s
 
-    def build_meta(strokes, contour_n, seal_n, coverage, missing):
-        return {
+    def build_meta(strokes, contour_n, seal_n, coverage, missing, zone_count=None):
+        meta = {
             "image": image_rel,
             "width": W, "height": H, "fps": p.fps, "durationInFrames": p.duration,
             "drawStart": round(draw_start, 2), "drawEnd": round(draw_end, 2),
@@ -348,10 +408,14 @@ def generate_routes(image_path: str | Path, params: RouteParams | None = None,
             "coverage": round(coverage, 4), "missingPixels": missing, "contentPixels": content_count,
             "paperLum": round(paper_lum, 1), "seed": p.seed,
         }
+        if zone_count is not None:  # group_by_zone 경로에서만 — False 경로 산출물 불변
+            meta["zoneCount"] = zone_count
+        return meta
 
     if content_count == 0:
         log.warning("콘텐츠 픽셀 없음(백지 이미지): %s — 빈 strokes 반환", image_path)
-        return {"meta": build_meta([], 0, 0, 1.0, 0), "strokes": []}
+        return {"meta": build_meta([], 0, 0, 1.0, 0, zone_count=0 if p.group_by_zone else None),
+                "strokes": []}
 
     # contour routes
     contour: list[_Route] = []
@@ -376,7 +440,9 @@ def generate_routes(image_path: str | Path, params: RouteParams | None = None,
     routes = contour + seal
     if not routes:
         log.warning("생성된 route 없음: %s — 빈 strokes 반환", image_path)
-        return {"meta": build_meta([], 0, 0, 0.0, content_count), "strokes": []}
+        return {"meta": build_meta([], 0, 0, 0.0, content_count,
+                                   zone_count=0 if p.group_by_zone else None),
+                "strokes": []}
 
     for rt in routes:
         xs = [q[0] for q in rt.pts]
@@ -384,14 +450,18 @@ def generate_routes(image_path: str | Path, params: RouteParams | None = None,
         rt.cx, rt.cy = sum(xs) / len(xs), sum(ys) / len(ys)
         rt.length = polyline_len(rt.pts)
 
-    ordered = _order_routes(routes, aw, ah, up, p.seed)
+    if p.group_by_zone:
+        ordered, zone_count = _order_by_zone(routes, content, aw, ah, up, p.seed, p.zone_merge_px)
+    else:
+        ordered, zone_count = _order_routes(routes, aw, ah, up, p.seed), None
     strokes = _assign_timing(ordered, up, draw_start, draw_end)
 
     covered_final = _raster(routes, aw, ah, up)
     inside = int((content & covered_final).sum())
     missing = content_count - inside
     coverage = inside / max(1, content_count)
-    return {"meta": build_meta(strokes, len(contour), len(seal), coverage, missing), "strokes": strokes}
+    return {"meta": build_meta(strokes, len(contour), len(seal), coverage, missing, zone_count),
+            "strokes": strokes}
 
 
 def write_routes(data: dict, out_path: str | Path) -> Path:

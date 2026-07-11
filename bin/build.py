@@ -65,6 +65,7 @@ def pen_route_params(duration: int, seed: int) -> RouteParams:
         duration=duration, draw_start=8, draw_end=draw_end, pen_invisible_after=draw_end + 8,
         seed=seed, analyze_scale=1.5, contour_width=18, rdp_eps=1.5, max_len=300,
         min_route_len=12, seal_width=24, seal_step=18,
+        group_by_zone=True,  # 매크로 존(오브젝트) 단위 드로잉 순서
     )
 
 
