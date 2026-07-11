@@ -64,3 +64,5 @@ pipeline/.venv/bin/python bin/build.py <project.yaml>
 - 커스텀 펜 이미지: `brush: {kind: "image", src: "...", w, h, tipx, tipy}` (기존 방식 그대로)
 
 실물 예시: `examples/pen-sketch/project.yaml` (무입력 앰비언트 1씬 — E2E 검증됨)
+
+> 제작 중 발견한 갭은 `FIELD-LOG.md`에 기록하고 문서/검증기에 환류한다 (brush-video §갭 환류와 동일).

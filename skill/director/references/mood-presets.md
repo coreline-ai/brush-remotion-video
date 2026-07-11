@@ -1,4 +1,10 @@
-# 무드 프리셋 — 검증된 조합 6종
+# 무드 프리셋 — 검증된 조합 6종 + 운용 규칙
+
+## 운용 규칙 ("매번 같은 템플릿" 방지)
+
+1. **한 영상 = 한 프리셋** — 한 영상 안에서 프리셋을 섞지 않는다 (일관성). 변주는 프리셋 안에서 씬별로만.
+2. **새 영상은 직전 영상과 다르게** — 연속 제작 시 직전 프로젝트와 **다른 프리셋 또는 다른 seed(brushDynamics·naturalEffects)·accent·배경 소재**를 쓴다.
+   확인 방법: `ls -t data/ | head`로 최근 projectId를 찾아 그 props의 프리셋·seed를 보고 겹치지 않게 제안한다.
 
 프리셋은 출발점이다. 확정 후 intent-map으로 미세 조정한다.
 공통 베이스(실측 중앙값): `linearDraw: true, faint: 0.7, edgeFeather: 12, developFrames: 18,

@@ -52,6 +52,8 @@ description: >-
 
 4. **수정 반복** — props(`data/{projectId}/props.json`)나 project.yaml을 고친 뒤
    해당 스테이지부터 재실행 (`--from props` 또는 `--from render`).
+5. **갭 환류** — 제작 중 발견한 품질 갭·빠진 규칙은 리포 루트 `FIELD-LOG.md`에 기록하고,
+   반드시 해당 문서/검증기에 반영해 재발을 막는다 (기록만 하고 끝내지 않기).
 
 ## 배경 이미지
 
@@ -97,7 +99,7 @@ pipeline/.venv/bin/pip install -e "pipeline[tts]"
 
 - Node + npm (리포에 `npm install` 선행), ffmpeg/ffprobe
 - Python venv: `pipeline/.venv` (없으면 `pipeline/README.md`의 부트스트랩 절차)
-- whisper 모드: `/Users/hwanchoi/project_202606/new-video-gen/.venv-whisper` (첫 실행 시 모델 다운로드)
+- whisper 모드: faster-whisper — 미설치 시 빌드가 안내하는 `pip install -e "pipeline[stt]"` 1회 (첫 실행 시 모델 자동 다운로드, 이후 캐시)
 
 ## 문제 해결
 
