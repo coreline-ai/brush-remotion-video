@@ -1,7 +1,0 @@
-pyproject.toml
-brushvid/__init__.py
-brushvid.egg-info/PKG-INFO
-brushvid.egg-info/SOURCES.txt
-brushvid.egg-info/dependency_links.txt
-brushvid.egg-info/requires.txt
-brushvid.egg-info/top_level.txt

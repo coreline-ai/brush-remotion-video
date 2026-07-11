@@ -1,0 +1,21 @@
+{
+  "projectId": "pipeline-smoke",
+  "props": "data/pipeline-smoke/props.json",
+  "captures": [
+    {
+      "frame": 12,
+      "file": "frame-00012.png",
+      "label": "prewash"
+    },
+    {
+      "frame": 40,
+      "file": "frame-00040.png",
+      "label": "draw-early"
+    },
+    {
+      "frame": 59,
+      "file": "frame-00059.png",
+      "label": "draw-mid"
+    }
+  ]
+}

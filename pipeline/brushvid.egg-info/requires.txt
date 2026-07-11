@@ -1,9 +1,0 @@
-pillow
-numpy
-scipy
-scikit-image
-pyyaml
-jsonschema
-
-[dev]
-pytest

@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "projectId": "pipeline-smoke",
+  "format": "youtube",
+  "paper": "#fbfaf6",
+  "brush": {
+    "src": "brush-draw/brush.png",
+    "w": 556,
+    "h": 344,
+    "tipx": 25,
+    "tipy": 315
+  },
+  "scenes": [
+    {
+      "id": "scene-01",
+      "durationInFrames": 300,
+      "faint": 0.68,
+      "edgeFeather": 12,
+      "linearDraw": true,
+      "developFrames": 20,
+      "prewashOpacity": 0.65,
+      "prewashFrames": 36,
+      "prewashHoldFrames": 10,
+      "prewashBlur": 12,
+      "routes": "pipeline-smoke/routes.json",
+      "brushDynamics": {
+        "drawSpeedScale": 1.0,
+        "touchScale": 1.45,
+        "touchJitter": 0.22,
+        "randomizeOrder": true,
+        "randomReverse": true,
+        "seed": 7701
+      }
+    }
+  ]
+}

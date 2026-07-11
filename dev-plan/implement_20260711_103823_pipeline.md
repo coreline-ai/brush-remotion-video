@@ -43,65 +43,68 @@
 
 ## Phase 상태 요약
 
-- [ ] Phase 1 완료 (패키지 스캐폴드 + routes.py)
-- [ ] Phase 2 완료 (background/layout/cues/props)
-- [ ] Phase 3 완료 (render/qa + 통합 게이트)
+- [x] Phase 1 완료 (패키지 스캐폴드 + routes.py)
+- [x] Phase 2 완료 (background/layout/cues/props)
+- [x] Phase 3 완료 (render/qa + 통합 게이트)
 
 ## QA 관점
 
-- [ ] 게이트: winter-snow-pine composed.png → 신규 routes 커버리지 ≥ 95%, 스트로크 수 기존(303) ±20%
-- [ ] props.py 산출물이 jsonschema + (가능하면) TS Zod parse 양쪽 통과
-- [ ] 백지 이미지 → 빈 strokes + 경고 (크래시 금지)
-- [ ] 타임코드 역전 SRT → 명시적 에러
-- [ ] codex 부재 환경에서 imagegen → preset 폴백 + 경고
+- [x] 게이트: winter-snow-pine composed.png → 신규 routes 커버리지 ≥ 95%, 스트로크 수 기존(303) ±20%
+      (실측: coverage 1.0000, routeCount 256 — 242~364 범위 내, contentPixels 149318 로 기존 마스크와 동일)
+- [x] props.py 산출물이 jsonschema + TS Zod parse 양쪽 통과 (스모크 렌더의 calculateMetadata 가 RenderPropsSchema.parse 수행 — 렌더 성공으로 확인)
+- [x] 백지 이미지 → 빈 strokes + 경고 (크래시 금지) — TC-3.E1
+- [x] 타임코드 역전 SRT → 명시적 에러 — TC-3.E2 (+역행 항목도 에러)
+- [x] codex 부재 환경에서 imagegen → preset 폴백 + 경고 — TC-3.E3
 
 ## Phase 1. 패키지 스캐폴드 + routes.py
 
 ### 구현 태스크
-- [ ] pyproject.toml + brushvid/__init__.py + .venv 부트스트랩 + README
-- [ ] routes.py (마스크→skeletonize→추적→RDP→seal→순서/타이밍→JSON)
-- [ ] pytest: TC-3.1(검은 원 → 스트로크 ≥1, 경계 밴드 내), TC-3.E1(백지 → 빈 strokes+경고)
+- [x] pyproject.toml + brushvid/__init__.py + .venv 부트스트랩 + README
+- [x] routes.py (마스크→skeletonize→추적→RDP→seal→순서/타이밍→JSON)
+- [x] pytest: TC-3.1(검은 원 → 스트로크 ≥1, 경계 밴드 내), TC-3.E1(백지 → 빈 strokes+경고)
 
 ### 자체 테스트
-- [ ] winter composed.png 입력 → 커버리지 ≥95%, 스트로크 수 303±20%
-- [ ] 산출 routes가 RoutesDataSchema 형태(meta 필수 필드 + strokes)와 일치
+- [x] winter composed.png 입력 → 커버리지 ≥95%, 스트로크 수 303±20%
+      (실측: seal_step=20 기준 routeCount 256, coverage 1.0000, contentPixels 149318 — 기존 마스크와 동일)
+- [x] 산출 routes가 RoutesDataSchema 형태(meta 필수 필드 + strokes)와 일치 (test_routes_meta_shape)
 
 ### 이슈 및 수정
-- [ ] 발견 이슈 없음
+- [x] 기본 seal_step(=seal_width*0.9)으로는 스트로크 191개로 하한(242) 미달 → 게이트 파라미터는 winter 실전 값과 같은 seal_step=20 사용(256개, cov 1.0)으로 해결. RouteParams 기본값은 범용 참조 스크립트 기본값 유지.
 
 ### 완료 조건
-- [ ] 구현 완료 / 자체 테스트 완료 / 다음 Phase 진행 가능
+- [x] 구현 완료 / 자체 테스트 완료 / 다음 Phase 진행 가능
 
 ## Phase 2. background / layout / cues / props
 
 ### 구현 태스크
-- [ ] background.py (clean + 3전략 + 폴백) — TC-3.E3
-- [ ] layout.py (빈영역 + 배치 + 겹침 hard-fail) — TC-3.4
-- [ ] cues.py (SRT→frame, 분할, title_color) — TC-3.2, TC-3.E2
-- [ ] props.py (빌더 + jsonschema 검증) — TC-3.3
+- [x] background.py (clean + 3전략 + 폴백) — TC-3.E3
+- [x] layout.py (빈영역 + 배치 + 겹침 hard-fail) — TC-3.4
+- [x] cues.py (SRT→frame, 분할, title_color) — TC-3.2, TC-3.E2
+- [x] props.py (빌더 + jsonschema 검증) — TC-3.3
 
 ### 자체 테스트
-- [ ] pytest 전부 통과
+- [x] pytest 전부 통과 (24 passed)
 
 ### 이슈 및 수정
-- [ ] 발견 이슈 없음
+- [x] 참조로 지목된 scripts/brush-draw/pick-title-color.py 가 new-video-gen 에 부재(스킬 사본에만 존재, 참조 금지 대상) → title_color() 는 도미넌트 채도색(hue 히스토그램) + 가독성 darken 방식으로 신규 작성.
 
 ### 완료 조건
-- [ ] 구현 완료 / 자체 테스트 완료 / 다음 Phase 진행 가능
+- [x] 구현 완료 / 자체 테스트 완료 / 다음 Phase 진행 가능
 
 ## Phase 3. render / qa + 통합 게이트
 
 ### 구현 태스크
-- [ ] render.py (remotion render 호출, 세그먼트 concat, ffmpeg mux)
-- [ ] qa.py (프레임 캡처, capture-manifest.json, 콘택트시트)
-- [ ] 통합: 신규 routes로 BrushLandscape 렌더 성공 (E2E 스모크)
+- [x] render.py (remotion render 호출, 세그먼트 concat, ffmpeg mux)
+- [x] qa.py (프레임 캡처, capture-manifest.json, 콘택트시트)
+- [x] 통합: 신규 routes로 BrushLandscape 렌더 성공 (E2E 스모크)
+      (brushvid 생성 routes 256개 → data/pipeline-smoke/props.json → output/pipeline-smoke.mp4 frames 0-59)
 
 ### 자체 테스트
-- [ ] 신규 생성 routes JSON → 렌더에서 정상 드로잉 (스틸 육안/기존 golden과 유사성)
-- [ ] pytest 전체 + 커버리지 게이트 재확인
+- [x] 신규 생성 routes JSON → 렌더에서 정상 드로잉 (스틸 f12 prewash / f59 붓 커서 드로잉 진행 육안 확인, data/pipeline-smoke/qa/contact-sheet.png)
+- [x] pytest 전체(27 passed) + 커버리지 게이트 재확인 (coverage 1.0000, routeCount 256)
 
 ### 이슈 및 수정
-- [ ] 발견 이슈 없음
+- [x] render/qa 서브프로세스가 repo_root cwd 로 돌아 상대 경로 산출물이 어긋남 → 호출 전 절대 경로 resolve 로 수정.
 
 ### 완료 조건
-- [ ] 구현 완료 / 자체 테스트 완료 / 게이트 통과 (커밋은 메인 세션에서 검수 후)
+- [x] 구현 완료 / 자체 테스트 완료 / 게이트 통과 (커밋은 메인 세션에서 검수 후)
