@@ -62,7 +62,7 @@
 
 | 표현 | 번역 |
 |---|---|
-| 쇼츠 / 세로 / 릴스 | `format: shorts` (1080×1920) |
+| 쇼츠 / 세로 / 릴스 / 힐링 짧은 영상 | **shorts-brush 스킬로 위임** — `format: shorts` (세로 파이프라인 + 세이프존·강조색 동조·루프 엔딩 자동) |
 | 유튜브 / 가로 | `format: youtube` (1920×1080) |
 | N개 장면 / 길이 ~초 | 앰비언트: `ambient.scenes: N` (씬당 10초) · 내레이션: SRT/대본 길이가 결정 |
 | 씬마다 다른 그림 | 배경 N장 생성 (`background.strategy`) — imagegen(주제 프롬프트) / preset(결정적) / user-images |

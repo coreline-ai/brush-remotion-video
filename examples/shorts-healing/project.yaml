@@ -1,0 +1,14 @@
+# 쇼츠(세로) 앰비언트 예시 — 9:16 1080×1920, 3씬×10초, preset 배경 + 시적 자막 + 루프 엔딩
+projectId: shorts-healing
+format: shorts
+background:
+  strategy: preset
+  subject: calm healing morning landscape
+widgets: none
+ambient:
+  scenes: 3
+  cues:
+    - 고요한 아침이 열린다
+    - 복잡한 생각은 바람에 흘려보내고
+    - 오늘도 다시, 가볍게 시작해
+seed: 11

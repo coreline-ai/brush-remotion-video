@@ -70,6 +70,16 @@ def pen_route_params(duration: int, seed: int) -> RouteParams:
     )
 
 
+# 캔버스 치수 (format → width, height)
+CANVAS = {"youtube": (1920, 1080), "shorts": (1080, 1920)}
+
+# 쇼츠(세로) 연출 프리셋 — shorts + 앰비언트에서 props 스테이지가 주입
+SHORTS_SUBTITLE_STYLE = {"bottom": 290, "maxWidth": 900, "fontSize": 36}  # 하단 세이프존 기본
+SHORTS_FIRST_PREWASH = {"prewashOpacity": 0.5, "prewashFrames": 18,
+                        "prewashHoldFrames": 6, "prewashBlur": 12}  # 첫 씬 훅(짧은 프리워시)
+SHORTS_OUTRO_FADE_FRAMES = 18       # 모든 씬 전환 outro 페이드
+SHORTS_LOOP_WASH_OPACITY = 1.0      # 마지막 씬 순백 수렴 (루프 친화)
+
 # 앰비언트 모드 기본값
 AMBIENT_SCENE_FRAMES = 300
 AMBIENT_DEFAULT_CUES = [
@@ -119,6 +129,7 @@ class Pipeline:
 
     def __init__(self, cfg: ProjectConfig):
         self.cfg = cfg
+        self.canvas = CANVAS[cfg.fmt]  # (width, height) — shorts 는 1080×1920
         pid = cfg.project_id
         self.data_dir = REPO_ROOT / "data" / pid
         self.public_dir = REPO_ROOT / "public" / pid
@@ -209,7 +220,8 @@ class Pipeline:
         for i in range(len(self._scenes())):
             out = self.public_dir / "bg" / f"scene-{i + 1:02d}.png"
             res = bv_bg.generate(self.cfg.bg_strategy, out, subject=self.cfg.bg_subject,
-                                 images=self.cfg.bg_images or None, seed=self.cfg.seed + i * 37)
+                                 images=self.cfg.bg_images or None, seed=self.cfg.seed + i * 37,
+                                 size=self.canvas)
             results.append(res["strategy"])
         return {"strategies": results}
 
@@ -220,7 +232,8 @@ class Pipeline:
             for i in range(len(self._scenes())):
                 bg = self.public_dir / "bg" / f"scene-{i + 1:02d}.png"
                 res = bv_bg.separate_ink(bg, self.public_dir / "bg" / f"scene-{i + 1:02d}-ink.png",
-                                         self.public_dir / "bg" / f"scene-{i + 1:02d}-content.png")
+                                         self.public_dir / "bg" / f"scene-{i + 1:02d}-content.png",
+                                         size=self.canvas)
                 fracs.append(round(res["inkFraction"], 4))
             return {"profile": "pen", "inkFractions": fracs}
         for i in range(len(self._scenes())):
@@ -244,6 +257,7 @@ class Pipeline:
                     seed=seed, contour_width=40, seal_width=56, seal_step=20,
                 )
                 image_rel = f"{self.cfg.project_id}/bg/scene-{i + 1:02d}-content.png"
+            params.width, params.height = self.canvas  # format 좌표계 전파 (youtube 는 기본값과 동일)
             data = generate_routes(content, params, image_rel=image_rel)
             write_routes(data, self.public_dir / "routes" / f"scene-{i + 1:02d}.routes.json")
             if pen:
@@ -307,7 +321,8 @@ class Pipeline:
         scenes = self._scenes()
         content = self.public_dir / "bg" / "scene-01-content.png"
         res = validate_layout(self.cfg.authored_widgets, has_cues=bool(scenes[0].get("cues")),
-                              image_path=content if content.is_file() else None)
+                              image_path=content if content.is_file() else None,
+                              canvas=self.canvas)
         if not res.ok:
             raise SystemExit("레이아웃 검증 실패(hard-fail): " + "; ".join(res.fails))
         return {"widgets": "authored", "count": len(self.cfg.authored_widgets), "warns": res.warns}
@@ -316,11 +331,26 @@ class Pipeline:
         scenes_meta = self._scenes()
         scene_props = []
         schema_scene_props = load_schema()["definitions"]["RenderProps"]["properties"]["scenes"]["items"]["properties"]
+        shorts_ambient = self.cfg.fmt == "shorts" and self.cfg.mode == "ambient"
         for i, sm in enumerate(scenes_meta):
             kwargs: dict = {}
+            if shorts_ambient:
+                # 세로 연출 프리셋: 자막 세이프존 + 씬 배경 동조 강조색 (사용자 명시 값 우선)
+                style = {**SHORTS_SUBTITLE_STYLE, **self.cfg.subtitle_style}
+                # min_sat 완화: preset 수채 워시는 채도가 낮아 기본(30)로는 잉크 폴백만 나옴
+                style.setdefault("highlightColor", title_color(
+                    self.public_dir / "bg" / f"scene-{i + 1:02d}-content.png", min_sat=14))
+                kwargs["subtitle_style"] = style
+                kwargs["outroFadeFrames"] = SHORTS_OUTRO_FADE_FRAMES  # 씬 전환 페이드
+                if i == 0:
+                    kwargs.update(SHORTS_FIRST_PREWASH)  # 훅: 첫 씬 짧은 프리워시
+                if i == len(scenes_meta) - 1:
+                    kwargs["outroWashOpacity"] = SHORTS_LOOP_WASH_OPACITY  # 루프: 순백 수렴
             if i == 0 and self.cfg.title:
                 accent = title_color(self.public_dir / "bg" / "scene-01-content.png")
                 kwargs["top_title"] = {"lines": [self.cfg.title], "enterAt": 12, "accent": accent}
+                if self.cfg.fmt == "shorts":
+                    kwargs["top_title"]["y"] = 140  # 세로 상단 세이프존(y ≥ 120) 준수
             if self.cfg.widgets == "authored" and self.cfg.authored_widgets and i == 0:
                 if "widgets" in schema_scene_props:
                     kwargs["widgets"] = self.cfg.authored_widgets

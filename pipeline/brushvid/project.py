@@ -24,6 +24,11 @@ TTS_TIMINGS = ("tts", "srt")
 DRAWING_PROFILES = ("brush", "pen")
 DRAWING_SYNCS = ("auto", "off")
 
+# 쇼츠 길이 규정 (2026): 최대 180초 = 앰비언트 18씬(씬당 300f/30fps=10초), 60초 미만 권장
+SHORTS_AMBIENT_SCENE_SEC = 10
+SHORTS_AMBIENT_MAX_SCENES = 18
+SHORTS_RECOMMENDED_SEC = 60
+
 
 @dataclass
 class ProjectConfig:
@@ -45,6 +50,7 @@ class ProjectConfig:
     drawing_sync: str = "auto"      # 내레이션 동기 드로잉 auto|off (pen+cue 있을 때만 동작)
     ambient_scenes: int = 3
     ambient_cues: list[str] = field(default_factory=list)
+    subtitle_style: dict = field(default_factory=dict)  # 사용자 명시 subtitleStyle (기본 프리셋에 병합)
     seed: int = 1
     base_dir: Path = Path(".")
 
@@ -161,7 +167,10 @@ def load_project(yaml_path: str | Path) -> ProjectConfig:
     ambient_scenes = int(amb.get("scenes", 3))
     _require(ambient_scenes >= 1, "ambient.scenes 는 1 이상")
 
-    return ProjectConfig(
+    subtitle_style = raw.get("subtitleStyle") or {}
+    _require(isinstance(subtitle_style, dict), "subtitleStyle 은 매핑이어야 함")
+
+    cfg = ProjectConfig(
         project_id=project_id.strip(),
         fmt=fmt,
         title=raw.get("title"),
@@ -178,6 +187,18 @@ def load_project(yaml_path: str | Path) -> ProjectConfig:
         drawing_sync=sync,
         ambient_scenes=ambient_scenes,
         ambient_cues=list(amb.get("cues") or []),
+        subtitle_style=subtitle_style,
         seed=int(raw.get("seed", 1)),
         base_dir=base,
     )
+
+    # 쇼츠 길이 규정: 앰비언트 18씬(180초) 한도 초과는 에러, 60초 초과는 권장 경고만
+    if cfg.fmt == "shorts" and cfg.mode == "ambient":
+        _require(cfg.ambient_scenes <= SHORTS_AMBIENT_MAX_SCENES,
+                 f"쇼츠 앰비언트 scenes 는 최대 {SHORTS_AMBIENT_MAX_SCENES}"
+                 f" (180초 한도, 입력: {cfg.ambient_scenes})")
+        total_sec = cfg.ambient_scenes * SHORTS_AMBIENT_SCENE_SEC
+        if total_sec > SHORTS_RECOMMENDED_SEC:
+            log.warning("쇼츠 총 길이 %d초 — 초기 노출은 %d초 미만 권장",
+                        total_sec, SHORTS_RECOMMENDED_SEC)
+    return cfg

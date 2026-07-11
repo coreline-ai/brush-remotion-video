@@ -19,6 +19,10 @@ W, H = 1920, 1080
 SUBTITLE_ZONE = {"x": 280.0, "y": 884.0, "w": 1360.0, "h": 150.0}  # 하단 자막 pill 보수적 예약
 WIDGET_EDGE_MIN = 90.0  # 위젯-화면 가장자리 최소 여백(px)
 
+# 세로(9:16) 세이프존 — 쇼츠 UI/자막 밴드 (canvas 가 세로일 때만 적용)
+PORTRAIT_TOP_SAFE = 120.0      # 상단: topTitle/위젯 y ≥ 120
+PORTRAIT_SUBTITLE_BAND = 290.0  # 하단: 자막 밴드 (y > H-290 침범 금지)
+
 Rect = dict[str, float]  # {x, y, w, h}
 
 
@@ -33,9 +37,10 @@ def _inter(a: Rect, b: Rect) -> float:
 
 
 def content_mask(image_path: str | Path, lum_thresh: float = 237.0, sat_thresh: float = 12.0,
-                 min_blob: int = 600, dilate: int = 0) -> np.ndarray:
-    """1920×1080 콘텐츠 마스크. 작은 잡티는 제거하고 필요 시 dilate."""
-    img = Image.open(image_path).convert("RGB").resize((W, H))
+                 min_blob: int = 600, dilate: int = 0,
+                 size: tuple[int, int] = (W, H)) -> np.ndarray:
+    """캔버스(기본 1920×1080) 콘텐츠 마스크. 작은 잡티는 제거하고 필요 시 dilate."""
+    img = Image.open(image_path).convert("RGB").resize(size)
     arr = np.asarray(img).astype(int)
     lum = arr.mean(2)
     sat = arr.max(2) - arr.min(2)
@@ -186,15 +191,22 @@ class LayoutResult:
 
 def validate_layout(widgets: list[dict], *, top_title: dict | None = None, has_cues: bool = False,
                     image_path: str | Path | None = None, content_max: float = 0.03,
-                    widget_edge: float = WIDGET_EDGE_MIN) -> LayoutResult:
+                    widget_edge: float = WIDGET_EDGE_MIN,
+                    canvas: tuple[int, int] = (W, H)) -> LayoutResult:
     """UI 겹침/침범 하드 체크. 위젯↔위젯/자막존/타이틀존, 화면 이탈, 가장자리 여백.
 
     배경 콘텐츠와의 겹침은 소프트 경고(warns)로만 보고한다.
+    canvas 가 세로(height > width)면 상/하단 세이프존 침범도 hard-fail — 가로 경로 동작 무변경.
     """
     res = LayoutResult()
+    cw, ch = canvas
+    portrait = ch > cw
     boxes = [(f"widget[{i}]:{w.get('type', '?')}", rect(w["x"], w["y"], w["w"], w["h"]))
              for i, w in enumerate(widgets)]
-    sub_zone = dict(SUBTITLE_ZONE) if has_cues else None
+    if portrait:  # 세로: 자막 밴드는 하단 풀폭 예약
+        sub_zone = rect(0, ch - PORTRAIT_SUBTITLE_BAND, cw, PORTRAIT_SUBTITLE_BAND) if has_cues else None
+    else:
+        sub_zone = dict(SUBTITLE_ZONE) if has_cues else None
     title_zone = top_title_rect(top_title) if top_title else None
 
     # 1) 위젯 ↔ 위젯
@@ -217,21 +229,31 @@ def validate_layout(widgets: list[dict], *, top_title: dict | None = None, has_c
         res.fails.append("타이틀존 ↔ 자막존 겹침")
     # 5) 위젯 ↔ 그림 콘텐츠 (소프트 경고)
     if image_path is not None and boxes:
-        content = content_mask(image_path)
+        content = content_mask(image_path, size=canvas)
         for name, b in boxes:
             x0, y0 = max(0, int(b["x"])), max(0, int(b["y"]))
-            x1, y1 = min(W, int(b["x"] + b["w"])), min(H, int(b["y"] + b["h"]))
+            x1, y1 = min(cw, int(b["x"] + b["w"])), min(ch, int(b["y"] + b["h"]))
             if x1 > x0 and y1 > y0:
                 frac = float(content[y0:y1, x0:x1].mean())
                 if frac > content_max:
                     res.warns.append(f"배경 겹침(경고): {name} 아래 그림 {frac * 100:.1f}%")
     # 6) bounds + 가장자리 최소 여백
     for name, b in boxes:
-        if b["x"] < 0 or b["y"] < 0 or b["x"] + b["w"] > W or b["y"] + b["h"] > H:
+        if b["x"] < 0 or b["y"] < 0 or b["x"] + b["w"] > cw or b["y"] + b["h"] > ch:
             res.fails.append(f"화면 이탈: {name}")
         elif (b["x"] < widget_edge or b["y"] < widget_edge
-              or (W - (b["x"] + b["w"])) < widget_edge or (H - (b["y"] + b["h"])) < widget_edge):
+              or (cw - (b["x"] + b["w"])) < widget_edge or (ch - (b["y"] + b["h"])) < widget_edge):
             res.fails.append(f"가장자리 여백 부족: {name} (최소 {int(widget_edge)}px)")
+    # 7) 세로 세이프존 (portrait 전용): 상단 y<120 / 하단 자막 밴드 침범
+    if portrait:
+        band_top = ch - PORTRAIT_SUBTITLE_BAND
+        for name, b in boxes:
+            if b["y"] < PORTRAIT_TOP_SAFE:
+                res.fails.append(f"상단 세이프존 침범: {name} (y<{int(PORTRAIT_TOP_SAFE)})")
+            if b["y"] + b["h"] > band_top:
+                res.fails.append(f"하단 자막 밴드 침범: {name} (y+h>{int(band_top)})")
+        if top_title is not None and float(top_title.get("y", 74)) < PORTRAIT_TOP_SAFE:
+            res.fails.append(f"상단 세이프존 침범: topTitle (y<{int(PORTRAIT_TOP_SAFE)})")
 
     if res.fails:
         log.error("LAYOUT FAIL — %s", "; ".join(res.fails))

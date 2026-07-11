@@ -54,7 +54,7 @@ topTitle: { wash: true, fontSize: 44, enterAt: 12 }
 # widgets: 내용에 맞게 2~4장 (타이틀 아래 y ≥ 230), TTS 더빙 권장
 ```
 
-> 쇼츠(`format: shorts`)일 때: 위젯·타이틀 좌표는 1080×1920 기준으로 재배치, 자막 bottom 여유 확대.
+> 쇼츠(`format: shorts`)일 때: **shorts-brush 스킬로 위임** — 자막 세이프존(bottom 290)·씬별 강조색 동조·훅/루프 엔딩이 자동. 위 프리셋들은 세로에서도 그대로 쓰되 씬마다 소재·팔레트 변주.
 
 ## ✒️ 펜 스케치 (빠른 설명형 — pen-video 스킬로 위임)
 ```yaml

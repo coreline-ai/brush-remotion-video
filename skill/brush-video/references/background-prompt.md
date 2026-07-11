@@ -78,3 +78,21 @@ empty space. Absolutely NO text, no letters, no numbers. Minimal, precise, 16:9 
 - 수채·그라데이션 금지 (잉크-알파 분리 시 색조가 사각 패치로 남는 원인)
 - 액센트는 파랑/주황 선으로만 — 참고 스타일: 화이트보드 익스플레이너
 - 배경 fit은 항상 contain + 종이색 패딩 (이미지 잘림 금지 — 파이프라인이 보장)
+
+---
+
+## 📱 shorts(세로) — 9:16 풀블리드 변형
+
+`format: shorts`일 때는 **세로 전용 구도**로 생성한다. 가로 그림 재활용 금지(잘림/왜곡).
+
+```
+A hand-drawn ink line-art sketch with soft pastel watercolor washes, on warm-white paper,
+composed as a VERTICAL 9:16 full-bleed illustration. Subject: {SUBJECT}.
+Composition: upper quarter = open sky / negative space (reserved for title),
+middle = main subject, lower area = foreground details reaching the bottom edge.
+Soft healing atmosphere, delicate watercolor in muted tones.
+Absolutely NO text, no letters, no numbers. Minimal, serene, 9:16 portrait, full-bleed.
+```
+
+- 씬마다 소재·팔레트를 바꾼다 (예: 안개 호수 → 아침 숲길 → 노을 바다) — 무드는 하나로 통일
+- 하단 15%는 자막 밴드가 얹히므로 핵심 디테일을 두지 않는다
