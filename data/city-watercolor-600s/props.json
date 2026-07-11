@@ -1,0 +1,2957 @@
+{
+ "schemaVersion": 1,
+ "projectId": "city-watercolor-600s",
+ "format": "youtube",
+ "audio": "city-watercolor-600s/audio/city-warm-piano-strings-bells-600s.wav",
+ "paper": "#fbfaf6",
+ "brush": {
+  "src": "brush-draw/brush.png",
+  "w": 556,
+  "h": 344,
+  "tipx": 25,
+  "tipy": 315
+ },
+ "scenes": [
+  {
+   "id": "scene-01",
+   "routes": "city-watercolor-600s/routes/scene-01.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0.44,
+   "prewashFrames": 24,
+   "prewashHoldFrames": 8,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "비 온 거리 위로 도시의 색이 깨어난다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#268C9E",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "mist",
+    "opacity": 0.034,
+    "parallaxScale": 1.0074,
+    "seed": 4731
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071143
+   }
+  },
+  {
+   "id": "scene-02",
+   "routes": "city-watercolor-600s/routes/scene-02.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "강물은 밤의 불빛을 조용히 품는다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#7357C6",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "streamSparkle",
+    "opacity": 0.034,
+    "parallaxScale": 1.0088,
+    "seed": 4762
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071144
+   }
+  },
+  {
+   "id": "scene-03",
+   "routes": "city-watercolor-600s/routes/scene-03.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "오래된 골목 끝에 오늘의 빛이 선다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#7C5C3B",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "meadowWind",
+    "opacity": 0.034,
+    "parallaxScale": 1.0102,
+    "seed": 4793
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071145
+   }
+  },
+  {
+   "id": "scene-04",
+   "routes": "city-watercolor-600s/routes/scene-04.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "젖은 네온은 마음까지 천천히 물들인다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#C55394",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "mist",
+    "opacity": 0.034,
+    "parallaxScale": 1.0116,
+    "seed": 4824
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071146
+   }
+  },
+  {
+   "id": "scene-05",
+   "routes": "city-watercolor-600s/routes/scene-05.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "곡선의 밤은 새로운 리듬을 만든다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#6E82D8",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "starTwinkle",
+    "opacity": 0.045,
+    "parallaxScale": 1.006,
+    "seed": 4855
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071147
+   }
+  },
+  {
+   "id": "scene-06",
+   "routes": "city-watercolor-600s/routes/scene-06.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "바다는 빌딩 사이로 푸른 숨을 건넨다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#2186B7",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "streamSparkle",
+    "opacity": 0.034,
+    "parallaxScale": 1.0074,
+    "seed": 4886
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071148
+   }
+  },
+  {
+   "id": "scene-07",
+   "routes": "city-watercolor-600s/routes/scene-07.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "교차로의 빗방울이 하루를 반짝이게 한다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#D84A5E",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "mist",
+    "opacity": 0.034,
+    "parallaxScale": 1.0088,
+    "seed": 4917
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071149
+   }
+  },
+  {
+   "id": "scene-08",
+   "routes": "city-watercolor-600s/routes/scene-08.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "작은 골목에도 도시의 온기가 남아 있다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#C8792F",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "sunsetGlow",
+    "opacity": 0.045,
+    "parallaxScale": 1.0102,
+    "seed": 4948
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071150
+   }
+  },
+  {
+   "id": "scene-09",
+   "routes": "city-watercolor-600s/routes/scene-09.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "전통의 길 위로 현대의 바람이 지난다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#A35B27",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "meadowWind",
+    "opacity": 0.034,
+    "parallaxScale": 1.0116,
+    "seed": 4979
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071151
+   }
+  },
+  {
+   "id": "scene-10",
+   "routes": "city-watercolor-600s/routes/scene-10.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "강변의 네온은 꿈처럼 번져 간다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#B44AA8",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "starTwinkle",
+    "opacity": 0.045,
+    "parallaxScale": 1.006,
+    "seed": 5010
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071152
+   }
+  },
+  {
+   "id": "scene-11",
+   "routes": "city-watercolor-600s/routes/scene-11.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "스카이라인은 강물 위에서 다시 태어난다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#2D8FA4",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "streamSparkle",
+    "opacity": 0.034,
+    "parallaxScale": 1.0074,
+    "seed": 5041
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071153
+   }
+  },
+  {
+   "id": "scene-12",
+   "routes": "city-watercolor-600s/routes/scene-12.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "빽빽한 빌딩 사이에도 빛은 길을 찾는다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#D0464A",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "mist",
+    "opacity": 0.034,
+    "parallaxScale": 1.0088,
+    "seed": 5072
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071154
+   }
+  },
+  {
+   "id": "scene-13",
+   "routes": "city-watercolor-600s/routes/scene-13.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "도시 정원은 유리빛 하늘을 닮아 간다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#239E84",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "meadowWind",
+    "opacity": 0.034,
+    "parallaxScale": 1.0102,
+    "seed": 5103
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071155
+   }
+  },
+  {
+   "id": "scene-14",
+   "routes": "city-watercolor-600s/routes/scene-14.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "황금 지붕 아래 하루가 따뜻하게 흐른다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#C98924",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "sunsetGlow",
+    "opacity": 0.045,
+    "parallaxScale": 1.0116,
+    "seed": 5134
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071156
+   }
+  },
+  {
+   "id": "scene-15",
+   "routes": "city-watercolor-600s/routes/scene-15.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "호수 옆 거리는 느린 숨으로 빛난다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#3A8A75",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "streamSparkle",
+    "opacity": 0.034,
+    "parallaxScale": 1.006,
+    "seed": 5165
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071157
+   }
+  },
+  {
+   "id": "scene-16",
+   "routes": "city-watercolor-600s/routes/scene-16.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "아침의 강은 조용히 마음을 열어 준다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#B8873D",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "mist",
+    "opacity": 0.034,
+    "parallaxScale": 1.0074,
+    "seed": 5196
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071158
+   }
+  },
+  {
+   "id": "scene-17",
+   "routes": "city-watercolor-600s/routes/scene-17.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "몽마르트르 언덕엔 부드러운 시간이 머문다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#B66E75",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "meadowWind",
+    "opacity": 0.034,
+    "parallaxScale": 1.0088,
+    "seed": 5227
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071159
+   }
+  },
+  {
+   "id": "scene-18",
+   "routes": "city-watercolor-600s/routes/scene-18.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "유리 피라미드 위로 저녁빛이 번진다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#8357C5",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "sunsetGlow",
+    "opacity": 0.045,
+    "parallaxScale": 1.0102,
+    "seed": 5258
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071160
+   }
+  },
+  {
+   "id": "scene-19",
+   "routes": "city-watercolor-600s/routes/scene-19.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "빨간 버스는 빗속의 리듬이 된다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#C54038",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "mist",
+    "opacity": 0.034,
+    "parallaxScale": 1.0116,
+    "seed": 5289
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071161
+   }
+  },
+  {
+   "id": "scene-20",
+   "routes": "city-watercolor-600s/routes/scene-20.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "템스강의 불빛은 밤을 다정하게 잇는다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#415AA6",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "streamSparkle",
+    "opacity": 0.034,
+    "parallaxScale": 1.006,
+    "seed": 5320
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071162
+   }
+  },
+  {
+   "id": "scene-21",
+   "routes": "city-watercolor-600s/routes/scene-21.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "번화한 거리는 노을 속에서도 차분하다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#D05888",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "starTwinkle",
+    "opacity": 0.045,
+    "parallaxScale": 1.0074,
+    "seed": 5351
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071163
+   }
+  },
+  {
+   "id": "scene-22",
+   "routes": "city-watercolor-600s/routes/scene-22.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "타임스퀘어의 비는 색으로 말한다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#B55CD7",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "mist",
+    "opacity": 0.034,
+    "parallaxScale": 1.0088,
+    "seed": 5382
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071164
+   }
+  },
+  {
+   "id": "scene-23",
+   "routes": "city-watercolor-600s/routes/scene-23.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "다리 위의 아침은 도시를 천천히 깨운다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#5F80BA",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "sunsetGlow",
+    "opacity": 0.045,
+    "parallaxScale": 1.0102,
+    "seed": 5413
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071165
+   }
+  },
+  {
+   "id": "scene-24",
+   "routes": "city-watercolor-600s/routes/scene-24.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "공원 너머 고층빌딩도 초록 숨을 쉰다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#2B8B6F",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "meadowWind",
+    "opacity": 0.034,
+    "parallaxScale": 1.0116,
+    "seed": 5444
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071166
+   }
+  },
+  {
+   "id": "scene-25",
+   "routes": "city-watercolor-600s/routes/scene-25.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "역사의 문을 지나 오늘이 흐른다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#B77535",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "sunsetGlow",
+    "opacity": 0.045,
+    "parallaxScale": 1.006,
+    "seed": 5475
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071167
+   }
+  },
+  {
+   "id": "scene-26",
+   "routes": "city-watercolor-600s/routes/scene-26.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "안개 낀 다리 너머 희망이 선명해진다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#D96B31",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "mist",
+    "opacity": 0.034,
+    "parallaxScale": 1.0074,
+    "seed": 5506
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071168
+   }
+  },
+  {
+   "id": "scene-27",
+   "routes": "city-watercolor-600s/routes/scene-27.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "야자수 길 위로 금빛 하루가 길어진다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#D47542",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "sunsetGlow",
+    "opacity": 0.045,
+    "parallaxScale": 1.0088,
+    "seed": 5537
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071169
+   }
+  },
+  {
+   "id": "scene-28",
+   "routes": "city-watercolor-600s/routes/scene-28.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "강물의 유리빛은 건축의 선을 비춘다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#1E908C",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "streamSparkle",
+    "opacity": 0.034,
+    "parallaxScale": 1.0102,
+    "seed": 5568
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071170
+   }
+  },
+  {
+   "id": "scene-29",
+   "routes": "city-watercolor-600s/routes/scene-29.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "기념비의 하늘 아래 봄빛이 퍼진다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#CA5D7F",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "meadowWind",
+    "opacity": 0.034,
+    "parallaxScale": 1.0116,
+    "seed": 5599
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071171
+   }
+  },
+  {
+   "id": "scene-30",
+   "routes": "city-watercolor-600s/routes/scene-30.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "빨간 전차는 호숫가 바람을 데려온다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#C84B4B",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "streamSparkle",
+    "opacity": 0.034,
+    "parallaxScale": 1.006,
+    "seed": 5630
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071172
+   }
+  },
+  {
+   "id": "scene-31",
+   "routes": "city-watercolor-600s/routes/scene-31.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "광장의 사람들은 빛의 속도로 스쳐 간다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#B76E34",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "sunsetGlow",
+    "opacity": 0.045,
+    "parallaxScale": 1.0074,
+    "seed": 5661
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071173
+   }
+  },
+  {
+   "id": "scene-32",
+   "routes": "city-watercolor-600s/routes/scene-32.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "해변 도시의 산은 저녁을 부드럽게 받친다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#C24F40",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "streamSparkle",
+    "opacity": 0.034,
+    "parallaxScale": 1.0088,
+    "seed": 5692
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071174
+   }
+  },
+  {
+   "id": "scene-33",
+   "routes": "city-watercolor-600s/routes/scene-33.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "탱고의 거리는 햇살 속에 천천히 흔들린다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#9A5A42",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "meadowWind",
+    "opacity": 0.034,
+    "parallaxScale": 1.0102,
+    "seed": 5723
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071175
+   }
+  },
+  {
+   "id": "scene-34",
+   "routes": "city-watercolor-600s/routes/scene-34.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "고대의 돌벽에도 오늘의 온기가 머문다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#B97436",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "sunsetGlow",
+    "opacity": 0.045,
+    "parallaxScale": 1.0116,
+    "seed": 5754
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071176
+   }
+  },
+  {
+   "id": "scene-35",
+   "routes": "city-watercolor-600s/routes/scene-35.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "노란 트램은 대성당 앞에서 시간을 건넌다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#C89C21",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "meadowWind",
+    "opacity": 0.034,
+    "parallaxScale": 1.006,
+    "seed": 5785
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071177
+   }
+  },
+  {
+   "id": "scene-36",
+   "routes": "city-watercolor-600s/routes/scene-36.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "운하의 물결은 도시의 불빛을 껴안는다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#259795",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "streamSparkle",
+    "opacity": 0.034,
+    "parallaxScale": 1.0074,
+    "seed": 5816
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071178
+   }
+  },
+  {
+   "id": "scene-37",
+   "routes": "city-watercolor-600s/routes/scene-37.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "가로수 대로는 성당의 그림자를 품는다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#A96A38",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "meadowWind",
+    "opacity": 0.034,
+    "parallaxScale": 1.0088,
+    "seed": 5847
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071179
+   }
+  },
+  {
+   "id": "scene-38",
+   "routes": "city-watercolor-600s/routes/scene-38.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "그란비아의 오후는 황금빛으로 흐른다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#B88730",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "sunsetGlow",
+    "opacity": 0.045,
+    "parallaxScale": 1.0102,
+    "seed": 5878
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071180
+   }
+  },
+  {
+   "id": "scene-39",
+   "routes": "city-watercolor-600s/routes/scene-39.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "역사의 문 너머 현대의 불빛이 켜진다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#B67D42",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "mist",
+    "opacity": 0.034,
+    "parallaxScale": 1.0116,
+    "seed": 5909
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071181
+   }
+  },
+  {
+   "id": "scene-40",
+   "routes": "city-watercolor-600s/routes/scene-40.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "운하와 자전거는 조용한 균형을 만든다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#226E8D",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "streamSparkle",
+    "opacity": 0.034,
+    "parallaxScale": 1.006,
+    "seed": 5940
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071182
+   }
+  },
+  {
+   "id": "scene-41",
+   "routes": "city-watercolor-600s/routes/scene-41.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "새벽 다리 위로 오래된 도시가 깨어난다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#8E6CC8",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "mist",
+    "opacity": 0.034,
+    "parallaxScale": 1.0074,
+    "seed": 5971
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071183
+   }
+  },
+  {
+   "id": "scene-42",
+   "routes": "city-watercolor-600s/routes/scene-42.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "전차의 선율은 고전의 거리를 지난다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#8E3252",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "meadowWind",
+    "opacity": 0.034,
+    "parallaxScale": 1.0088,
+    "seed": 6002
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071184
+   }
+  },
+  {
+   "id": "scene-43",
+   "routes": "city-watercolor-600s/routes/scene-43.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "호수의 빛은 빌딩을 더 맑게 비춘다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#2B8BA8",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "streamSparkle",
+    "opacity": 0.034,
+    "parallaxScale": 1.0102,
+    "seed": 6033
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071185
+   }
+  },
+  {
+   "id": "scene-44",
+   "routes": "city-watercolor-600s/routes/scene-44.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "북유럽의 물가에는 차분한 색이 머문다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#2D8CA0",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "streamSparkle",
+    "opacity": 0.034,
+    "parallaxScale": 1.0116,
+    "seed": 6064
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071186
+   }
+  },
+  {
+   "id": "scene-45",
+   "routes": "city-watercolor-600s/routes/scene-45.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "항구의 집들은 맑은 바람에 색을 펼친다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#CA6B26",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "meadowWind",
+    "opacity": 0.034,
+    "parallaxScale": 1.006,
+    "seed": 6095
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071187
+   }
+  },
+  {
+   "id": "scene-46",
+   "routes": "city-watercolor-600s/routes/scene-46.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "해협의 저녁빛은 두 대륙을 부드럽게 잇는다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#1D91A3",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "sunsetGlow",
+    "opacity": 0.045,
+    "parallaxScale": 1.0074,
+    "seed": 6126
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071188
+   }
+  },
+  {
+   "id": "scene-47",
+   "routes": "city-watercolor-600s/routes/scene-47.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "사막빛 하늘 아래 미래의 도시가 선다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#C6922A",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "sunsetGlow",
+    "opacity": 0.045,
+    "parallaxScale": 1.0088,
+    "seed": 6157
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071189
+   }
+  },
+  {
+   "id": "scene-48",
+   "routes": "city-watercolor-600s/routes/scene-48.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "하얀 돔은 고요한 빛을 길 위에 남긴다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#2C92A4",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "mist",
+    "opacity": 0.034,
+    "parallaxScale": 1.0102,
+    "seed": 6188
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071190
+   }
+  },
+  {
+   "id": "scene-49",
+   "routes": "city-watercolor-600s/routes/scene-49.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "피라미드 너머 도시의 하루가 번져 온다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#B57935",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "sunsetGlow",
+    "opacity": 0.045,
+    "parallaxScale": 1.0116,
+    "seed": 6219
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071191
+   }
+  },
+  {
+   "id": "scene-50",
+   "routes": "city-watercolor-600s/routes/scene-50.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "붉은 골목에는 향기로운 시간이 흐른다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#B74334",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "forestDust",
+    "opacity": 0.034,
+    "parallaxScale": 1.006,
+    "seed": 6250
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071192
+   }
+  },
+  {
+   "id": "scene-51",
+   "routes": "city-watercolor-600s/routes/scene-51.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "산과 바다가 만나는 곳에 도시가 숨 쉰다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#188AA6",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "streamSparkle",
+    "opacity": 0.034,
+    "parallaxScale": 1.0074,
+    "seed": 6281
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071193
+   }
+  },
+  {
+   "id": "scene-52",
+   "routes": "city-watercolor-600s/routes/scene-52.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "항구의 흰 곡선은 바다빛을 품는다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#2394B0",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "streamSparkle",
+    "opacity": 0.034,
+    "parallaxScale": 1.0088,
+    "seed": 6312
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071194
+   }
+  },
+  {
+   "id": "scene-53",
+   "routes": "city-watercolor-600s/routes/scene-53.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "카페 거리의 전차는 오후를 천천히 연다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#D06F35",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "meadowWind",
+    "opacity": 0.034,
+    "parallaxScale": 1.0102,
+    "seed": 6343
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071195
+   }
+  },
+  {
+   "id": "scene-54",
+   "routes": "city-watercolor-600s/routes/scene-54.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "항구의 바람은 스카이라인을 맑게 닦는다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#2A8CA3",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "streamSparkle",
+    "opacity": 0.034,
+    "parallaxScale": 1.0116,
+    "seed": 6374
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071196
+   }
+  },
+  {
+   "id": "scene-55",
+   "routes": "city-watercolor-600s/routes/scene-55.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "해안 도로 위로 습한 금빛이 번진다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#C95F3E",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "sunsetGlow",
+    "opacity": 0.045,
+    "parallaxScale": 1.006,
+    "seed": 6405
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071197
+   }
+  },
+  {
+   "id": "scene-56",
+   "routes": "city-watercolor-600s/routes/scene-56.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "넓은 대로는 따뜻한 안개 속에서 깨어난다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#C47624",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "mist",
+    "opacity": 0.034,
+    "parallaxScale": 1.0074,
+    "seed": 6436
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071198
+   }
+  },
+  {
+   "id": "scene-57",
+   "routes": "city-watercolor-600s/routes/scene-57.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "해변 도시의 유리빛은 파도처럼 반짝인다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#2A8FA4",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "streamSparkle",
+    "opacity": 0.034,
+    "parallaxScale": 1.0088,
+    "seed": 6467
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071199
+   }
+  },
+  {
+   "id": "scene-58",
+   "routes": "city-watercolor-600s/routes/scene-58.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "눈 덮인 광장은 따뜻한 창문빛을 품는다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#6F7FD0",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "starTwinkle",
+    "opacity": 0.045,
+    "parallaxScale": 1.0102,
+    "seed": 6498
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071200
+   }
+  },
+  {
+   "id": "scene-59",
+   "routes": "city-watercolor-600s/routes/scene-59.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "북쪽의 지붕들은 맑은 공기 속에 색을 세운다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#C84B4B",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "mist",
+    "opacity": 0.034,
+    "parallaxScale": 1.0116,
+    "seed": 6529
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071201
+   }
+  },
+  {
+   "id": "scene-60",
+   "routes": "city-watercolor-600s/routes/scene-60.routes.json",
+   "durationInFrames": 300,
+   "faint": 0.78,
+   "edgeFeather": 14,
+   "linearDraw": true,
+   "developFrames": 34,
+   "prewashOpacity": 0,
+   "prewashFrames": 0,
+   "prewashHoldFrames": 5,
+   "prewashBlur": 8,
+   "outroFadeFrames": 18,
+   "outroWashOpacity": 0.92,
+   "outroBlur": 0.8,
+   "cues": [
+    {
+     "text": "비 내리는 미래 도시는 초록빛으로 숨 쉰다",
+     "from": 52,
+     "to": 288
+    }
+   ],
+   "subtitleStyle": {
+    "bottom": 44,
+    "fontSize": 32,
+    "maxWidth": 1440,
+    "paddingX": 170,
+    "paddingY": 11,
+    "color": "#26313D",
+    "highlightColor": "#6E59D0",
+    "background": "rgba(255,255,255,0.60)",
+    "border": "1px solid rgba(55,64,80,0.11)"
+   },
+   "naturalEffects": {
+    "kind": "starTwinkle",
+    "opacity": 0.045,
+    "parallaxScale": 1.006,
+    "seed": 6560,
+    "endFadeOpacity": 0.1
+   },
+   "brushDynamics": {
+    "drawSpeedScale": 1.0,
+    "touchScale": 1.2,
+    "touchJitter": 0.12,
+    "pathJitter": 10,
+    "randomizeOrder": false,
+    "randomReverse": false,
+    "seed": 2026071202
+   }
+  }
+ ]
+}

@@ -12,6 +12,7 @@ data/*
 !data/golden-widgets/
 !data/golden-single-widgets/
 !data/pipeline-smoke/
+!data/city-watercolor-600s/
 public/*
 !public/brush-draw/
 !public/winter-snow-pine-demo/

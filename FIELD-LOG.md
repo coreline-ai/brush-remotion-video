@@ -28,3 +28,10 @@
 - **수정**: contain-fit(전체 보존) + 종이색 패딩으로 재생성
 - **환류**: `brushvid.background.separate_ink()`가 contain을 강제하도록 구현(잘림 구조적 방지) +
   `skill/pen-video/SKILL.md` 연출 규칙 3번("이미지 잘림 금지") + `background-prompt.md` ✒️ 섹션에 명시
+
+## 2026-07-11 · city-watercolor-600s (brush · 구 시스템 이전 재렌더)
+
+- **발견**: 씬 전환마다 점프컷 체감 (사용자 지적). 경계 프레임 diff 12~23% — 특히 어두운 씬(야경)일수록 심함
+- **원인**: ① 구 props의 `outroWashOpacity 0.42`(순백까지 수렴 안 함) + `outroFadeFrames 10`(0.33초) ② outro를 순백으로 고치자 이번엔 중간 씬 prewash(0.34~0.44)가 첫 프레임에 즉시 켜지며 2차 점프
+- **수정**: outro 0.92/18f 일괄 + **중간 씬 59개 prewash 해제**(첫 씬만 유지) → 전 경계 diff 2.7~5.3%
+- **환류**: brush-video SKILL.md "문제 해결"에 전환 점프 처방 추가 + 구 시스템 프로젝트 이전 시 outro/prewash 교정을 변환 단계의 기본 절차로 (data/city-watercolor-600s/props.json이 변환 실례). intent-map의 "prewash는 첫 씬 전용" 관행이 실측으로 재확인됨

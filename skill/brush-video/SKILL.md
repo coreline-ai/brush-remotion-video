@@ -106,3 +106,5 @@ pipeline/.venv/bin/pip install -e "pipeline[tts]"
 - 렌더/스키마 에러 → `data/{projectId}/props.json`이 `schema/render-props.schema.json`(v1)과 맞는지 확인.
   스키마의 유일한 정의는 리포의 `src/schema.ts`.
 - 특정 씬만 이상 → `bin/qa.py <projectId> --frames <프레임들>`로 스틸 뽑아 확인 후 해당 스테이지 재실행.
+- 씬 전환이 점프컷처럼 보임 → `outroWashOpacity 0.9~1.0 + outroFadeFrames 18` (순백 수렴) + **prewash는 첫 씬 전용**
+  (중간 씬 prewash는 첫 프레임에 즉시 켜져 2차 점프를 만든다 — FIELD-LOG 2026-07-11 city-watercolor 사례).
