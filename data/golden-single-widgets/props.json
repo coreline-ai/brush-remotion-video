@@ -34,39 +34,95 @@
       "widgets": [
         {
           "type": "stat",
-          "x": 90, "y": 120, "w": 320, "h": 210, "enterAt": 70,
-          "title": "적설 확률", "kicker": "WINTER", "value": "87%", "sub": "아침",
-          "caption": "첫눈 예보 기준", "accent": "#6b8499"
+          "x": 90,
+          "y": 230,
+          "w": 320,
+          "h": 210,
+          "enterAt": 70,
+          "title": "적설 확률",
+          "kicker": "WINTER",
+          "value": "87%",
+          "sub": "아침",
+          "caption": "첫눈 예보 기준",
+          "accent": "#6b8499"
         },
         {
           "type": "donut",
-          "x": 430, "y": 120, "w": 320, "h": 210, "enterAt": 100,
-          "title": "겨울의 채도", "kicker": "TONE", "pct": 72,
-          "caption": "잉크 + 수채 워시", "accent": "#A65F54"
+          "x": 430,
+          "y": 230,
+          "w": 320,
+          "h": 210,
+          "enterAt": 100,
+          "title": "겨울의 채도",
+          "kicker": "TONE",
+          "pct": 72,
+          "caption": "잉크 + 수채 워시",
+          "accent": "#A65F54"
         },
         {
           "type": "TimelineStepper",
-          "x": 90, "y": 370, "w": 320, "h": 210, "enterAt": 130,
-          "title": "아침이 오는 순서", "kicker": "TIMELINE",
+          "x": 90,
+          "y": 480,
+          "w": 320,
+          "h": 210,
+          "enterAt": 130,
+          "title": "아침이 오는 순서",
+          "kicker": "TIMELINE",
           "items": [
-            { "label": "새벽" },
-            { "label": "첫눈" },
-            { "label": "햇살" }
+            {
+              "label": "새벽"
+            },
+            {
+              "label": "첫눈"
+            },
+            {
+              "label": "햇살"
+            }
           ],
           "accent": "#7A5FC0"
         },
         {
           "type": "BulletList",
-          "x": 430, "y": 370, "w": 320, "h": 210, "enterAt": 160,
-          "title": "소나무의 겨울", "kicker": "NOTES",
+          "x": 430,
+          "y": 480,
+          "w": 320,
+          "h": 210,
+          "enterAt": 160,
+          "title": "소나무의 겨울",
+          "kicker": "NOTES",
           "items": [
-            { "label": "가지", "detail": "눈을 얹는다" },
-            { "label": "뿌리", "detail": "고요히 버틴다" },
-            { "label": "바람", "detail": "지나가게 둔다" }
+            {
+              "label": "가지",
+              "detail": "눈을 얹는다"
+            },
+            {
+              "label": "뿌리",
+              "detail": "고요히 버틴다"
+            },
+            {
+              "label": "바람",
+              "detail": "지나가게 둔다"
+            }
           ],
           "accent": "#4F8C6D"
         }
-      ]
+      ],
+      "topTitle": {
+        "kicker": "WINTER · GOLDEN",
+        "lines": [
+          "눈 얹힌 소나무 가지"
+        ],
+        "x": 110,
+        "y": 74,
+        "width": 700,
+        "align": "left",
+        "enterAt": 12,
+        "accent": "#6b8499",
+        "firstWordColor": "#6b8499",
+        "fontSize": 44,
+        "kickerFontSize": 16,
+        "wash": true
+      }
     }
   ]
 }
