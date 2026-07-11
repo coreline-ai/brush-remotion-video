@@ -10,6 +10,7 @@ data/*
 !data/golden-single/
 !data/golden-multi/
 !data/golden-widgets/
+!data/golden-single-widgets/
 !data/pipeline-smoke/
 public/*
 !public/brush-draw/
