@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "projectId": "golden-widgets",
+  "format": "youtube",
+  "paper": "#fbfaf6",
+  "scenes": [
+    {
+      "id": "scene-legacy-text",
+      "routes": "winter-snow-pine-demo/routes.json",
+      "durationInFrames": 300,
+      "faint": 0.55,
+      "edgeFeather": 12,
+      "linearDraw": true,
+      "developFrames": 20,
+      "widgets": [
+        { "type": "stat", "x": 90, "y": 80, "w": 320, "h": 210, "enterAt": 20, "title": "자동화 씬", "kicker": "STAT", "value": "87%", "sub": "커버리지", "caption": "routes 커버리지 실측" },
+        { "type": "text", "x": 430, "y": 80, "w": 320, "h": 210, "enterAt": 30, "title": "핵심 변환", "kicker": "TEXT", "lines": ["원시 데이터 수집", "구조화 씬 생성", "화이트 카드 출력"] },
+        { "type": "donut", "x": 90, "y": 320, "w": 320, "h": 210, "enterAt": 40, "title": "자동 분류", "kicker": "DONUT", "pct": 95, "accent": "#A65F54" },
+        { "type": "bars", "x": 430, "y": 320, "w": 320, "h": 210, "enterAt": 50, "title": "구조화 흐름", "kicker": "BARS", "values": [32, 46, 61, 78, 92], "accent": "#B8862F" },
+        { "type": "Headline", "x": 90, "y": 560, "w": 320, "h": 190, "enterAt": 60, "title": "헤드라인", "kicker": "TEXT", "items": [{ "label": "화이트 브러쉬" }, { "label": "위젯 시스템" }] },
+        { "type": "QuoteText", "x": 430, "y": 560, "w": 320, "h": 190, "enterAt": 70, "title": "인용", "kicker": "TEXT", "items": [{ "label": "겹침 없는 레이아웃이 먼저다" }] },
+        { "type": "BulletList", "x": 90, "y": 790, "w": 320, "h": 200, "enterAt": 80, "title": "좋은 질문", "kicker": "TEXT", "items": [{ "label": "안전영역", "detail": "safe" }, { "label": "아이콘 간격", "detail": "gap" }, { "label": "자막 회피", "detail": "QA" }] },
+        { "type": "CompareBars", "x": 430, "y": 790, "w": 320, "h": 200, "enterAt": 90, "title": "고통의 크기", "kicker": "CHART", "items": [{ "label": "Before", "value": 42 }, { "label": "After", "value": 86 }] }
+      ]
+    },
+    {
+      "id": "scene-diagram-composite",
+      "routes": "winter-snow-pine-demo/routes.json",
+      "durationInFrames": 300,
+      "faint": 0.55,
+      "edgeFeather": 12,
+      "linearDraw": true,
+      "developFrames": 20,
+      "brushDynamics": { "seed": 3302, "randomizeOrder": true },
+      "widgets": [
+        { "type": "FlowDiagram", "x": 90, "y": 80, "w": 320, "h": 210, "enterAt": 20, "title": "제품의 씨앗", "kicker": "DIAGRAM", "items": [{ "label": "문제", "detail": "observe" }, { "label": "가설", "detail": "test" }, { "label": "제품", "detail": "learn" }] },
+        { "type": "TimelineStepper", "x": 430, "y": 80, "w": 320, "h": 210, "enterAt": 30, "title": "다섯 번의 왜", "kicker": "DIAGRAM", "items": [{ "label": "관찰" }, { "label": "질문" }, { "label": "검증" }] },
+        { "type": "DataTable", "x": 90, "y": 320, "w": 320, "h": 210, "enterAt": 40, "title": "이미 쓰는 대안", "kicker": "DATA", "items": [{ "label": "HTML", "value": "88%", "detail": "OK" }, { "label": "CSS", "value": "76%", "detail": "OK" }, { "label": "JS", "value": "64%", "detail": "검토" }] },
+        { "type": "ProcessStepCard", "x": 430, "y": 320, "w": 320, "h": 210, "enterAt": 50, "title": "해결보다 관찰", "kicker": "PROCESS", "items": [{ "label": "문제", "detail": "observe" }, { "label": "가설", "detail": "test" }, { "label": "제품", "detail": "learn" }] },
+        { "type": "WarningCard", "x": 90, "y": 560, "w": 320, "h": 200, "enterAt": 60, "title": "진짜 불편 찾기", "kicker": "WARN", "items": [{ "label": "겹침 금지", "detail": "layout" }, { "label": "여백 90px", "detail": "margin" }] },
+        { "type": "PersonAvatar", "x": 430, "y": 560, "w": 320, "h": 200, "enterAt": 70, "title": "첫 고객 정의", "kicker": "PERSONA", "items": [{ "label": "메이커", "detail": "1인 개발자" }] },
+        { "type": "ChatBubble", "x": 90, "y": 790, "w": 660, "h": 200, "enterAt": 80, "title": "시장은 말 속에 있다", "kicker": "CHAT", "items": [{ "label": "지금 어떻게 해결하세요?" }, { "label": "스프레드시트로 수작업해요" }, { "label": "가장 번거로운 순간은요?" }] }
+      ]
+    }
+  ]
+}

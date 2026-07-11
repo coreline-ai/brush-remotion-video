@@ -104,6 +104,42 @@ export const NaturalEffectsSchema = z.object({
   endFadeOpacity: z.number().min(0).max(1).optional(),
 });
 
+// ---------- 위젯 (단일 registry 핵심 15종 — strict union: 타입별 필드 혼입은 parse 거부) ----------
+
+const widgetBase = {
+  x: z.number(),
+  y: z.number(),
+  w: z.number().positive(),
+  h: z.number().positive(),
+  enterAt: frame.default(0),
+  title: z.string().min(1),
+  kicker: z.string().optional(),
+  caption: z.string().optional(),
+  accent: z.string().optional(),
+};
+
+export const WidgetItemSchema = z.object({
+  label: z.string(),
+  detail: z.string().optional(),
+  value: z.union([z.string(), z.number()]).optional(),
+  tone: z.enum(["ok", "warn", "danger"]).optional(),
+});
+const items = z.array(WidgetItemSchema).default([]);
+
+// 카드형 공통 스펙을 쓰는 카탈로그 타입 (실사용 빈도 상위 11종)
+export const CARD_WIDGET_TYPES = [
+  "FlowDiagram", "TimelineStepper", "DataTable", "ProcessStepCard", "WarningCard",
+  "PersonAvatar", "ChatBubble", "CompareBars", "BulletList", "QuoteText", "Headline",
+] as const;
+
+export const WidgetSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("stat"), ...widgetBase, value: z.union([z.string(), z.number()]), sub: z.string().optional() }).strict(),
+  z.object({ type: z.literal("text"), ...widgetBase, lines: z.array(z.string().min(1)).min(1) }).strict(),
+  z.object({ type: z.literal("donut"), ...widgetBase, pct: z.number().min(0).max(100) }).strict(),
+  z.object({ type: z.literal("bars"), ...widgetBase, values: z.array(z.number().min(0)).min(1) }).strict(),
+  ...CARD_WIDGET_TYPES.map((t) => z.object({ type: z.literal(t), ...widgetBase, items }).strict()),
+]);
+
 // ---------- 씬 ----------
 
 export const SceneSchema = z.object({
@@ -133,7 +169,7 @@ export const SceneSchema = z.object({
   topTitle: TopTitleSchema.optional(),
   subtitleStyle: SubtitleStyleSchema.optional(),
   naturalEffects: NaturalEffectsSchema.optional(),
-  // widgets는 Phase 5에서 discriminated union으로 추가한다 — 자리 예약 금지 (dev-plan 제외 범위)
+  widgets: z.array(WidgetSchema).default([]),
 });
 
 // ---------- 프로젝트 전체 (render-props) ----------
@@ -159,3 +195,6 @@ export type SubtitleStyle = z.infer<typeof SubtitleStyleSchema>;
 export type NaturalEffects = z.infer<typeof NaturalEffectsSchema>;
 export type Scene = z.infer<typeof SceneSchema>;
 export type RenderProps = z.infer<typeof RenderPropsSchema>;
+export type Widget = z.infer<typeof WidgetSchema>;
+export type WidgetItem = z.infer<typeof WidgetItemSchema>;
+export type CardWidget = Extract<Widget, { items: WidgetItem[] }>;
