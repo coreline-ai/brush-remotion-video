@@ -1,0 +1,14 @@
+# 1씬(10초) 앰비언트 데모 — 입력 없음: 배경 합성 + BGM 합성 + 시적 cue
+projectId: single-scene-demo
+format: youtube
+
+background:
+  strategy: preset
+  style: ink-watercolor
+
+widgets: none
+
+ambient:
+  scenes: 1
+  cues:
+    - "붓 끝에서 하루가 천천히 열린다"
