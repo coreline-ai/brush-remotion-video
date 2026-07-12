@@ -306,6 +306,11 @@ class Pipeline:
                 log.info("sync: %s cue 0개 — 자동 off", scene_id)
                 synced.append(None)
                 continue
+            if not zones_path.is_file():
+                # sync 기능 도입 전에 빌드된 구 캐시 — routes 재생성으로 zone 에셋부터 만들어야 함
+                raise SystemExit(
+                    f"sync: {zones_path} 없음 — sync 기능 이전의 캐시입니다. "
+                    f"`--from routes`로 재실행해 zone 에셋을 생성하세요.")
             zones = json.loads(zones_path.read_text(encoding="utf-8"))["zones"]
             data = json.loads(routes_path.read_text(encoding="utf-8"))
             out = apply_sync(data, zones, cues, sync_map=sync_maps.get(scene_id))
@@ -421,11 +426,24 @@ def main() -> None:
     ap.add_argument("project_yaml", help="project.yaml 경로")
     ap.add_argument("--from", dest="from_stage", default=None,
                     help=f"이 스테이지부터 다시 실행 {STAGES}")
+    ap.add_argument("--audit", action="store_true",
+                    help="빌드 완료 후 video-auditor 자동 검수 (FAIL이면 exit 1)")
     a = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname).1s %(name)s: %(message)s")
     cfg = load_project(a.project_yaml)
     log.info("project=%s mode=%s format=%s", cfg.project_id, cfg.mode, cfg.fmt)
     Pipeline(cfg).run(a.from_stage)
+    if a.audit:
+        # 선택 통합 — auditor 자체는 mp4 단독 입력의 독립 도구 (기본 off)
+        from brushvid.audit import run_audit
+        audit_out = REPO_ROOT / "data" / cfg.project_id / "audit"
+        result = run_audit(REPO_ROOT / "output" / f"{cfg.project_id}.mp4",
+                           props=REPO_ROOT / "data" / cfg.project_id / "props.json",
+                           out_dir=audit_out)
+        log.info("audit: %s (FAIL %d / WARN %d) → %s/audit-report.md",
+                 result["verdict"], result["summary"]["FAIL"], result["summary"]["WARN"], audit_out)
+        if result["verdict"] == "FAIL":
+            raise SystemExit(1)
 
 
 if __name__ == "__main__":

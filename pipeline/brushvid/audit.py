@@ -1,0 +1,640 @@
+"""audit.py — 완성 mp4 하나만으로 결함을 자동 검출하는 독립 검수기.
+
+독립성 1급: brushvid 타 모듈 import 금지 — ffmpeg/ffprobe(서브프로세스) + numpy/PIL 만 사용.
+임계값은 FIELD-LOG 2026-07-11 실측(city 하드컷 12~23% / develop 스파이크 2.97% / 수정 후 2.7~5.3%) 기반.
+
+2-패스 스캔:
+  ① 저해상도(192px 그레이) rawvideo 파이프 → 전 프레임 diff/밝기 스트림
+  ② 후보 지점(경계·스파이크)만 원본 해상도로 정밀 재측정
+
+검출 6종: 경계 하드컷 / 씬 중간 스파이크 / 정지(freeze) / 오디오(무음·클리핑·전체무음)
+          / 규격(해상도·fps·코덱·쇼츠 길이) / 레터박스 밴드
+씬 경계: props 제공 시 정확 판정, 없으면 순백 근접 프레임으로 추정 (추정 실패 시에도
+        하드컷은 스파이크 검출기가 잡는다 — props 없이도 FAIL 검출 가능해야 함).
+"""
+from __future__ import annotations
+
+import json
+import re
+import subprocess
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+
+import numpy as np
+
+# ── 임계값 (단위: 인접 프레임 mean abs diff %, 그레이 0~255 기준) ──
+BOUNDARY_WARN = 6.0      # 씬 경계 diff (수정 후 실측 2.7~5.3 / 수정 전 12~23)
+BOUNDARY_FAIL = 10.0
+SPIKE_WARN = 1.5         # 씬 중간 스파이크 절대치 + 롤링 중앙값 배수
+SPIKE_WARN_RATIO = 3.0
+SPIKE_FAIL = 2.5         # develop 스파이크 실측 2.97 / 수정 후 최대 0.94
+SPIKE_FAIL_RATIO = 4.0
+CANDIDATE_MIN = 1.0      # 저해상도 1차 후보 임계 (원본 해상도 재측정 대상)
+CANDIDATE_RATIO = 2.5
+BOUNDARY_REMEASURE = 3.5  # 경계 저해상 diff 가 이 이상이면 원본 해상도 재측정
+FREEZE_EPS = 0.05        # 정지 판정 diff
+FREEZE_MIN_SEC = 3.0
+FREEZE_TAIL_SEC = 2.0    # 씬 끝/영상 끝 이내면 감상 구간(info)
+SILENCE_NOISE_DB = -50
+SILENCE_MIN_SEC = 2.0
+CLIP_DB = -0.5
+FULL_SILENCE_FRAC = 0.98  # 무음 합산이 전체의 이 비율 이상이면 전체 무음
+SHORTS_MAX_SEC = 180.0
+SCAN_WIDTH = 192         # 1-패스 분석 폭
+WHITE_LUM = 238.0        # 씬 경계 추정용 순백 근접 밝기 (0~255)
+WHITE_MIN_RUN = 5        # 순백 유지 최소 프레임 (1~2프레임 화이트 플래시는 경계가 아님)
+ROLL_WIN = 61            # 롤링 중앙값 창 (약 2초)
+ROLL_FLOOR = 0.05        # 중앙값 하한 (정지 구간 나눗셈 폭주 방지)
+WASH_CORR = 0.90         # 구도 유지(워시) 판정 Pearson 상관 임계
+REVERT_FRAC = 0.5        # transient(번쩍 후 복귀) 판정: 복귀 잔차 < 피크 × 이 비율
+OUTRO_WINDOW = 36        # 씬 끝 직전(경계 앞 프레임 수) — 워시 온셋 연출 허용 창
+MAX_REMEASURE = 240      # 2-패스 재측정 상한
+EVIDENCE_MAX = 8         # 증거 스틸 저장 이슈 상한
+CANON_SIZES = ((1920, 1080), (1080, 1920))
+
+SEV_ORDER = {"FAIL": 0, "WARN": 1, "INFO": 2}
+
+
+@dataclass
+class Issue:
+    """검출 이슈 1건. severity: FAIL(배포 불가) / WARN(검토) / INFO(참고)."""
+
+    severity: str
+    kind: str
+    message: str
+    frame: int | None = None
+    timeSec: float | None = None
+    metrics: dict = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        return {"severity": self.severity, "kind": self.kind, "message": self.message,
+                "frame": self.frame, "timeSec": self.timeSec, "metrics": self.metrics}
+
+
+def fmt_ts(sec: float | None) -> str:
+    if sec is None:
+        return "-"
+    m, s = divmod(max(0.0, sec), 60)
+    return f"{int(m):02d}:{s:04.1f}"
+
+
+# ── ffprobe / 규격 ──
+
+def probe_summary(video: str | Path) -> dict:
+    """ffprobe 요약: 해상도/fps/코덱/길이/프레임수/오디오 유무."""
+    res = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_streams", "-show_format", "-of", "json", str(video)],
+        capture_output=True, text=True, check=True)
+    data = json.loads(res.stdout)
+    v = next((s for s in data["streams"] if s["codec_type"] == "video"), None)
+    a = next((s for s in data["streams"] if s["codec_type"] == "audio"), None)
+    if v is None:
+        raise ValueError(f"비디오 스트림 없음: {video}")
+    num, den = (v.get("r_frame_rate") or "30/1").split("/")
+    fps = float(num) / float(den or 1)
+    duration = float(data.get("format", {}).get("duration") or 0.0)
+    nb = int(v.get("nb_frames") or 0) or int(round(duration * fps))
+    return {"width": int(v["width"]), "height": int(v["height"]), "fps": fps,
+            "vcodec": v.get("codec_name"), "acodec": a.get("codec_name") if a else None,
+            "hasAudio": a is not None, "duration": duration, "nbFrames": nb}
+
+
+def check_spec(s: dict) -> list[Issue]:
+    """규격 검사 (순수 함수): 캐논 해상도/30fps/h264/aac + 쇼츠 180초 한도."""
+    issues: list[Issue] = []
+    size = (s["width"], s["height"])
+    if size not in CANON_SIZES:
+        issues.append(Issue("WARN", "spec", f"비표준 해상도 {size[0]}×{size[1]} (표준: 1920×1080 | 1080×1920)"))
+    if abs(s["fps"] - 30.0) > 0.05:
+        issues.append(Issue("WARN", "spec", f"비표준 fps {s['fps']:.3f} (표준: 30)"))
+    if s["vcodec"] != "h264":
+        issues.append(Issue("WARN", "spec", f"비표준 비디오 코덱 {s['vcodec']} (표준: h264)"))
+    if not s["hasAudio"]:
+        issues.append(Issue("FAIL", "audio-missing", "오디오 스트림 없음 (전체 무음)"))
+    elif s["acodec"] != "aac":
+        issues.append(Issue("WARN", "spec", f"비표준 오디오 코덱 {s['acodec']} (표준: aac)"))
+    if s["height"] > s["width"] and s["duration"] > SHORTS_MAX_SEC:
+        issues.append(Issue("FAIL", "spec",
+                            f"쇼츠(세로) 길이 {s['duration']:.1f}s > 한도 {SHORTS_MAX_SEC:.0f}s"))
+    return issues
+
+
+# ── 1-패스: 저해상도 스캔 ──
+
+def _read_exact(stream, n: int) -> bytes:
+    buf = b""
+    while len(buf) < n:
+        chunk = stream.read(n - len(buf))
+        if not chunk:
+            break
+        buf += chunk
+    return buf
+
+
+def scan_lowres(video: str | Path, width: int, height: int) -> dict:
+    """전 프레임 저해상 그레이 스캔 → diffs(%), lums(밝기), meanFrame(레터박스용)."""
+    sw = SCAN_WIDTH
+    sh = max(2, int(round(height * sw / width / 2)) * 2)
+    cmd = ["ffmpeg", "-v", "error", "-i", str(video),
+           "-vf", f"scale={sw}:{sh},format=gray", "-f", "rawvideo", "pipe:1"]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    fsz = sw * sh
+    diffs = [0.0]
+    lums: list[float] = []
+    acc = np.zeros(fsz, dtype=np.float64)
+    acc_n = 0
+    prev: np.ndarray | None = None
+    i = 0
+    while True:
+        raw = _read_exact(proc.stdout, fsz)
+        if len(raw) < fsz:
+            break
+        arr = np.frombuffer(raw, dtype=np.uint8).astype(np.int16)
+        lums.append(float(arr.mean()))
+        if prev is not None:
+            diffs.append(float(np.abs(arr - prev).mean()) / 255.0 * 100.0)
+        if i % 15 == 0:  # 레터박스 검출용 시간 평균 (15프레임 샘플)
+            acc += arr
+            acc_n += 1
+        prev = arr
+        i += 1
+    proc.stdout.close()
+    proc.wait()
+    if i == 0:
+        raise RuntimeError(f"프레임 디코드 실패: {video}")
+    return {"diffs": np.asarray(diffs), "lums": np.asarray(lums),
+            "meanFrame": (acc / max(1, acc_n)).reshape(sh, sw), "size": (sw, sh)}
+
+
+def rolling_median(x: np.ndarray, win: int = ROLL_WIN) -> np.ndarray:
+    """중앙 정렬 롤링 중앙값 (경계는 가용 창으로 축소)."""
+    n = len(x)
+    half = win // 2
+    out = np.empty(n)
+    for i in range(n):
+        out[i] = np.median(x[max(0, i - half):min(n, i + half + 1)])
+    return out
+
+
+# ── 씬 경계 ──
+
+def boundaries_from_props(props_path: str | Path) -> tuple[list[int], int]:
+    """props.json 씬 길이 누적합 → 경계 프레임 목록 (마지막 씬 끝 제외) + 총 프레임."""
+    props = json.loads(Path(props_path).read_text(encoding="utf-8"))
+    durations = [int(s["durationInFrames"]) for s in props["scenes"]]
+    cum: list[int] = []
+    t = 0
+    for d in durations[:-1]:
+        t += d
+        cum.append(t)
+    return cum, t + durations[-1]
+
+
+def estimate_boundaries(lums: np.ndarray) -> list[int]:
+    """순백 근접(lum ≥ WHITE_LUM) 유지 구간의 끝 다음 프레임을 씬 경계로 추정."""
+    white = lums >= WHITE_LUM
+    bounds: list[int] = []
+    n = len(white)
+    i = 0
+    while i < n:
+        if white[i]:
+            j = i
+            while j + 1 < n and white[j + 1]:
+                j += 1
+            if (j - i + 1) >= WHITE_MIN_RUN and j + 1 < n:
+                bounds.append(j + 1)
+            i = j + 1
+        else:
+            i += 1
+    return bounds
+
+
+# ── 검출기 (순수 함수 — 단위 테스트 대상) ──
+
+def classify_boundary(diff: float) -> str | None:
+    if diff > BOUNDARY_FAIL:
+        return "FAIL"
+    if diff > BOUNDARY_WARN:
+        return "WARN"
+    return None
+
+
+def classify_spike(fullres: float, lowres: float, med: float) -> str | None:
+    """스파이크 판정: 절대치는 원본 해상도, 배수는 저해상 diff/롤링중앙값 (동일 도메인)."""
+    ratio = lowres / max(med, ROLL_FLOOR)
+    if fullres > SPIKE_FAIL and ratio > SPIKE_FAIL_RATIO:
+        return "FAIL"
+    if fullres > SPIKE_WARN and ratio > SPIKE_WARN_RATIO:
+        return "WARN"
+    return None
+
+
+def pearson_corr(a: np.ndarray, b: np.ndarray) -> float:
+    """픽셀 Pearson 상관 — 같은 구도의 워시/명암 변화는 ≈1, 내용이 바뀌는 컷은 낮다.
+    분산 0(민무늬 프레임)은 구조 비교 불능 → 0.0 (내용 변화로 간주)."""
+    a = a.astype(np.float64).ravel()
+    b = b.astype(np.float64).ravel()
+    sa, sb = a.std(), b.std()
+    if sa < 1e-6 or sb < 1e-6:
+        return 0.0
+    return float(((a - a.mean()) * (b - b.mean())).mean() / (sa * sb))
+
+
+def judge_candidate(peak: float, lowres: float, med: float, *, transient: bool,
+                    corr: float, near_scene_end: bool) -> tuple[str, str | None]:
+    """씬 중간 후보 최종 분류 (순수 함수). 반환: (kind, severity|None).
+
+    - transient(번쩍 후 복귀)      → spike 임계 (develop 플래시류 결함)
+    - 지속 + 구도 유지(corr≥0.9)   → 워시 온셋: 씬 끝 직전이면 연출(INFO), 아니면 WARN
+    - 지속 + 구도 변화(corr<0.9)   → 씬 중간 하드컷: 경계 임계(6/10%) 적용
+    """
+    if transient:
+        return "spike", classify_spike(peak, lowres, med)
+    if corr >= WASH_CORR:
+        if near_scene_end:
+            return "outro-wash", "INFO" if peak > SPIKE_FAIL else None
+        return "wash-jump", "WARN" if peak > SPIKE_WARN else None
+    return "hardcut", classify_boundary(peak)
+
+
+def spike_candidates(diffs: np.ndarray, roll: np.ndarray, exclude: set[int],
+                     min_diff: float = CANDIDATE_MIN, min_ratio: float = CANDIDATE_RATIO) -> list[int]:
+    """저해상 1차 후보 (경계 ±1 제외) → 근접(5프레임) 클러스터의 피크만."""
+    cand = [i for i in range(1, len(diffs))
+            if i not in exclude
+            and diffs[i] >= min_diff
+            and diffs[i] >= min_ratio * max(roll[i], ROLL_FLOOR)]
+    peaks: list[int] = []
+    for i in cand:
+        if peaks and i - peaks[-1] <= 5:
+            if diffs[i] > diffs[peaks[-1]]:
+                peaks[-1] = i
+        else:
+            peaks.append(i)
+    return peaks
+
+
+def find_freeze_runs(diffs: np.ndarray, fps: float,
+                     eps: float = FREEZE_EPS, min_sec: float = FREEZE_MIN_SEC) -> list[tuple[int, int]]:
+    """diff≈0 이 min_sec 이상 지속되는 [시작, 끝] 프레임 구간."""
+    min_len = int(round(min_sec * fps))
+    runs: list[tuple[int, int]] = []
+    s = None
+    for i in range(1, len(diffs) + 1):
+        if i < len(diffs) and diffs[i] < eps:
+            if s is None:
+                s = i
+        else:
+            if s is not None and (i - 1) - s + 1 >= min_len:
+                runs.append((s, i - 1))
+            s = None
+    return runs
+
+
+def freeze_severity(run: tuple[int, int], boundaries: list[int], n_frames: int, fps: float) -> str:
+    """씬 끝/영상 끝 감상 구간이면 info, 그 외 정지는 WARN."""
+    tail = int(round(FREEZE_TAIL_SEC * fps))
+    ends = list(boundaries) + [n_frames - 1]
+    for e in ends:
+        if 0 <= e - run[1] <= tail:
+            return "INFO"
+    return "WARN"
+
+
+def detect_letterbox(mean_frame: np.ndarray, dark: float = 26.0) -> list[Issue]:
+    """시간 평균 프레임의 상하/좌우 연속 어두운 밴드 → 레터박스/필러박스."""
+    issues: list[Issue] = []
+    rows = mean_frame.mean(axis=1)
+    cols = mean_frame.mean(axis=0)
+    for name, arr in (("레터박스(상하)", rows), ("필러박스(좌우)", cols)):
+        top = 0
+        while top < len(arr) and arr[top] < dark:
+            top += 1
+        bot = 0
+        while bot < len(arr) - top and arr[len(arr) - 1 - bot] < dark:
+            bot += 1
+        frac = (top + bot) / len(arr)
+        if top > 0 and bot > 0 and frac >= 0.01:
+            sev = "WARN" if frac >= 0.04 else "INFO"
+            issues.append(Issue(sev, "letterbox",
+                                f"{name} 밴드 {frac * 100:.1f}% (상/좌 {top}, 하/우 {bot} 셀)",
+                                metrics={"fraction": round(frac, 4)}))
+    return issues
+
+
+# ── 오디오 검사 ──
+
+_SIL_START = re.compile(r"silence_start:\s*([0-9.]+)")
+_SIL_END = re.compile(r"silence_end:\s*([0-9.]+)")
+_MEAN_VOL = re.compile(r"mean_volume:\s*(-?[0-9.]+) dB")
+_MAX_VOL = re.compile(r"max_volume:\s*(-?[0-9.]+) dB")
+
+
+def parse_audio_stderr(text: str, duration: float) -> dict:
+    """silencedetect+volumedetect stderr 파싱 → 무음 구간/볼륨."""
+    starts = [float(m) for m in _SIL_START.findall(text)]
+    ends = [float(m) for m in _SIL_END.findall(text)]
+    silences = []
+    for i, s in enumerate(starts):
+        e = ends[i] if i < len(ends) else duration  # EOF 까지 무음이면 end 미출력
+        silences.append((s, max(s, e)))
+    mean_m = _MEAN_VOL.search(text)
+    max_m = _MAX_VOL.search(text)
+    return {"silences": silences,
+            "meanVolume": float(mean_m.group(1)) if mean_m else None,
+            "maxVolume": float(max_m.group(1)) if max_m else None}
+
+
+def audio_issues(parsed: dict, duration: float) -> list[Issue]:
+    """무음>2s WARN / 전체 무음 FAIL / 클리핑 > -0.5dB WARN (순수 함수)."""
+    issues: list[Issue] = []
+    silences = parsed["silences"]
+    total_sil = sum(e - s for s, e in silences)
+    fully_silent = (duration > 0 and total_sil >= FULL_SILENCE_FRAC * duration) or \
+                   (parsed["meanVolume"] is not None and parsed["meanVolume"] < -70.0)
+    if fully_silent:
+        issues.append(Issue("FAIL", "audio-silence",
+                            f"전체 무음 (무음 합산 {total_sil:.1f}s / {duration:.1f}s, "
+                            f"mean {parsed['meanVolume']} dB)"))
+        return issues
+    for s, e in silences[:5]:
+        issues.append(Issue("WARN", "audio-silence",
+                            f"무음 {e - s:.1f}s ({fmt_ts(s)} ~ {fmt_ts(e)})",
+                            timeSec=s, metrics={"start": round(s, 2), "end": round(e, 2)}))
+    if len(silences) > 5:
+        issues.append(Issue("WARN", "audio-silence", f"무음 구간 총 {len(silences)}건 (상위 5건만 표기)"))
+    if parsed["maxVolume"] is not None and parsed["maxVolume"] > CLIP_DB:
+        issues.append(Issue("WARN", "audio-clipping",
+                            f"클리핑 의심: max_volume {parsed['maxVolume']:.1f} dB > {CLIP_DB} dB"))
+    return issues
+
+
+def run_audio_checks(video: str | Path, duration: float) -> list[Issue]:
+    res = subprocess.run(
+        ["ffmpeg", "-v", "info", "-i", str(video),
+         "-af", f"silencedetect=noise={SILENCE_NOISE_DB}dB:d={SILENCE_MIN_SEC},volumedetect",
+         "-f", "null", "-"],
+        capture_output=True, text=True)
+    return audio_issues(parse_audio_stderr(res.stderr, duration), duration)
+
+
+# ── 2-패스: 원본 해상도 재측정 / 증거 스틸 ──
+# ffmpeg 입력 시킹의 시작 프레임은 컨테이너에 따라 ±1~2 프레임 흔들린다(실측) —
+# 후보 중심 ±radius 윈도우를 한 번에 뽑아 "윈도우 내 최대 연속 diff"로 정렬 불요 측정.
+
+PAIR_RADIUS = 4
+
+
+def _grab_window(video: str | Path, center: int, fps: float, width: int, height: int,
+                 radius: int = PAIR_RADIUS, rgb: bool = False) -> list[np.ndarray]:
+    """center ±radius 프레임을 원본 해상도로 추출 (그레이 또는 RGB)."""
+    n0 = max(0, center - radius)
+    t = max(0.0, (n0 - 0.5) / fps)
+    count = 2 * radius + 1
+    fmt, ch = ("rgb24", 3) if rgb else ("gray", 1)
+    res = subprocess.run(
+        ["ffmpeg", "-v", "error", "-ss", f"{t:.6f}", "-i", str(video),
+         "-frames:v", str(count), "-vf", f"format={fmt}", "-f", "rawvideo", "pipe:1"],
+        capture_output=True)
+    fsz = width * height * ch
+    data = res.stdout
+    frames = []
+    for i in range(len(data) // fsz):
+        arr = np.frombuffer(data[i * fsz:(i + 1) * fsz], dtype=np.uint8)
+        frames.append(arr.reshape(height, width, ch) if rgb else arr)
+    return frames
+
+
+def analyze_window(video: str | Path, frame: int, fps: float,
+                   width: int, height: int) -> dict | None:
+    """후보 주변 윈도우 원본 해상도 정밀 분석.
+
+    반환: {peak(최대 연속 diff %), corr(피크 쌍 Pearson), transient(번쩍 후 복귀 여부)}
+    """
+    if frame < 1:
+        return None
+    frames = [f.astype(np.int16) for f in _grab_window(video, frame, fps, width, height)]
+    if len(frames) < 2:
+        return None
+    diffs = [float(np.abs(frames[i] - frames[i - 1]).mean()) / 255.0 * 100.0
+             for i in range(1, len(frames))]
+    k = int(np.argmax(diffs))  # 피크 쌍 = frames[k] → frames[k+1]
+    peak = diffs[k]
+    corr = pearson_corr(frames[k], frames[k + 1])
+    pre = frames[max(0, k - 2)]
+    post = frames[min(len(frames) - 1, k + 4)]
+    d_rev = float(np.abs(post - pre).mean()) / 255.0 * 100.0  # 복귀 잔차
+    transient = d_rev < REVERT_FRAC * peak
+    return {"peak": peak, "corr": corr, "transient": transient}
+
+
+def fullres_pair_diff(video: str | Path, frame: int, fps: float,
+                      width: int, height: int) -> float | None:
+    """후보 프레임 주변 윈도우의 최대 연속 diff % (경계 재측정용 축약)."""
+    res = analyze_window(video, frame, fps, width, height)
+    return res["peak"] if res else None
+
+
+def save_evidence_pair(video: str | Path, frame: int, fps: float, width: int, height: int,
+                       out_prev: str | Path, out_at: str | Path) -> bool:
+    """문제 지점 전후 프레임 PNG — 윈도우에서 diff 최대 쌍을 골라 저장 (정렬 불요)."""
+    from PIL import Image
+    frames = _grab_window(video, frame, fps, width, height, rgb=True)
+    if len(frames) < 2:
+        return False
+    grays = [f.astype(np.int16).mean(axis=2) for f in frames]
+    diffs = [float(np.abs(grays[i] - grays[i - 1]).mean()) for i in range(1, len(grays))]
+    k = int(np.argmax(diffs)) + 1
+    Path(out_prev).parent.mkdir(parents=True, exist_ok=True)
+    Image.fromarray(frames[k - 1], "RGB").save(out_prev)
+    Image.fromarray(frames[k], "RGB").save(out_at)
+    return True
+
+
+# ── 오케스트레이션 ──
+
+def run_audit(video: str | Path, props: str | Path | None = None,
+              out_dir: str | Path | None = None, evidence: bool = True) -> dict:
+    """전체 검수 실행 → 결과 dict (issues/verdict/stats). out_dir 주면 리포트 파일 산출."""
+    video = Path(video)
+    t0 = time.perf_counter()
+    spec = probe_summary(video)
+    fps = spec["fps"] or 30.0
+    issues: list[Issue] = check_spec(spec)
+
+    # 1-패스
+    scan = scan_lowres(video, spec["width"], spec["height"])
+    diffs, lums = scan["diffs"], scan["lums"]
+    n_frames = len(lums)
+    t1 = time.perf_counter()
+
+    # 씬 경계
+    boundary_source = "none"
+    boundaries: list[int] = []
+    if props is not None:
+        boundaries, props_total = boundaries_from_props(props)
+        boundary_source = "props"
+        if props_total != n_frames:
+            issues.append(Issue("INFO", "spec",
+                                f"props 총 프레임({props_total}) ≠ 영상 프레임({n_frames}) — 경계는 props 기준"))
+        boundaries = [b for b in boundaries if 0 < b < n_frames]
+    else:
+        boundaries = estimate_boundaries(lums)
+        boundary_source = "estimated" if boundaries else "none"
+
+    roll = rolling_median(diffs)
+    remeasured = 0
+
+    # 경계 하드컷
+    boundary_stats: list[dict] = []
+    for b in boundaries:
+        low = float(diffs[b])
+        full = None
+        if low > BOUNDARY_REMEASURE and remeasured < MAX_REMEASURE:
+            full = fullres_pair_diff(video, b, fps, spec["width"], spec["height"])
+            remeasured += 1
+        d = full if full is not None else low
+        boundary_stats.append({"frame": b, "lowres": round(low, 3),
+                               "fullres": round(full, 3) if full is not None else None})
+        sev = classify_boundary(d)
+        if sev:
+            issues.append(Issue(sev, "boundary-hardcut",
+                                f"씬 경계 하드컷 diff {d:.1f}% (경계 f{b})",
+                                frame=b, timeSec=b / fps,
+                                metrics={"diff": round(d, 2), "lowres": round(low, 2),
+                                         "source": boundary_source}))
+
+    # 씬 중간 후보: 원본 해상도 정밀 분석 → 번쩍 스파이크 / 워시 점프 / 씬 중간 하드컷 3분류
+    labels = {"spike": "씬 중간 번쩍 스파이크", "outro-wash": "씬 끝 워시 온셋(연출)",
+              "wash-jump": "씬 중간 급격한 워시 점프", "hardcut": "씬 중간 하드컷"}
+    exclude = {b + o for b in boundaries for o in (-1, 0, 1)}
+    for f in spike_candidates(diffs, roll, exclude):
+        low = float(diffs[f])
+        res = analyze_window(video, f, fps, spec["width"], spec["height"]) \
+            if remeasured < MAX_REMEASURE else None
+        if res is not None:
+            remeasured += 1
+            peak, corr, transient = res["peak"], res["corr"], res["transient"]
+        else:  # 재측정 상한 초과 — 저해상 값으로 보수 판정 (transient 가정)
+            peak, corr, transient = low, 0.0, True
+        near_end = any(0 <= b - f <= OUTRO_WINDOW for b in boundaries) or \
+                   (n_frames - 1 - f) <= OUTRO_WINDOW
+        kind, sev = judge_candidate(peak, low, float(roll[f]),
+                                    transient=transient, corr=corr, near_scene_end=near_end)
+        if sev:
+            issues.append(Issue(sev, kind,
+                                f"{labels[kind]} diff {peak:.2f}% "
+                                f"(주변 중앙값 {roll[f]:.2f}%, corr {corr:.2f}, f{f})",
+                                frame=f, timeSec=f / fps,
+                                metrics={"diff": round(peak, 3), "lowres": round(low, 3),
+                                         "rollingMedian": round(float(roll[f]), 3),
+                                         "corr": round(corr, 3), "transient": transient}))
+
+    # 정지
+    for run in find_freeze_runs(diffs, fps):
+        sev = freeze_severity(run, boundaries, n_frames, fps)
+        dur = (run[1] - run[0] + 1) / fps
+        label = "씬 끝 감상 구간" if sev == "INFO" else "정지 화면"
+        issues.append(Issue(sev, "freeze",
+                            f"{label} {dur:.1f}s (f{run[0]}~f{run[1]})",
+                            frame=run[0], timeSec=run[0] / fps,
+                            metrics={"start": run[0], "end": run[1], "sec": round(dur, 2)}))
+
+    # 레터박스
+    issues.extend(detect_letterbox(scan["meanFrame"]))
+
+    # 오디오
+    if spec["hasAudio"]:
+        issues.extend(run_audio_checks(video, spec["duration"]))
+    t2 = time.perf_counter()
+
+    issues.sort(key=lambda i: (SEV_ORDER.get(i.severity, 9), -(i.metrics.get("diff") or 0)))
+    verdict = "FAIL" if any(i.severity == "FAIL" for i in issues) else "PASS"
+    result = {
+        "video": str(video),
+        "verdict": verdict,
+        "summary": {s: sum(1 for i in issues if i.severity == s) for s in ("FAIL", "WARN", "INFO")},
+        "spec": spec,
+        "boundarySource": boundary_source,
+        "boundaryCount": len(boundaries),
+        "boundaryStats": boundary_stats,
+        "issues": [i.to_dict() for i in issues],
+        "stats": {"frames": n_frames, "remeasured": remeasured,
+                  "scanSec": round(t1 - t0, 2), "detectSec": round(t2 - t1, 2),
+                  "totalSec": round(t2 - t0, 2)},
+    }
+    if out_dir is not None:
+        write_reports(result, Path(out_dir), video, fps,
+                      spec["width"], spec["height"], evidence=evidence)
+    return result
+
+
+# ── 리포트 산출 ──
+
+def _evidence_targets(result: dict) -> list[dict]:
+    with_frame = [i for i in result["issues"] if i["frame"] is not None and i["kind"] != "freeze"]
+    return with_frame[:EVIDENCE_MAX]  # 이미 severity·diff 순 정렬됨
+
+
+def write_reports(result: dict, out_dir: Path, video: Path, fps: float,
+                  width: int, height: int, evidence: bool = True) -> None:
+    """audit-report.md / .json / evidence/*.png / FIELD-LOG 초안."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # 증거 스틸 (문제 프레임 전후)
+    ev_lines: list[str] = []
+    if evidence:
+        for it in _evidence_targets(result):
+            f = it["frame"]
+            ok = save_evidence_pair(video, f, fps, width, height,
+                                    out_dir / "evidence" / f"f{f:06d}-prev.png",
+                                    out_dir / "evidence" / f"f{f:06d}-at.png")
+            if ok:
+                ev_lines.append(f"- f{f} ({fmt_ts(it['timeSec'])}) {it['kind']}: "
+                                f"`evidence/f{f:06d}-prev.png` → `evidence/f{f:06d}-at.png`")
+
+    (out_dir / "audit-report.json").write_text(
+        json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    s = result["spec"]
+    md = [f"# audit-report — {Path(result['video']).name}", "",
+          f"- **판정: {result['verdict']}** (FAIL {result['summary']['FAIL']} / "
+          f"WARN {result['summary']['WARN']} / INFO {result['summary']['INFO']})",
+          f"- 규격: {s['width']}×{s['height']} {s['fps']:.6g}fps {s['vcodec']}"
+          f"/{s['acodec'] or '오디오 없음'} · {s['duration']:.1f}s · {result['stats']['frames']}f",
+          f"- 씬 경계: {result['boundarySource']} ({result['boundaryCount']}개) · "
+          f"스캔 {result['stats']['scanSec']}s + 검출 {result['stats']['detectSec']}s "
+          f"= 총 {result['stats']['totalSec']}s · 재측정 {result['stats']['remeasured']}건", ""]
+
+    md += ["## 검출 이슈", ""]
+    if result["issues"]:
+        md += ["| 심각도 | 종류 | 프레임 | 시각 | 내용 |", "| --- | --- | --- | --- | --- |"]
+        for it in result["issues"]:
+            fr = f"f{it['frame']}" if it["frame"] is not None else "-"
+            md.append(f"| {it['severity']} | {it['kind']} | {fr} | {fmt_ts(it['timeSec'])} "
+                      f"| {it['message']} |")
+    else:
+        md.append("검출된 이슈 없음.")
+    md.append("")
+
+    bs = [b for b in result["boundaryStats"]]
+    if bs:
+        vals = [(b["fullres"] if b["fullres"] is not None else b["lowres"]) for b in bs]
+        md += ["## 씬 경계 diff 요약",
+               f"- {len(bs)}개 경계 · 최대 {max(vals):.2f}% · 평균 {sum(vals) / len(vals):.2f}% "
+               f"(WARN>{BOUNDARY_WARN}%, FAIL>{BOUNDARY_FAIL}%)", ""]
+
+    if ev_lines:
+        md += ["## 증거 스틸", *ev_lines, ""]
+
+    top = [i for i in result["issues"] if i["severity"] in ("FAIL", "WARN")][:3]
+    found = "; ".join(f"{i['message']}" for i in top) if top else "이슈 없음"
+    md += ["## FIELD-LOG 초안", "", "```markdown",
+           f"## {time.strftime('%Y-%m-%d')} · {Path(result['video']).stem} (video-auditor 자동 검수)",
+           f"- **발견**: {found}",
+           "- **원인**: (조사 후 기입)",
+           "- **수정**: (수정 후 기입)",
+           "- **환류** ★필수: (반영한 문서/검증기/프리셋 경로)",
+           "```", ""]
+    (out_dir / "audit-report.md").write_text("\n".join(md), encoding="utf-8")
