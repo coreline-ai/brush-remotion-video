@@ -45,8 +45,8 @@ examples/**/*.png
 examples/**/*.jpg
 examples/**/*.jpeg
 
-# assets: 코드가 소비하는 카탈로그/스키마/매니페스트(JSON)만 추적한다.
-# 대용량 원본 이미지·미리듣기 음원은 재생성 가능하므로 무시
+# assets: 코드가 소비하는 카탈로그/스키마/매니페스트(JSON)를 추적한다.
+# 대용량 원본 이미지는 재생성 가능하므로 무시한다. 음성 미리듣기 10종은
+# 공개 청취 페이지와 voice-assets validate의 필수 fixture라 함께 추적한다.
 assets/storybook/**/*.png
 assets/storybook/**/*.jpg
-assets/voices/previews/

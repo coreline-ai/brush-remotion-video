@@ -100,11 +100,11 @@
 ## 현재 자동 검증 기준선
 
 - Python: 312건
-- Vitest: 47건
+- Vitest: 50건
 - TypeScript typecheck 및 schema sync: PASS
 - Skill validator: 9/9
 - Voice preview: 10/10
-- BGM: assets 13/13, E2E 4/4
+- BGM: assets 14/14, E2E 4/4
 - BGM 사람 청취: `listening-approval.json`이 없으면 미완료
 
 이 수치는 현재 상태를 설명하는 기준선이다. 테스트가 추가되면 총수는 늘 수 있지만 기존 테스트를 삭제해 기준선을 낮추면 안 된다.

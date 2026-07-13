@@ -1,4 +1,4 @@
-# 내레이션 동기 pen E2E — 대본 3문장 + TTS + pen-ref 배경(user-images), 존이 cue 구간에 맞춰 그려진다
+# 내레이션 동기 pen E2E — 대본 3문장 + TTS + 추적 fixture(user-images), 존이 cue 구간에 맞춰 그려진다
 projectId: pen-sync-demo
 format: youtube
 input:
@@ -10,7 +10,7 @@ input:
 background:
   strategy: user-images
   images:
-    - ../../public/pen-ref-demo/bg.png
+    - ../../public/winter-fullcanvas/content.png
 drawing:
   profile: pen
   sync: auto

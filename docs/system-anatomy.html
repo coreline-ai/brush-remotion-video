@@ -217,7 +217,7 @@
   .tbl td:first-child{color:var(--ink);font-weight:700;white-space:nowrap}
   .tbl tr:last-child td{border-bottom:0}
 
-  .modes{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .modes{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
   @media (max-width:860px){.modes{grid-template-columns:1fr}}
   .mode ol{margin:10px 0 0;padding-left:20px;font-size:14px;color:var(--ink2);display:flex;flex-direction:column;gap:6px}
   .mode .exs{margin-top:12px}
@@ -245,8 +245,8 @@
         <div class="stats">
           <div class="stat"><b>1개</b><span>진입점 — bin/build.py</span></div>
           <div class="stat"><b>0.06~0.17%</b><span>골든 파리티 (기준 2%)</span></div>
-          <div class="stat"><b>71건 + 골든 3세트</b><span>vitest 28 · pytest 43</span></div>
-          <div class="stat"><b>3모드 E2E</b><span>내레이션·whisper·앰비언트</span></div>
+          <div class="stat"><b>362건 + 골든 6세트</b><span>vitest 50 · pytest 312</span></div>
+          <div class="stat"><b>4모드 E2E</b><span>내레이션·whisper·TTS·앰비언트</span></div>
         </div>
       </div>
       <div>
@@ -295,7 +295,7 @@
 
 <nav class="toc"><div class="wrap">
   <a href="#overview">30초 큰 그림</a>
-  <a href="#pipeline">빌드 10 스테이지</a>
+  <a href="#pipeline">빌드 12 스테이지</a>
   <a href="#render">렌더 구조</a>
   <a href="#widgets">위젯 15종</a>
   <a href="#schema">스키마 v1</a>
@@ -354,7 +354,7 @@
   <section id="pipeline">
     <div class="sec-head">
       <div class="eyebrow">Build Pipeline</div>
-      <h2>빌드 10 스테이지 — 각 단계는 캐시되고, 어디서든 재개된다</h2>
+      <h2>빌드 12 스테이지 — 각 단계는 캐시되고, 어디서든 재개된다</h2>
       <p>
         전부 <span class="chip">pipeline/brushvid/</span> 파이썬 모듈. 스테이지 산출물은
         <span class="chip">data/{pid}/stages/</span>에 기록(StageLedger)되어 <b>--from &lt;stage&gt;</b>로 실패 지점부터 재개합니다.
@@ -386,7 +386,15 @@
       </div>
     </div>
     <div class="stage">
-      <div class="stage-n">6·7</div>
+      <div class="stage-n">6</div>
+      <div class="stage-body">
+        <div class="stage-top"><h3>sync — 내레이션과 드로잉 동기화</h3><span class="chip">brushvid.sync</span></div>
+        <p>내레이션 cue와 이미지 매크로 존을 질량 비례로 연결하고, pen·pen-brush 전환이 문장 중간이 아니라 cue 경계에서 일어나도록 조정합니다.</p>
+        <div class="stage-io"><span class="chip">routes + cues</span><span class="arr">→</span><span class="chip">sync-map.json</span></div>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="stage-n">7·8</div>
       <div class="stage-body">
         <div class="stage-top"><h3>layout → props</h3><span class="chip">brushvid.layout · brushvid.props</span><span class="tag t-red">검증 FAIL 시 중단</span></div>
         <p>위젯 배치 검증(위젯↔위젯/자막존/타이틀존 겹침 hard-fail, 여백≥90px) 후 render-props v1을 조립하고 <b>schema/render-props.schema.json으로 검증</b>. 이 JSON Schema는 TS Zod에서 내보낸 것 — 파이썬은 소비만 합니다(이중 정의 금지).</p>
@@ -394,15 +402,23 @@
       </div>
     </div>
     <div class="stage">
-      <div class="stage-n">8·9</div>
+      <div class="stage-n">9</div>
       <div class="stage-body">
-        <div class="stage-top"><h3>render → mux</h3><span class="chip">brushvid.render</span></div>
-        <p>npx remotion render (장편은 세그먼트 렌더+concat). props는 audio null로 렌더한 뒤 ffmpeg로 오디오 합성 — 씬 합산과 오디오 길이가 1초 이상 어긋나면 경고 후 자동 보정.</p>
-        <div class="stage-io"><span class="chip">props.json</span><span class="arr">→</span><span class="chip">output/{pid}.mp4</span></div>
+        <div class="stage-top"><h3>render — 영상 스트림 생성</h3><span class="chip">brushvid.render</span></div>
+        <p>npx remotion render로 무음 영상 스트림을 만들고, 장편은 세그먼트 렌더와 stream-copy concat으로 메모리와 재개 단위를 제한합니다.</p>
+        <div class="stage-io"><span class="chip">props.json</span><span class="arr">→</span><span class="chip">video-only.mp4</span></div>
       </div>
     </div>
     <div class="stage">
-      <div class="stage-n">10</div>
+      <div class="stage-n">10·11</div>
+      <div class="stage-body">
+        <div class="stage-top"><h3>mix → mux</h3><span class="chip">brushvid.mix · brushvid.render</span></div>
+        <p>음성·합성 BGM·등록 음원을 -23 LUFS 기준, gain·fade·playlist crossfade·내레이션 ducking으로 master 오디오에 혼합한 뒤 AAC로 영상과 결합합니다. 라이선스 manifest도 같은 단계에서 전달합니다.</p>
+        <div class="stage-io"><span class="chip">voice + BGM</span><span class="arr">→</span><span class="chip">master.wav</span><span class="arr">→</span><span class="chip">output/{pid}.mp4</span></div>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="stage-n">12</div>
       <div class="stage-body">
         <div class="stage-top"><h3>qa — 리뷰 루프의 시작</h3><span class="chip">brushvid.qa · bin/qa.py</span></div>
         <p>씬별 start/mid/end 스틸 캡처 → <b>capture-manifest.json</b> + 콘택트시트. 이 산출물이 brush-qa-review 스킬의 입력 계약이 됩니다 (씬별 이슈 → scene-fix-request JSON → 해당 스테이지 재빌드).</p>
@@ -410,7 +426,7 @@
       </div>
     </div>
 
-    <h3 style="margin-top:30px">입력 모드 3가지 — 전부 E2E 실측 완료</h3>
+    <h3 style="margin-top:30px">입력 모드 4가지 — 전부 E2E 실측 완료</h3>
     <div class="modes" style="margin-top:14px">
       <div class="card mode">
         <span class="tag t-blue">A. 내레이션 — SRT가 시계</span>
@@ -430,7 +446,16 @@
         <p class="exs small muted">실측: 합성 음성 정확 전사 → 10초 mp4</p>
       </div>
       <div class="card mode">
-        <span class="tag t-green">C. 앰비언트 — 무입력</span>
+        <span class="tag t-amber">C. TTS — 대본에서 합성 더빙</span>
+        <ol>
+          <li>script/SRT → Supertonic 여성 음성팩</li>
+          <li>합성 길이를 타이밍 시계로 cue 재계산</li>
+          <li>voice manifest와 AI 음성 고지 기록</li>
+        </ol>
+        <p class="exs small muted">실측: female-01~10 + F1~F5/M1~M5 호환</p>
+      </div>
+      <div class="card mode">
+        <span class="tag t-green">D. 앰비언트 — 무입력</span>
         <ol>
           <li>300프레임(10초) × N씬 고정</li>
           <li>BGM 합성 (numpy · 시드 결정적)</li>
@@ -449,6 +474,8 @@
       <p>
         참조 시스템의 761줄 모놀리스를 <b>단일 책임 레이어들</b>로 해체했습니다.
         BrushScene은 데이터 로드와 타임라인 파생만 하고(조립 전용), 그리기는 각 레이어가 담당합니다.
+        아래 트리는 기본 brush 경로를 중심으로 하며, pen-brush는 DrawingPhaseLayer,
+        dark-random-brush는 CosmicRandomBrushLayer가 같은 조립 지점에 들어갑니다.
       </p>
     </div>
 
@@ -456,7 +483,9 @@
 └─ Root.tsx                    ← 컴포지션 2종 등록 + calculateMetadata(스키마 parse → 기본값 채움 → duration 합산)
    └─ SceneSequence            ← scenes[] → Sequence 연결 + 공용 Audio 1트랙 (씬 경계 무끊김)
       └─ BrushScene            ← routes 로드(Zod 검증) + drawFrame 파생 + 레이어 조립
-         ├─ RevealLayer        ← faint 리빌 → develop (+prewash/outro/edgeFeather/parallax)
+         ├─ RevealLayer        ← 기본 brush/pen 리빌 → integrated develop
+         ├─ DrawingPhaseLayer  ← pen outline → brush paint 2단계
+         ├─ CosmicRandomBrushLayer ← dark-random 자유 터치 리빌
          ├─ EffectLayer        ← naturalEffects 6종 (seed deterministic)
          ├─ WidgetLayer        ← CardShell + registry 바디 15종
          ├─ TitleLayer         ← 골드 kicker + firstWordColor
@@ -612,9 +641,9 @@
       <tr><td>골든 파리티 (리빌 코어)</td><td>기존 렌더 스틸 5프레임 diff ≤ 2%</td><td><b>0.057~0.174%</b> — 기준의 1/10</td></tr>
       <tr><td>재현성</td><td>동일 프레임 2회 렌더 diff 0</td><td>0.0000% (seed deterministic)</td></tr>
       <tr><td>routes 생성</td><td>커버리지 ≥95% · 스트로크 303±20%</td><td>커버리지 1.0000 · 256개</td></tr>
-      <tr><td>단위 테스트</td><td>—</td><td>vitest 28건 + pytest 43건</td></tr>
-      <tr><td>E2E</td><td>명령 1회 → mp4, 수동 개입 0회</td><td>3모드 전부 통과 (427s/10s/30s)</td></tr>
-      <tr><td>회귀</td><td>골든 3세트(single/multi/widgets) 상시 ≤2%</td><td>매 워크스트림 재확인 통과</td></tr>
+      <tr><td>단위 테스트</td><td>—</td><td>vitest 50건 + pytest 312건</td></tr>
+      <tr><td>E2E</td><td>명령 1회 → mp4, 수동 개입 0회</td><td>내레이션·whisper·TTS·앰비언트 4모드 통과</td></tr>
+      <tr><td>회귀</td><td>핵심 3세트(single/multi/widgets) + dark-random 3세트</td><td>추적 골든 fixture 6세트 유지</td></tr>
     </table></div>
 
     <pre class="code"><span class="cc"># 언제든 재검증</span>

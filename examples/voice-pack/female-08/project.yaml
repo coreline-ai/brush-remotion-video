@@ -12,7 +12,7 @@ background:
   strategy: user-images
   fit: contain
   images:
-    - ../../../assets/storybook/star-seed/scene-01.png
+    - ../../../public/winter-fullcanvas/content.png
 drawing:
   profile: pen-brush
   sync: auto

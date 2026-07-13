@@ -239,3 +239,11 @@
 - **환류** ★: 램프 공식이 바뀌면 vitest 가 즉시 실패해 의식적 갱신을 강제. "저opacity 이펙트는 골든 픽셀이 아니라
   타이밍 단위 테스트로 회귀 방어" 원칙 확립. 회귀 감사 워크플로(골든 실측 + blast-radius + 하위호환)가 픽셀 게이트가
   놓친 클래스를 잡아낸 사례.
+
+## 2026-07-13 · 공개 저장소 배포 완성도 보강
+
+- **발견**: clean snapshot에서 Supertonic 여성 프리뷰 10개가 ignore되어 음성 검증이 실패했고, 예제 24개 중 10개가 로컬·output 자산에 의존했다. 문서의 상대 링크 드리프트, 루트 LICENSE·third-party notice·CI·release gate 부재도 확인했다.
+- **수정**: 프리뷰 10개를 SHA-256 카탈로그와 함께 추적하고, 핵심 pen-brush·pen-sync·voice-pack 예제 5개를 추적 자산으로 독립화했다. 의도적 로컬 예제 5개는 `examples/LOCAL_ASSETS.md`에 복원 계약을 명시했다. `scripts/check-public-tree.py`가 음성·예제·Markdown 링크·`file://` 유출을 검사하며, GitHub Actions와 release checklist·CHANGELOG·LICENSE·THIRD_PARTY_NOTICES를 추가했다.
+- **clean snapshot**: 스테이징 index를 별도 Git 트리로 export해 `PUBLIC TREE PASS voices=10 projects=24 localOnly=5 markdown=76/223`, 예제 preflight `pass=19 localOnly=5 unexpectedFail=0`을 확인했다. 로컬 ignored 파일이 깨진 링크를 가리지 못하도록 tracked tree 기준으로 검사한다.
+- **회귀**: public-tree·voice 10/10·skill catalog 9/9·camera catalog 37/9/96/12·schema sync·skill quick validate 9/9·typecheck·Vitest 50/50·Pytest 312/312·`git diff --check` PASS. BGM은 자산 14/14·E2E 4/4 PASS이지만 `listening-approval.json` 미작성으로 사람 청취 승인을 의도적으로 false로 유지했다.
+- **보존**: 동시 제작 중인 untracked `assets/storybook/*-v1/` 4개는 수정·스테이징·삭제하지 않았다.

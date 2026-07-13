@@ -1,5 +1,5 @@
 // 씬 조립 — routes 데이터 로드와 타임라인 파생만 하고, 그리기는 레이어에 위임한다.
-// 레이어 순서: 종이 배경 → RevealLayer(z10) → CursorLayer(z30). (연출 레이어는 다음 워크스트림에서 추가)
+// 레이어 순서: 종이 → 단일/다단계/랜덤 reveal → effect → cursor → widget/title/subtitle.
 import React, { useEffect, useMemo, useState } from "react";
 import { AbsoluteFill, continueRender, delayRender, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { buildDynamicStrokes } from "../lib/dynamics";

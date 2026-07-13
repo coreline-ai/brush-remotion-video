@@ -4,7 +4,7 @@ title: 선에서 색으로
 background:
   strategy: user-images
   images:
-    - ../../public/pen-brush-demo/source.png
+    - ../../public/winter-fullcanvas/content.png
 drawing:
   profile: pen-brush
   sync: auto
