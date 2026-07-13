@@ -8,6 +8,35 @@ import type { Brush, Stroke } from "../schema";
 
 export type PenPose = { x: number; y: number; angle: number };
 
+const DEFAULT_PEN_SRC = "brush-draw/pen.svg";
+const DEFAULT_PEN_VIEWBOX = { width: 360, height: 160, tipX: 8, tipY: 80 } as const;
+const DEFAULT_PEN_ROTATION = -132;
+
+export type PenSpriteLayout = {
+  src: string;
+  width: number;
+  height: number;
+  tipx: number;
+  tipy: number;
+  rotationOffset: number;
+};
+
+// kind: pen의 단일 소스는 public/brush-draw/pen.svg다.
+// src/h/tip을 주면 프로젝트별 펜 에셋으로 교체할 수 있고, 생략하면 기본 SVG의 viewBox 비율을 사용한다.
+export function getPenSpriteLayout(brush: Brush): PenSpriteLayout {
+  const width = brush.w ?? 140;
+  const height = brush.h ?? width * DEFAULT_PEN_VIEWBOX.height / DEFAULT_PEN_VIEWBOX.width;
+  const usingDefaultAsset = brush.src == null;
+  return {
+    src: brush.src ?? DEFAULT_PEN_SRC,
+    width,
+    height,
+    tipx: brush.tipx ?? (usingDefaultAsset ? width * DEFAULT_PEN_VIEWBOX.tipX / DEFAULT_PEN_VIEWBOX.width : 0),
+    tipy: brush.tipy ?? (usingDefaultAsset ? height * DEFAULT_PEN_VIEWBOX.tipY / DEFAULT_PEN_VIEWBOX.height : height / 2),
+    rotationOffset: DEFAULT_PEN_ROTATION,
+  };
+}
+
 export function getPenPose(drawFrame: number, strokes: Stroke[], penOff: number, linear = false): PenPose | null {
   if (!strokes.length || drawFrame >= penOff) return null;
   for (const s of strokes) {
@@ -44,21 +73,21 @@ export const CursorLayer: React.FC<Props> = ({ frame, drawFrame, strokes, penInv
     filter: "drop-shadow(0 10px 14px rgba(0,0,0,0.12))",
   };
 
-  // 내장 벡터 펜 — 펜촉이 원점(그리는 지점), 펜대는 우상향. 펜 전용 회전 상수(붓보다 절제된 기울기).
+  // 펜 이미지 커서 — 실제 public 에셋을 사용해 코드와 시각 원본이 어긋나지 않게 한다.
   if (brush.kind === "pen") {
-    const scale = (brush.w ?? 140) / 180;
+    const pen = getPenSpriteLayout(brush);
     const rot = Math.max(-34, Math.min(30, pose.angle * 0.18 - 6)) + Math.sin(frame * 0.42) * 0.7;
     return (
       <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={layerStyle}>
-        <g transform={`translate(${pose.x} ${pose.y}) rotate(${rot}) scale(${scale})`}>
-          <path d="M-12 -26 L-138 -152" stroke="rgba(0,0,0,0.16)" strokeWidth="16" strokeLinecap="round" transform="translate(4 6)" />
-          <path d="M-12 -26 L-136 -150" stroke="#1c1c1c" strokeWidth="14" strokeLinecap="round" />
-          <path d="M-14 -28 L-134 -148" stroke="#3a6df0" strokeWidth="4.5" strokeLinecap="round" opacity="0.85" />
-          <circle cx="-136" cy="-150" r="9" fill="#1c1c1c" />
-          <circle cx="-136" cy="-150" r="4" fill="#3a6df0" opacity="0.9" />
-          <path d="M0 0 L-26 -8 L-8 -26 Z" fill="#1c1c1c" />
-          <path d="M0 0 L-13 -4 L-4 -13 Z" fill="#4a4a4a" />
-          <path d="M-80 -60 L-118 -98" stroke="#9a9a9a" strokeWidth="4" strokeLinecap="round" />
+        <g transform={`translate(${pose.x} ${pose.y}) rotate(${rot + pen.rotationOffset})`}>
+          <image
+            href={staticFile(pen.src)}
+            x={-pen.tipx}
+            y={-pen.tipy}
+            width={pen.width}
+            height={pen.height}
+            preserveAspectRatio="xMinYMid meet"
+          />
         </g>
       </svg>
     );

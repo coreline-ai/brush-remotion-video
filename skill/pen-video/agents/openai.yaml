@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pen Video"
+  short_description: "얇고 샤프한 펜 윤곽선을 순차적으로 그리는 영상을 제작합니다."
+  default_prompt: "원본 이미지를 자르지 않는 pen 프로파일로 얇고 정교한 외곽선 영상을 만들고 QA와 audit까지 실행해줘."

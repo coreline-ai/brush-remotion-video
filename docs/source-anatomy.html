@@ -256,6 +256,7 @@
       <div>
         <div class="eyebrow">brush_remotion_video · Anatomy &amp; Rebuild</div>
         <h1>붓이 그리는 영상,<br>해부에서 재설계로</h1>
+        <p class="lede"><b>역사적 초기 설계 스냅샷:</b> 이 문서의 스킬 2종·진행 예정 표기는 2026-07-11 설계 당시 범위입니다. 현재 정식 스킬 9종과 운영 상태는 프로젝트 README와 <code>skill/catalog.json</code>을 기준으로 합니다.</p>
         <p class="lede">
           SRT 자막과 더빙 음성만 넣으면, 흰 종이 위에 붓이 그림을 그리는 영상이 자동으로 만들어집니다.
           이 페이지는 참조 시스템(new-video-gen)의 <b>그려지는 원리 → 파이프라인 → 렌더 구조 → 위젯 → 데이터</b>를
@@ -852,7 +853,7 @@
 ├─ pipeline/brushvid/        routes · background · cues · stt · layout · audio · props · render · qa
 ├─ bin/build.py              ★ 단일 진입점 — project.yaml → mp4 + QA
 ├─ tests/golden/             기준 스틸 + diff.py (픽셀 오차 임계 2%)
-└─ skill/                    얇은 스킬 2종 (brush-video · qa-review) — 코드 사본 0</div>
+└─ skill/                    초기 설계 당시 얇은 스킬 2종 — 현재는 catalog 기반 9종, 코드 사본 0</div>
 
     <pre class="code"><span class="cc"># project.yaml — 최종 사용자 경험: 이 파일 하나로 영상 완성</span>
 <span class="ck">projectId</span>: <span class="cs">my-video</span>
@@ -927,7 +928,7 @@
       <div class="stage-n">6</div>
       <div class="stage-body">
         <div class="stage-top"><h3>스킬 재패키징</h3><span class="tag t-green">드리프트 원천 차단</span></div>
-        <p>얇은 스킬 2종(brush-video · qa-review) 설치, QA 스킬은 capture-manifest 계약을 새 리포 기준으로 재작성,
+        <p>초기 설계 당시 얇은 스킬 2종(brush-video · qa-review) 설치. 현재는 동일 원칙으로 9종까지 확장됐으며, QA 스킬은 capture-manifest 계약을 새 리포 기준으로 재작성,
            구 brush-draw-reveal 스킬은 deprecated 표기.</p>
         <div class="stage-io"><span>게이트:</span><span class="chip">스킬 내 코드 사본 0개 (find로 강제)</span><span class="chip">새 세션 E2E</span></div>
       </div>

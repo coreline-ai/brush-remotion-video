@@ -41,6 +41,72 @@ export const RoutesDataSchema = z.object({
   strokes: z.array(StrokeSchema),
 });
 
+// ---------- cosmic-random-brush routes JSON ----------
+// 기존 2D point routes 계약을 느슨하게 바꾸지 않고 별도 schema로 격리한다.
+
+export const RandomTouchPointSchema = z.tuple([
+  z.number(), z.number(), z.number().min(0).max(1),
+]);
+
+export const RandomTouchStrokeSchema = z.object({
+  id: z.string(),
+  kind: z.literal("random-touch"),
+  width: z.number().min(230).max(365),
+  start: fractionalFrame,
+  end: fractionalFrame,
+  opacity: z.number().min(0).max(1),
+  dryness: z.number().min(0).max(1),
+  points: z.array(RandomTouchPointSchema).min(2),
+});
+
+export const RandomTouchRoutesMetaSchema = z.object({
+  family: z.literal("free-random-touch"),
+  image: z.string(),
+  width: z.number().positive(),
+  height: z.number().positive(),
+  fps: z.literal(30),
+  durationInFrames: z.literal(300),
+  drawStart: fractionalFrame,
+  drawEnd: fractionalFrame,
+  settleStart: fractionalFrame,
+  settleEnd: fractionalFrame,
+  brushInvisibleAfter: fractionalFrame,
+  strokeCount: z.number().int().min(37).max(56),
+  baseStrokeCount: z.literal(36),
+  coverageStrokeCount: z.number().int().min(1).max(20),
+  targetMaskCoverage: z.number().min(0.991).max(1),
+  maskCoverage: z.number().min(0.991).max(1),
+  contentAnalysisVersion: z.literal("luma-chroma-v1").optional(),
+  visibleContentFraction: z.number().min(0.001).max(1).optional(),
+  visibleContentCoverage: z.number().min(0.985).max(1).optional(),
+  brushWidthRange: z.tuple([z.number().min(230).max(365), z.number().min(230).max(365)]),
+  meanCenterJump: z.number().min(650),
+  maxCenterJump: z.number().min(1200),
+  seed: z.number().int(),
+  deterministic: z.literal(true),
+}).superRefine((meta, ctx) => {
+  if (meta.strokeCount !== meta.baseStrokeCount + meta.coverageStrokeCount) {
+    ctx.addIssue({code: z.ZodIssueCode.custom, path: ["strokeCount"],
+      message: "strokeCount는 baseStrokeCount + coverageStrokeCount여야 함"});
+  }
+  if (!(meta.drawStart < meta.drawEnd && meta.drawEnd <= meta.brushInvisibleAfter
+        && meta.brushInvisibleAfter < meta.settleStart && meta.settleStart < meta.settleEnd
+        && meta.settleEnd < meta.durationInFrames)) {
+    ctx.addIssue({code: z.ZodIssueCode.custom,
+      message: "random touch timing 순서가 올바르지 않음"});
+  }
+});
+
+export const RandomTouchRoutesDataSchema = z.object({
+  meta: RandomTouchRoutesMetaSchema,
+  strokes: z.array(RandomTouchStrokeSchema),
+}).superRefine((data, ctx) => {
+  if (data.strokes.length !== data.meta.strokeCount) {
+    ctx.addIssue({code: z.ZodIssueCode.custom, path: ["strokes"],
+      message: "strokes 길이는 meta.strokeCount와 같아야 함"});
+  }
+});
+
 // ---------- 씬 구성 요소 ----------
 
 export const CueSchema = z.object({
@@ -84,6 +150,7 @@ export const TopTitleSchema = z.object({
   enterAt: frame.default(0),
   accent: z.string().optional(),
   firstWordColor: z.string().optional(), // 배경에서 추출한 인상색
+  color: z.string().optional(), // 다크 프로파일용 제목 본문색
   fontSize: z.number().optional(),
   kickerFontSize: z.number().optional(),
   wash: z.boolean().default(false),
@@ -108,6 +175,25 @@ export const NaturalEffectsSchema = z.object({
   seed: z.number().int().default(1),
   endFadeOpacity: z.number().min(0).max(1).optional(),
 });
+
+export const DrawingPhaseSchema = z
+  .object({
+    kind: z.enum(["outline", "paint"]),
+    routes: z.string().min(1),
+    cursor: BrushSchema.optional(),
+    zIndex: z.number().int().default(10),
+    edgeFeather: z.number().min(0).default(0),
+    fadeOutFrom: frame.optional(),
+    fadeOutTo: frame.optional(),
+  })
+  .superRefine((phase, ctx) => {
+    if ((phase.fadeOutFrom == null) !== (phase.fadeOutTo == null)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "fadeOutFrom/fadeOutTo는 함께 지정해야 함" });
+    }
+    if (phase.fadeOutFrom != null && phase.fadeOutTo != null && phase.fadeOutTo <= phase.fadeOutFrom) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "fadeOutTo는 fadeOutFrom보다 커야 함" });
+    }
+  });
 
 // ---------- 위젯 (단일 registry 핵심 15종 — strict union: 타입별 필드 혼입은 parse 거부) ----------
 
@@ -150,6 +236,7 @@ export const WidgetSchema = z.discriminatedUnion("type", [
 export const SceneSchema = z.object({
   id: z.string().min(1),
   routes: z.string().optional(), // routes JSON 경로 (public/ 기준). 없으면 렌더가 명시적 에러 표시
+  drawingPhases: z.array(DrawingPhaseSchema).length(2).optional(),
   durationInFrames: z.number().int().positive(),
 
   // 리빌 튜닝 — 기본값은 참조 시스템의 튜닝 결과를 채택
@@ -157,11 +244,21 @@ export const SceneSchema = z.object({
   edgeFeather: z.number().min(0).default(0), // 리빌 가장자리 blur(px). 0=하드
   linearDraw: z.boolean().default(false), // true면 이징 없이 등속 드로잉
   developFrames: frame.optional(), // 미지정 시 penInvisibleAfter→duration 구간 사용
+  completionMode: z.enum(["develop", "masked-hold", "integrated-develop"]).default("develop"),
+  // 전체 이미지가 채워진 뒤 채도·대비만 천천히 정착시키는 시간.
+  // 누락 영역 채움과 색 보정을 분리해 완성 순간의 밝기 펄스를 방지한다.
+  colorSettleFrames: frame.default(36),
+
+  // 드로잉 아래에 유지되는 희미한 원본 가이드. 첫 정지 프레임이 빈 종이만 보이지 않게 한다.
+  previewOpacity: z.number().min(0).max(1).default(0),
 
   // prewash (씬 시작 시 흐린 원본 예고)
   prewashOpacity: z.number().min(0).max(1).default(0),
   prewashFrames: frame.default(0),
   prewashHoldFrames: frame.default(6),
+  // 0이면 기존 prewashFrames 전체를 hold+fade에 사용한다. 양수이면
+  // prewashFrames는 드로잉 지연, 이 값은 재생 시작 직후 fade-out 길이다.
+  prewashFadeOutFrames: frame.default(0),
   prewashBlur: z.number().min(0).default(12),
 
   // outro (씬 끝 종이 dissolve)
@@ -175,6 +272,15 @@ export const SceneSchema = z.object({
   subtitleStyle: SubtitleStyleSchema.optional(),
   naturalEffects: NaturalEffectsSchema.optional(),
   widgets: z.array(WidgetSchema).default([]),
+}).superRefine((scene, ctx) => {
+  if (scene.drawingPhases) {
+    if (scene.drawingPhases[0]?.kind !== "outline" || scene.drawingPhases[1]?.kind !== "paint") {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["drawingPhases"],
+        message: "drawingPhases는 outline → paint 정확히 2단계여야 함" });
+    }
+  } else if (!scene.routes) {
+    // 기존 렌더의 화면 내 오류 표시는 유지하되, props 계약에서는 누락을 허용한다.
+  }
 });
 
 // ---------- 프로젝트 전체 (render-props) ----------
@@ -192,12 +298,16 @@ export const RenderPropsSchema = z.object({
 
 export type Stroke = z.infer<typeof StrokeSchema>;
 export type RoutesData = z.infer<typeof RoutesDataSchema>;
+export type RandomTouchPoint = z.infer<typeof RandomTouchPointSchema>;
+export type RandomTouchStroke = z.infer<typeof RandomTouchStrokeSchema>;
+export type RandomTouchRoutesData = z.infer<typeof RandomTouchRoutesDataSchema>;
 export type Cue = z.infer<typeof CueSchema>;
 export type Brush = z.infer<typeof BrushSchema>;
 export type BrushDynamics = z.infer<typeof BrushDynamicsSchema>;
 export type TopTitle = z.infer<typeof TopTitleSchema>;
 export type SubtitleStyle = z.infer<typeof SubtitleStyleSchema>;
 export type NaturalEffects = z.infer<typeof NaturalEffectsSchema>;
+export type DrawingPhase = z.infer<typeof DrawingPhaseSchema>;
 export type Scene = z.infer<typeof SceneSchema>;
 export type RenderProps = z.infer<typeof RenderPropsSchema>;
 export type Widget = z.infer<typeof WidgetSchema>;

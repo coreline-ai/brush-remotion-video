@@ -1,0 +1,107 @@
+import React, { useEffect, useState } from "react";
+import { AbsoluteFill, continueRender, delayRender, interpolate, staticFile } from "remotion";
+import { clamp } from "../lib/easing";
+import { RoutesDataSchema, type Brush, type DrawingPhase, type RoutesData } from "../schema";
+import { CursorLayer } from "./CursorLayer";
+import { ProgressiveRevealLayer } from "./ProgressiveRevealLayer";
+
+export function phaseOpacity(frame: number, phase: DrawingPhase): number {
+  if (phase.fadeOutFrom == null || phase.fadeOutTo == null) return 1;
+  return interpolate(frame, [phase.fadeOutFrom, phase.fadeOutTo], [1, 0], clamp);
+}
+
+export function phaseOutroOpacity(
+  frame: number,
+  durationInFrames: number,
+  outroFadeFrames: number,
+  outroWashOpacity: number,
+): number {
+  const frames = Math.max(0, Math.round(outroFadeFrames));
+  if (frames === 0) return 0;
+  const end = Math.max(0, durationInFrames - 1);
+  const progress = interpolate(frame, [Math.max(0, durationInFrames - frames), end], [0, 1], clamp);
+  return Math.min(1, Math.max(0, progress * outroWashOpacity));
+}
+
+type Props = {
+  sceneId: string;
+  phases: DrawingPhase[];
+  frame: number;
+  W: number;
+  H: number;
+  fallbackBrush?: Brush;
+  outroFadeFrames?: number;
+  outroWashOpacity?: number;
+  outroBlur?: number;
+};
+
+/** outline과 paint route/image를 한 번에 로드·decode한 뒤 독립 커서로 재생한다. */
+export const DrawingPhaseLayer: React.FC<Props> = ({
+  sceneId, phases, frame, W, H, fallbackBrush,
+  outroFadeFrames = 0, outroWashOpacity = 0.88, outroBlur = 0,
+}) => {
+  const [data, setData] = useState<RoutesData[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [handle] = useState(() => delayRender(`drawing-phases:${phases.map((p) => p.routes).join("|")}`));
+
+  useEffect(() => {
+    let alive = true;
+    Promise.all(phases.map(async (phase) => {
+      const response = await fetch(staticFile(phase.routes));
+      if (!response.ok) throw new Error(`${phase.kind}:${phase.routes}: HTTP ${response.status}`);
+      const parsed = RoutesDataSchema.parse(await response.json());
+      parsed.strokes.sort((a, b) => a.start - b.start);
+      const image = new Image();
+      image.decoding = "sync";
+      image.src = staticFile(parsed.meta.image);
+      await image.decode();
+      return parsed;
+    })).then((loaded) => {
+      if (alive) setData(loaded);
+      continueRender(handle);
+    }).catch((reason: unknown) => {
+      if (alive) setError(String(reason));
+      continueRender(handle);
+    });
+    return () => { alive = false; };
+  }, [handle, phases]);
+
+  if (error) {
+    return <div style={{ zIndex: 90, color: "#b45a4a", fontFamily: "monospace", fontSize: 28,
+      position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      drawingPhases 로드 실패 — scene={sceneId} — {error}
+    </div>;
+  }
+  if (!data) return null;
+
+  const outroOpacity = phaseOutroOpacity(
+    frame,
+    data[0]?.meta.durationInFrames ?? 0,
+    outroFadeFrames,
+    outroWashOpacity,
+  );
+
+  return <>
+    {phases.map((phase, index) => {
+      const routes = data[index];
+      const opacity = phaseOpacity(frame, phase);
+      return <React.Fragment key={`${phase.kind}:${phase.routes}`}>
+        <ProgressiveRevealLayer image={routes.meta.image} strokes={routes.strokes} frame={frame}
+          W={W} H={H} zIndex={phase.zIndex} opacity={opacity} edgeFeather={phase.edgeFeather} />
+        {opacity > 0 && <CursorLayer frame={frame} drawFrame={frame} strokes={routes.strokes}
+          penInvisibleAfter={routes.meta.penInvisibleAfter} linearDraw={true}
+          brush={phase.cursor ?? fallbackBrush} W={W} H={H} />}
+      </React.Fragment>;
+    })}
+    {outroOpacity > 0.001 && (
+      <AbsoluteFill style={{
+        zIndex: 80,
+        pointerEvents: "none",
+        opacity: outroOpacity,
+        background:
+          "radial-gradient(circle at 22% 18%, rgba(255,255,255,0.90), rgba(251,250,246,0.72) 36%, transparent 62%), linear-gradient(180deg, rgba(255,255,253,0.96), rgba(248,245,237,0.98))",
+        backdropFilter: outroBlur > 0 ? `blur(${outroBlur}px)` : undefined,
+      }} />
+    )}
+  </>;
+};

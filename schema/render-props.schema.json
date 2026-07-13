@@ -87,6 +87,51 @@
               "routes": {
                 "type": "string"
               },
+              "drawingPhases": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "outline",
+                        "paint"
+                      ]
+                    },
+                    "routes": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "cursor": {
+                      "$ref": "#/definitions/RenderProps/properties/brush"
+                    },
+                    "zIndex": {
+                      "type": "integer",
+                      "default": 10
+                    },
+                    "edgeFeather": {
+                      "type": "number",
+                      "minimum": 0,
+                      "default": 0
+                    },
+                    "fadeOutFrom": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "fadeOutTo": {
+                      "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/drawingPhases/items/properties/fadeOutFrom"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "routes"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
               "durationInFrames": {
                 "type": "integer",
                 "exclusiveMinimum": 0
@@ -107,8 +152,26 @@
                 "default": false
               },
               "developFrames": {
-                "type": "integer",
-                "minimum": 0
+                "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/drawingPhases/items/properties/fadeOutFrom"
+              },
+              "completionMode": {
+                "type": "string",
+                "enum": [
+                  "develop",
+                  "masked-hold",
+                  "integrated-develop"
+                ],
+                "default": "develop"
+              },
+              "colorSettleFrames": {
+                "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/drawingPhases/items/properties/fadeOutFrom",
+                "default": 36
+              },
+              "previewOpacity": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "default": 0
               },
               "prewashOpacity": {
                 "type": "number",
@@ -117,12 +180,16 @@
                 "default": 0
               },
               "prewashFrames": {
-                "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/developFrames",
+                "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/drawingPhases/items/properties/fadeOutFrom",
                 "default": 0
               },
               "prewashHoldFrames": {
-                "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/developFrames",
+                "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/drawingPhases/items/properties/fadeOutFrom",
                 "default": 6
+              },
+              "prewashFadeOutFrames": {
+                "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/drawingPhases/items/properties/fadeOutFrom",
+                "default": 0
               },
               "prewashBlur": {
                 "type": "number",
@@ -130,7 +197,7 @@
                 "default": 12
               },
               "outroFadeFrames": {
-                "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/developFrames",
+                "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/drawingPhases/items/properties/fadeOutFrom",
                 "default": 0
               },
               "outroWashOpacity": {
@@ -192,10 +259,10 @@
                       "minLength": 1
                     },
                     "from": {
-                      "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/developFrames"
+                      "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/drawingPhases/items/properties/fadeOutFrom"
                     },
                     "to": {
-                      "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/developFrames"
+                      "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/drawingPhases/items/properties/fadeOutFrom"
                     }
                   },
                   "required": [
@@ -240,13 +307,16 @@
                     "default": "left"
                   },
                   "enterAt": {
-                    "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/developFrames",
+                    "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/drawingPhases/items/properties/fadeOutFrom",
                     "default": 0
                   },
                   "accent": {
                     "type": "string"
                   },
                   "firstWordColor": {
+                    "type": "string"
+                  },
+                  "color": {
                     "type": "string"
                   },
                   "fontSize": {
@@ -363,7 +433,7 @@
                           "exclusiveMinimum": 0
                         },
                         "enterAt": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/developFrames",
+                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/drawingPhases/items/properties/fadeOutFrom",
                           "default": 0
                         },
                         "title": {

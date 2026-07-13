@@ -1,0 +1,22 @@
+projectId: voice-pack-female-09-pen
+format: youtube
+input:
+  script: narration.txt
+  tts:
+    engine: supertonic
+    voice: female-09
+    speed: 1.10
+    pauseMs: 350
+    timing: tts
+background:
+  strategy: preset
+drawing:
+  profile: pen
+  preserveSource: true
+  sync: auto
+bgm:
+  mode: synth
+  gainDb: 3
+  ducking:
+    enabled: true
+    amountDb: 8

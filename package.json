@@ -7,6 +7,7 @@
     "render": "remotion render src/index.ts",
     "compositions": "remotion compositions src/index.ts",
     "export-schema": "tsx scripts/export-schema.ts",
+    "check-schema": "tsx scripts/check-schema.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

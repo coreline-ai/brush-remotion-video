@@ -1,0 +1,27 @@
+projectId: pen-brush-local-bgm-demo
+format: youtube
+title: 선에서 색으로
+background:
+  strategy: user-images
+  images:
+    - ../../public/pen-brush-demo/source.png
+    - ../../public/pen-brush-demo/source.png
+    - ../../public/pen-brush-demo/source.png
+drawing:
+  profile: pen-brush
+  sync: auto
+ambient:
+  scenes: 3
+  cues:
+    - 외곽선을 따라 그리고 색을 채웁니다
+    - 펜 선이 완성되면 브러시가 색을 채웁니다
+    - 완성된 그림과 음악의 여운을 감상합니다
+bgm:
+  mode: asset
+  assetId: youtube-jesse-gallagher-satya-yuga
+  gainDb: 5.0
+  fadeInSec: 1.8
+  fadeOutSec: 2.0
+  licensePolicy: strict
+widgets: none
+seed: 20260712

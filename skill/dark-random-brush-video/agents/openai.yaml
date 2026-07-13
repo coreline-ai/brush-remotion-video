@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dark Random Brush Video"
+  short_description: "어두운 16:9 이미지를 자유 랜덤 붓 터치 영상으로 제작합니다."
+  default_prompt: "우주·심해·야간 등 어두운 16:9 이미지 1/6/60씬을 dark-random-brush 프로파일로 영상화하고 coverage와 audit까지 검증해줘."

@@ -1,0 +1,14 @@
+{
+  "scene": 1,
+  "title": "지구 궤도 일출",
+  "file": "examples/cosmic-fullscreen-v05/assets/scene-01.png",
+  "source": "/Users/hwanchoi/.codex/generated_images/019f53e5-ba65-7c72-b571-a03932e87ef0/exec-8162be1d-4b0a-4362-9987-e2927d553819.png",
+  "sourceWidth": 1672,
+  "sourceHeight": 941,
+  "ratioError": 0.00053135,
+  "width": 1920,
+  "height": 1080,
+  "sha256": "90cf59386e93a8dfc8968bdecf5604366613bdf247789c454e2c2dc2e0db1ac4",
+  "cropApplied": false,
+  "fullBleed": true
+}

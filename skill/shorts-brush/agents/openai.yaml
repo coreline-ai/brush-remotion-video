@@ -1,0 +1,4 @@
+interface:
+  display_name: "Shorts Brush"
+  short_description: "세로 풀블리드 힐링 브러시 쇼츠를 제작합니다."
+  default_prompt: "1080×1920 세로 화면과 안전 자막 영역을 지키는 힐링 브러시 쇼츠를 만들고 전환·오디오·audit까지 검증해줘."

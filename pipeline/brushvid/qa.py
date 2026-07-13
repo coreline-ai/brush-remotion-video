@@ -9,11 +9,199 @@ import logging
 import subprocess
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageStat
 
+from .public_assets import public_roots_for_props, scoped_public_dir
 from .render import ENTRY, REPO_ROOT
 
 log = logging.getLogger(__name__)
+
+
+def completion_timing(scene: dict, routes: dict) -> dict:
+    """integrated-develop 씬의 실제 완료 구간을 props+routes에서 계산한다."""
+    strokes = routes.get("strokes") or []
+    meta = routes.get("meta") or {}
+    last_end = max((float(s.get("end", 0)) for s in strokes),
+                   default=float(meta.get("drawEnd", 0)))
+    develop = int(scene.get("developFrames", 0))
+    settle = int(scene.get("colorSettleFrames", 0))
+    duration = int(scene["durationInFrames"])
+    outro = int(scene.get("outroFadeFrames", 0))
+    return {
+        "sceneId": scene.get("id", "<scene>"),
+        "drawStart": round(float(meta.get("drawStart", 0)), 2),
+        "lastStrokeEnd": round(last_end, 2),
+        "developEnd": round(last_end + develop, 2),
+        "colorSettleEnd": round(last_end + develop + settle, 2),
+        "outroStart": duration - outro,
+        "durationInFrames": duration,
+    }
+
+
+def completion_sample_frames(timing: dict) -> list[tuple[str, int]]:
+    """완료 전후를 대표하는 로컬 프레임. outro/빈 종이는 선택하지 않는다."""
+    last = float(timing["lastStrokeEnd"])
+    develop_end = float(timing["developEnd"])
+    settle_end = float(timing["colorSettleEnd"])
+    outro_start = int(timing["outroStart"])
+    hold = min(outro_start - 2, max(round(settle_end) + 2, round(settle_end)))
+    raw = [
+        ("draw-end", round(last)),
+        ("develop-mid", round((last + develop_end) / 2)),
+        ("develop-end", round(develop_end)),
+        ("settle-mid", round((develop_end + settle_end) / 2)),
+        ("settle-end", round(settle_end)),
+        ("hold", hold),
+    ]
+    # 0프레임 구간이나 반올림 중복은 첫 레이블을 유지한다.
+    out: list[tuple[str, int]] = []
+    seen: set[int] = set()
+    for label, frame in raw:
+        frame = max(0, min(int(timing["durationInFrames"]) - 1, frame))
+        if frame not in seen:
+            out.append((label, frame))
+            seen.add(frame)
+    return out
+
+
+def _frame_color_metrics(path: Path) -> tuple[float, float]:
+    im = Image.open(path).convert("RGB")
+    lum = ImageStat.Stat(im.convert("L")).mean[0] / 255.0
+    sat = ImageStat.Stat(im.convert("HSV").getchannel("S")).mean[0] / 255.0
+    return float(lum), float(sat)
+
+
+def write_completion_report(out_path: str | Path, *, timings: list[dict],
+                            entries: list[dict], qa_dir: str | Path,
+                            luma_tolerance: float = 0.008,
+                            saturation_tolerance: float = 0.01) -> dict:
+    """캡처된 완료 프레임의 밝기 역전·채도 역전을 판정한다."""
+    qa_dir = Path(qa_dir)
+    by_frame = {int(e["frame"]): e for e in entries}
+    scenes = []
+    for timing in timings:
+        samples = []
+        for item in timing.get("samples", []):
+            entry = by_frame.get(int(item["frame"]))
+            if entry is None:
+                continue
+            lum, sat = _frame_color_metrics(qa_dir / entry["file"])
+            samples.append({"label": item["label"], "frame": int(item["frame"]),
+                            "luma": round(lum, 6), "saturation": round(sat, 6)})
+        lumas = [s["luma"] for s in samples]
+        sats = [s["saturation"] for s in samples]
+        overall = (lumas[-1] - lumas[0]) if len(lumas) > 1 else 0.0
+        direction = -1 if overall < -luma_tolerance else (1 if overall > luma_tolerance else 0)
+        if direction < 0:
+            luma_ok = all(b <= a + luma_tolerance for a, b in zip(lumas, lumas[1:]))
+        elif direction > 0:
+            luma_ok = all(b >= a - luma_tolerance for a, b in zip(lumas, lumas[1:]))
+        else:
+            luma_ok = (max(lumas, default=0) - min(lumas, default=0)) <= luma_tolerance * 2
+        saturation_ok = all(b >= a - saturation_tolerance for a, b in zip(sats, sats[1:]))
+        scenes.append({**{k: v for k, v in timing.items() if k != "samples"},
+                       "samples": samples, "lumaMonotonic": luma_ok,
+                       "saturationMonotonic": saturation_ok,
+                       "pass": bool(len(samples) >= 3 and luma_ok and saturation_ok)})
+    payload = {"schemaVersion": 1, "scenes": scenes,
+               "summary": {"passed": sum(s["pass"] for s in scenes),
+                           "total": len(scenes),
+                           "pass": bool(scenes and all(s["pass"] for s in scenes))}}
+    out = Path(out_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return payload
+
+
+def write_pen_brush_report(out_path: str | Path, *, project_id: str, scenes: list[dict]) -> dict:
+    """pen-brush 수치 계약을 기계 판정해 JSON으로 저장."""
+    checks = []
+    for scene in scenes:
+        outline = scene["outline"]
+        paint = scene["paint"]
+        timing_ok = (
+            float(outline["drawStart"]) < float(outline["drawEnd"])
+            <= float(paint["drawStart"]) < float(paint["drawEnd"])
+            < float(paint["durationInFrames"])
+        )
+        overlap = max(0.0, float(outline["penInvisibleAfter"]) - float(paint["drawStart"]))
+        checks.append({
+            "sceneId": scene["sceneId"],
+            "outlineCoverage": outline.get("coverage"),
+            "paintCoverage": paint.get("coverage"),
+            "paintMissingPixels": paint.get("missingPixels"),
+            # paint가 outline pen-off 뒤 시작하는 계약이므로 outline 완료 시 색상 레이어 노출은 0.
+            "colorLeakAtOutlineEnd": 0.0 if float(paint["drawStart"]) > float(outline["drawEnd"]) else 1.0,
+            "cursorOverlapFrames": overlap,
+            "phaseTimingValid": timing_ok,
+            "lineThickness": scene.get("lineThickness"),
+            "finalLineThickness": scene.get("finalLineThickness"),
+            "finalLineThicknessDeltaPct": scene.get("finalLineThicknessDeltaPct"),
+            "pass": bool(float(outline.get("coverage", 0)) >= 0.99
+                         and float(paint.get("coverage", 0)) >= 0.9999
+                         and int(paint.get("missingPixels", 1)) == 0
+                         and overlap == 0 and timing_ok
+                         and abs(float(scene.get("finalLineThicknessDeltaPct", 999))) <= 5.0),
+        })
+    result = {"projectId": project_id, "profile": "pen-brush", "pass": all(c["pass"] for c in checks),
+              "scenes": checks}
+    out = Path(out_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    return result
+
+
+def write_cosmic_random_brush_report(out_path: str | Path, *, project_id: str,
+                                     scenes: list[dict]) -> dict:
+    """cosmic-random-brush의 브러싱 방식 불변 조건을 판정한다."""
+    checks = []
+    require_content_coverage = len(scenes) in (6, 60)
+    for scene in scenes:
+        meta = scene["meta"]
+        widths = meta.get("brushWidthRange") or [0, 9999]
+        timing_ok = (
+            36 <= float(meta.get("drawStart", -1)) <= 40
+            and float(meta.get("drawEnd", 999)) <= 210
+            and float(meta.get("drawEnd", 999)) <= float(meta.get("brushInvisibleAfter", -1))
+            < float(meta.get("settleStart", -1)) < float(meta.get("settleEnd", -1)) < 300
+        )
+        item = {
+            "sceneId": scene["sceneId"],
+            "family": meta.get("family"),
+            "strokeCount": meta.get("strokeCount"),
+            "baseStrokeCount": meta.get("baseStrokeCount"),
+            "coverageStrokeCount": meta.get("coverageStrokeCount"),
+            "brushWidthRange": widths,
+            "maskCoverage": meta.get("maskCoverage"),
+            "visibleContentFraction": meta.get("visibleContentFraction"),
+            "visibleContentCoverage": meta.get("visibleContentCoverage"),
+            "contentCoverageRequired": require_content_coverage,
+            "meanCenterJump": meta.get("meanCenterJump"),
+            "maxCenterJump": meta.get("maxCenterJump"),
+            "timingValid": timing_ok,
+            "deterministic": meta.get("deterministic"),
+        }
+        item["pass"] = bool(
+            item["family"] == "free-random-touch"
+            and item["baseStrokeCount"] == 36
+            and 1 <= int(item["coverageStrokeCount"] or 0) <= 20
+            and int(item["strokeCount"] or 0) == 36 + int(item["coverageStrokeCount"] or 0)
+            and float(widths[0]) >= 230 and float(widths[1]) <= 365
+            and float(item["maskCoverage"] or 0) >= 0.991
+            and float(item["meanCenterJump"] or 0) >= 650
+            and float(item["maxCenterJump"] or 0) >= 1200
+            and (not require_content_coverage
+                 or (0.001 <= float(item["visibleContentFraction"] or 0) <= 1
+                     and float(item["visibleContentCoverage"] or 0) >= 0.985))
+            and item["deterministic"] is True and timing_ok
+        )
+        checks.append(item)
+    result = {"projectId": project_id, "profile": "cosmic-random-brush",
+              "pass": all(c["pass"] for c in checks), "scenes": checks}
+    out = Path(out_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    return result
 
 
 def capture_frames(props_path: str | Path, frames: list[int], out_dir: str | Path, *,
@@ -23,17 +211,41 @@ def capture_frames(props_path: str | Path, frames: list[int], out_dir: str | Pat
     out_dir = Path(out_dir).resolve()  # 서브프로세스 cwd(repo_root)와 무관하게 절대 경로 사용
     out_dir.mkdir(parents=True, exist_ok=True)
     entries: list[dict] = []
-    for f in frames:
-        png = out_dir / f"frame-{f:05d}.png"
-        cmd = ["npx", "remotion", "still", ENTRY, composition, str(png),
-               f"--props={Path(props_path).resolve()}", f"--frame={f}"]
+    with scoped_public_dir(props_path, repo_root) as public_dir:
+        roots = ", ".join(p.name for p in public_roots_for_props(props_path, Path(repo_root) / "public"))
+        log.info("QA scoped public: %s", roots or "(empty)")
+        for f in frames:
+            png = out_dir / f"frame-{f:05d}.png"
+            cmd = ["npx", "remotion", "still", ENTRY, composition, str(png),
+                   f"--props={Path(props_path).resolve()}", f"--frame={f}",
+                   f"--public-dir={public_dir}"]
+            log.info("$ %s", " ".join(cmd))
+            subprocess.run(cmd, cwd=str(repo_root), check=True)
+            entries.append({
+                "frame": f,
+                "file": png.name,
+                "label": (labels or {}).get(f, ""),
+            })
+    return entries
+
+
+def capture_video_frames(video_path: str | Path, frames: list[int], out_dir: str | Path, *,
+                         labels: dict[int, str] | None = None, fps: float = 30.0) -> list[dict]:
+    """완성 MP4에서 프레임을 추출한다. 60씬 QA에서 Remotion still 360회를 피한다."""
+    video = Path(video_path).resolve()
+    if not video.is_file():
+        raise FileNotFoundError(video)
+    out_dir = Path(out_dir).resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    entries: list[dict] = []
+    for frame in frames:
+        png = out_dir / f"frame-{frame:05d}.png"
+        cmd = ["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{frame / fps:.6f}",
+               "-i", str(video), "-frames:v", "1", "-vsync", "0", str(png)]
         log.info("$ %s", " ".join(cmd))
-        subprocess.run(cmd, cwd=str(repo_root), check=True)
-        entries.append({
-            "frame": f,
-            "file": png.name,
-            "label": (labels or {}).get(f, ""),
-        })
+        subprocess.run(cmd, check=True)
+        entries.append({"frame": frame, "file": png.name,
+                        "label": (labels or {}).get(frame, "")})
     return entries
 
 

@@ -40,6 +40,16 @@ python3 bin/qa.py <projectId> --frames 120 240   # 특정 프레임 커스텀
    - 드로잉: 커버리지 공백, develop 타이밍, 붓 커서 이상
    - 연출: 자막 싱크/겹침, topTitle 위치·색, 이펙트 과다
    - 위젯: 겹침, 자막 밴드 침범, 여백 <90px
+   - 전환/완성: 씬 경계 잔상 하드컷, develop 밝기 펄스, 결손 프레임 —
+     메커니즘·처방은 [transition-checklist](../_shared/references/transition-checklist.md)
+     (씬 end 캡처와 다음 씬 start 캡처를 나란히 비교하면 A계열이 보인다)
+     일반 brush는 고정 mid/end 대신 draw-end·develop-end·settle-end·hold 캡처와
+     `completion-report.json`의 luma/saturation 단조성도 함께 확인한다.
+   - 오디오: 이어폰·노트북 스피커에서 내레이션 가독성, BGM 과소/과다, 덕킹 펌핑,
+     페이드 시작/종료, playlist 전환의 무음 틈·클릭을 직접 청취한다.
+     `format: youtube|shorts`의 license manifest에 `source: pixabay`가 있으면 즉시 FAIL하고 업로드를 보류한다.
+   - TTS: `data/{projectId}/tts/voice-manifest.json`의 canonical ID, pack/package/model,
+     components, speed, catalog/style SHA-256, AI 합성 음성 고지를 확인한다.
 2. 이슈를 **scene-fix-request JSON**으로 정리한다 — 스키마: [references/scene-fix-request-schema.md](references/scene-fix-request-schema.md)
 3. 수정 적용: 이슈 유형에 따라 `data/{projectId}/props.json`(연출·위젯) 또는
    project.yaml(배경·씬 구성)을 고치고 해당 스테이지부터 재빌드:
@@ -47,6 +57,7 @@ python3 bin/qa.py <projectId> --frames 120 240   # 특정 프레임 커스텀
    ```bash
    python3 bin/build.py <project.yaml> --from render   # props만 고쳤을 때
    python3 bin/build.py <project.yaml> --from routes   # 배경을 다시 그렸을 때
+   python3 bin/build.py <project.yaml> --from mix --audit  # BGM·덕킹만 고쳤을 때
    ```
 
 4. 재빌드 후 bin/qa.py를 다시 실행해 동일 프레임을 재캡처, 수정 전후를 비교한다.

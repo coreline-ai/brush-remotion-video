@@ -1,0 +1,24 @@
+projectId: narration-local-bgm-demo
+format: youtube
+title: 대본에서 영상까지
+input:
+  # 25초 실제 TTS 내레이션 + 35초 무음 감상 구간. 덕킹과 BGM 복귀를 함께 검증한다.
+  srt: narration-60s.srt
+  audio: voice-60s.mp3
+background:
+  strategy: preset
+  subject: a calm creative workflow where script becomes voice and brush painting
+bgm:
+  mode: asset
+  assetId: youtube-jesse-gallagher-satya-yuga
+  gainDb: 3.0
+  fadeInSec: 1.8
+  fadeOutSec: 2.0
+  ducking:
+    enabled: true
+    amountDb: 8.0
+    attackMs: 120
+    releaseMs: 600
+  licensePolicy: strict
+widgets: none
+seed: 42

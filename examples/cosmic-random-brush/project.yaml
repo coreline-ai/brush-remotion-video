@@ -1,0 +1,24 @@
+projectId: cosmic-random-brush-golden
+title: "03. 궤도 위 일출"
+format: youtube
+
+background:
+  strategy: user-images
+  images:
+    - source.png
+  fit: cover
+
+drawing:
+  profile: cosmic-random-brush
+  seed: 260712
+
+ambient:
+  scenes: 1
+  cues:
+    - "빛이 지구의 곡선을 천천히 깨운다"
+
+bgm:
+  mode: synth
+  gainDb: 5
+  fadeInSec: 1.8
+  fadeOutSec: 2.0

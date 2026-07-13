@@ -2,7 +2,7 @@
 // ② 완성 후 전체가 또렷하게 발현(develop)된다. prewash(인트로 예고)와 outro(종이 dissolve)도 담당.
 // 수식·구조는 참조 시스템의 튜닝 결과를 채택 — 임의 변경 시 골든 diff가 깨진다.
 import React, { useId } from "react";
-import { AbsoluteFill, interpolate, staticFile } from "remotion";
+import { AbsoluteFill, Img, interpolate, staticFile } from "remotion";
 import { clamp, easeDevelop, easeTravel, sharedProgress } from "../lib/easing";
 import { toPath, type Point } from "../lib/geometry";
 import type { Scene, Stroke } from "../schema";
@@ -17,43 +17,122 @@ type Props = {
   drawFrame: number; // frame - introDelay (prewash 동안 드로잉 지연)
   W: number;
   H: number;
+  preserveSourceColor?: boolean;
 };
 
-export const RevealLayer: React.FC<Props> = ({ scene, image, strokes, penInvisibleAfter, routesDuration, frame, drawFrame, W, H }) => {
+type RevealTimingInput = Pick<Props, "scene" | "strokes" | "penInvisibleAfter" | "routesDuration">;
+
+export const getRevealTiming = ({ scene, strokes, penInvisibleAfter, routesDuration }: RevealTimingInput) => {
+  const integratedDevelop = scene.completionMode === "integrated-develop";
+  const lastStrokeEnd = strokes.reduce((max, stroke) => Math.max(max, stroke.end), 0);
+  const developStart = integratedDevelop && lastStrokeEnd > 0 ? lastStrokeEnd : penInvisibleAfter;
+  const developEnd = scene.developFrames != null ? developStart + scene.developFrames : routesDuration - 4;
+  return {
+    developStart,
+    developEnd,
+    colorSettleEnd: developEnd + scene.colorSettleFrames,
+  };
+};
+
+type CompletionVisualInput = RevealTimingInput & {drawFrame: number};
+
+const phaseProgress = (frame: number, start: number, end: number, easing: typeof clamp) =>
+  end <= start ? (frame >= end ? 1 : 0) : interpolate(frame, [start, end], [0, 1], easing);
+
+export const getCompletionVisualState = ({
+  scene,
+  strokes,
+  penInvisibleAfter,
+  routesDuration,
+  drawFrame,
+}: CompletionVisualInput) => {
+  const timing = getRevealTiming({scene, strokes, penInvisibleAfter, routesDuration});
+  const integratedDevelop = scene.completionMode === "integrated-develop";
+  const developOpacity = scene.completionMode === "masked-hold"
+    ? 0
+    : phaseProgress(drawFrame, timing.developStart, timing.developEnd,
+                    integratedDevelop ? clamp : easeDevelop);
+  const colorProgress = integratedDevelop
+    ? phaseProgress(drawFrame, timing.developEnd, timing.colorSettleEnd, easeDevelop)
+    : 0;
+  return {
+    ...timing,
+    integratedDevelop,
+    developOpacity,
+    colorProgress,
+    saturation: 1 + colorProgress * 0.12,
+    contrast: 1,
+    brightness: 1,
+    revealOpacity: integratedDevelop
+      ? scene.faint
+      : scene.completionMode === "develop"
+        ? scene.faint * (1 - developOpacity)
+        : scene.faint,
+  };
+};
+
+export const RevealLayer: React.FC<Props> = ({ scene, image, strokes, penInvisibleAfter, routesDuration, frame, drawFrame, W, H, preserveSourceColor = false }) => {
   const patId = `brushpat-${useId().replace(/[:]/g, "")}`;
   const introDelayFrames = frame - drawFrame;
 
+  const explicitFadeOutFrames = Math.min(scene.prewashFadeOutFrames, introDelayFrames);
   const prewashAlpha = introDelayFrames > 0
-    ? interpolate(
-        frame,
-        [0, Math.min(scene.prewashHoldFrames, introDelayFrames), introDelayFrames],
-        [scene.prewashOpacity, scene.prewashOpacity, 0],
-        clamp,
-      )
+    ? explicitFadeOutFrames > 0
+      ? interpolate(frame, [0, explicitFadeOutFrames], [scene.prewashOpacity, 0], clamp)
+      : interpolate(
+          frame,
+          [0, Math.min(scene.prewashHoldFrames, introDelayFrames), introDelayFrames],
+          [scene.prewashOpacity, scene.prewashOpacity, 0],
+          clamp,
+        )
     : 0;
 
-  // develop: 모든 획이 끝난 뒤(penInvisibleAfter) 전체 원본을 또렷하게 페이드 인
-  const dStart = penInvisibleAfter;
-  const dEnd = scene.developFrames != null ? dStart + scene.developFrames : routesDuration - 4;
-  const developOpacity = interpolate(drawFrame, [dStart, dEnd], [0, 1], easeDevelop);
-
-  // develop 후 미세 parallax (naturalEffects.parallaxScale > 1일 때만)
-  const parallaxScale = scene.naturalEffects?.parallaxScale ?? 1;
-  let parallaxTransform = "";
-  if (parallaxScale > 1) {
-    const pStart = dEnd + 4;
-    const pEnd = Math.max(pStart + 1, routesDuration - 12);
-    const p = interpolate(drawFrame, [pStart, pEnd], [0, 1], easeTravel);
-    const scale = 1 + (Math.min(1.03, parallaxScale) - 1) * p;
-    const seed = scene.naturalEffects?.seed ?? 1;
-    const dx = Math.sin((drawFrame + seed * 11) * 0.012) * 5.5 * p;
-    const dy = Math.cos((drawFrame + seed * 7) * 0.010) * 4.5 * p;
-    parallaxTransform = `translate(${W / 2} ${H / 2}) scale(${scale}) translate(${-W / 2 + dx} ${-H / 2 + dy})`;
-  }
+  // integrated-develop는 붓 커서가 사라질 때까지 기다리지 않고 실제 마지막 획이
+  // 끝난 직후 시작한다. 농도 상승 시간을 충분히 확보해 빠른 번쩍임을 방지한다.
+  const completion = getCompletionVisualState({
+    scene,
+    strokes,
+    penInvisibleAfter,
+    routesDuration,
+    drawFrame,
+  });
+  const {
+    integratedDevelop,
+    developEnd: dEnd,
+    colorSettleEnd,
+    developOpacity,
+    revealOpacity,
+  } = completion;
+  // 전체 이미지가 완성된 뒤 밝기는 건드리지 않고 채도·대비만 천천히 깊어진다.
+  const finalColorFilter = `saturate(${preserveSourceColor ? 1 : completion.saturation}) contrast(${completion.contrast}) brightness(${completion.brightness})`;
+  // 첫 정지 프레임부터 장면을 식별할 수 있는 희미한 가이드 이미지.
+  // 동일 이미지의 완성 마스크가 차오를수록 자연스럽게 가려지므로 별도 팝업/교차 페이드가 없다.
+  const previewOpacity = scene.previewOpacity * (1 - developOpacity);
 
   const outroFrames = Math.max(0, Math.round(scene.outroFadeFrames));
+
+  // develop 후 미세 parallax (naturalEffects.parallaxScale > 1일 때만).
+  // 종이 워시가 시작되기 전에는 완전히 멈춰 전환 중 확대·초점 변화가 겹치지 않게 한다.
+  const parallaxScale = scene.naturalEffects?.parallaxScale ?? 1;
+  let parallaxCssTransform = "none";
+  if (parallaxScale > 1) {
+    const pStart = colorSettleEnd + 8;
+    const motionEnd = Math.max(pStart, scene.durationInFrames - outroFrames - 8);
+    const pEnd = Math.max(pStart + 1, Math.min(routesDuration - 12, motionEnd));
+    const motionFrame = Math.min(drawFrame, motionEnd);
+    const p = interpolate(motionFrame, [pStart, pEnd], [0, 1], easeTravel);
+    const scale = 1 + (Math.min(1.03, parallaxScale) - 1) * p;
+    const seed = scene.naturalEffects?.seed ?? 1;
+    const dx = Math.sin((motionFrame + seed * 11) * 0.012) * 5.5 * p;
+    const dy = Math.cos((motionFrame + seed * 7) * 0.010) * 4.5 * p;
+    parallaxCssTransform = `translate(${dx}px, ${dy}px) scale(${scale})`;
+  }
+
+  // Sequence의 실제 마지막 프레임은 durationInFrames - 1이다.
+  // 보간 종점도 마지막 실재 프레임에 맞춰 순수 종이 화면으로 정확히 수렴시킨다.
+  const outroEnd = Math.max(0, scene.durationInFrames - 1);
   const outroAlpha = outroFrames > 0
-    ? interpolate(frame, [Math.max(0, scene.durationInFrames - outroFrames), scene.durationInFrames], [0, 1], easeDevelop)
+    ? interpolate(frame, [Math.max(0, scene.durationInFrames - outroFrames), outroEnd], [0, 1], easeDevelop)
     : 0;
 
   const { faint, edgeFeather, linearDraw } = scene;
@@ -90,9 +169,14 @@ export const RevealLayer: React.FC<Props> = ({ scene, image, strokes, penInvisib
           )}
           {/* edgeFeather: 스트로크를 흰색 마스크로 그리고 마스크에만 블러 —
               이미지 내용은 선명 유지, 리빌 "가장자리만" 붓 질감처럼 부드럽게 */}
-          {edgeFeather > 0 && developOpacity < 0.999 && (
+          {(edgeFeather > 0 || integratedDevelop) && (
             <mask id={`fm-${patId}`} maskUnits="userSpaceOnUse" x="0" y="0" width={W} height={H}>
-              <g filter={`url(#fb-${patId})`}>{strokePaths("mask")}</g>
+              <g filter={edgeFeather > 0 ? `url(#fb-${patId})` : undefined}>{strokePaths("mask")}</g>
+              {/* 통합 develop: 이미 드러난 M=1 영역은 그대로 두고 미커버 영역만
+                  d + M(1-d)로 채운다. 동일 이미지를 두 번 합성하지 않는다. */}
+              {integratedDevelop && (
+                <rect x="0" y="0" width={W} height={H} fill="#fff" opacity={developOpacity} />
+              )}
             </mask>
           )}
           {edgeFeather > 0 && (
@@ -108,27 +192,46 @@ export const RevealLayer: React.FC<Props> = ({ scene, image, strokes, penInvisib
             filter={scene.prewashBlur > 0 ? `url(#pw-${patId})` : undefined} />
         )}
 
-        {/* 1단계 faint 리빌 — develop이 사실상 1.0에 도달한 뒤에만 생략(렌더 부하↓).
-            주의: 0.92처럼 이르게 내리면 합성 불투명도가 한 프레임에 뚝 떨어져 "번쩍"이 생긴다
-            (FIELD-LOG 2026-07-11 city-watercolor develop 스파이크 사례 — 어두운 씬일수록 체감 큼) */}
-        {developOpacity < 0.999 && (
-          edgeFeather > 0 ? (
-            <rect x="0" y="0" width={W} height={H} fill={`url(#${patId})`} mask={`url(#fm-${patId})`} opacity={faint} />
-          ) : (
-            <g opacity={faint}>{strokePaths("pattern")}</g>
-          )
+        {/* preview underlay: 펜이 시작되기 전에도 빈 종이 대신 장면의 희미한 실루엣을 보여준다. */}
+        {previewOpacity > 0.001 && (
+          <rect x="0" y="0" width={W} height={H} fill={`url(#${patId})`} opacity={previewOpacity} />
         )}
 
-        {/* 2단계 develop — 전체 이미지가 또렷하게 발현 (parallax 시 image 직접 변환) */}
-        {developOpacity > 0.001 && (
-          // 고밀도 반투명 RGBA는 Chromium에서 pattern rect나 transform 없는 image가
-          // 완성 프레임에 사라질 수 있다. identity transform으로 SVG 합성 경로를 강제한다.
-          <g transform={parallaxScale > 1 ? parallaxTransform || "translate(0 0)" : "translate(0 0)"}
-            opacity={developOpacity}>
-            <image href={staticFile(image)} x="0" y="0" width={W} height={H} preserveAspectRatio="none" />
-          </g>
+        {/* 1단계 faint 리빌 — masked-hold는 마지막 스트로크 상태를 그대로 유지한다.
+            integrated-develop는 같은 마스크 안에서 누락 부분만 100%로 채운다.
+            동일 RGBA 이미지를 두 레이어로 교차합성하면 중간 알파가 낮아져 밝기 펄스가 생기므로
+            펜 프로필에서는 develop 레이어를 사용하지 않는다.
+            완성 프레임에서 mask/rect를 언마운트하면 병렬 Chromium의 SVG paint가 무효화되어
+            종이만 캡처될 수 있으므로 전체 렌더 동안 DOM 구조를 고정한다. */}
+        {(edgeFeather > 0 || integratedDevelop) ? (
+          <rect x="0" y="0" width={W} height={H} fill={`url(#${patId})`} mask={`url(#fm-${patId})`}
+            opacity={revealOpacity}
+            style={{ filter: integratedDevelop ? finalColorFilter : undefined }} />
+        ) : (
+          <g opacity={faint * (1 - developOpacity)}>{strokePaths("pattern")}</g>
         )}
+
       </svg>
+
+      {/* 2단계 develop — develop 모드에서만 보인다. masked-hold에서는 opacity 0으로 유지한다.
+          SVG <image> 대신 Remotion <Img>를 사용한다.
+          Img는 이미지 로딩을 delayRender에 연결하므로 병렬 Chromium이 decode/paint 전에
+          프레임을 캡처하지 않는다. frame 0부터 상시 마운트해 DOM 교체도 없앤다. */}
+      <Img
+        src={staticFile(image)}
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 10,
+          width: W,
+          height: H,
+          objectFit: "fill",
+          opacity: scene.completionMode === "develop" ? developOpacity : 0,
+          transform: parallaxScale > 1 ? parallaxCssTransform : "none",
+          transformOrigin: "center center",
+          pointerEvents: "none",
+        }}
+      />
 
       {/* outro: 씬 끝 종이 dissolve */}
       {outroAlpha > 0.001 && (

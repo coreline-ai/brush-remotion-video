@@ -1,0 +1,26 @@
+projectId: long-local-bgm-playlist-demo
+format: youtube
+title: 천천히 흐르는 풍경
+background:
+  strategy: preset
+  subject: peaceful watercolor landscapes
+ambient:
+  scenes: 61
+  cues:
+    - 천천히 흐르는 시간
+    - 고요 속에서 색이 번진다
+    - 풍경은 서두르지 않는다
+bgm:
+  mode: playlist
+  playlist:
+    assetIds:
+      - youtube-chris-zabriskie-fight-for-your-honor
+      - youtube-chris-zabriskie-chance-luck-finale
+      - youtube-jesse-gallagher-satya-yuga
+    crossfadeSec: 3.0
+  gainDb: 5.0
+  fadeInSec: 1.8
+  fadeOutSec: 2.0
+  licensePolicy: strict
+widgets: none
+seed: 20260712

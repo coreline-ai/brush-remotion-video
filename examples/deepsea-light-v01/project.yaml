@@ -1,0 +1,141 @@
+projectId: deepsea-light-v01-60
+title: "심해의 빛｜붓끝으로 드러나는 60개의 바다 풍경"
+format: youtube
+background:
+  strategy: user-images
+  fit: cover
+  images:
+    - assets-ink-v1/scene-01.png
+    - assets-ink-v1/scene-02.png
+    - assets-ink-v1/scene-03.png
+    - assets-ink-v1/scene-04.png
+    - assets-ink-v1/scene-05.png
+    - assets-ink-v1/scene-06.png
+    - assets-ink-v1/scene-07.png
+    - assets-ink-v1/scene-08.png
+    - assets-ink-v1/scene-09.png
+    - assets-ink-v1/scene-10.png
+    - assets-ink-v1/scene-11.png
+    - assets-ink-v1/scene-12.png
+    - assets-ink-v1/scene-13.png
+    - assets-ink-v1/scene-14.png
+    - assets-ink-v1/scene-15.png
+    - assets-ink-v1/scene-16.png
+    - assets-ink-v1/scene-17.png
+    - assets-ink-v1/scene-18.png
+    - assets-ink-v1/scene-19.png
+    - assets-ink-v1/scene-20.png
+    - assets-ink-v1/scene-21.png
+    - assets-ink-v1/scene-22.png
+    - assets-ink-v1/scene-23.png
+    - assets-ink-v1/scene-24.png
+    - assets-ink-v1/scene-25.png
+    - assets-ink-v1/scene-26.png
+    - assets-ink-v1/scene-27.png
+    - assets-ink-v1/scene-28.png
+    - assets-ink-v1/scene-29.png
+    - assets-ink-v1/scene-30.png
+    - assets-ink-v1/scene-31.png
+    - assets-ink-v1/scene-32.png
+    - assets-ink-v1/scene-33.png
+    - assets-ink-v1/scene-34.png
+    - assets-ink-v1/scene-35.png
+    - assets-ink-v1/scene-36.png
+    - assets-ink-v1/scene-37.png
+    - assets-ink-v1/scene-38.png
+    - assets-ink-v1/scene-39.png
+    - assets-ink-v1/scene-40.png
+    - assets-ink-v1/scene-41.png
+    - assets-ink-v1/scene-42.png
+    - assets-ink-v1/scene-43.png
+    - assets-ink-v1/scene-44.png
+    - assets-ink-v1/scene-45.png
+    - assets-ink-v1/scene-46.png
+    - assets-ink-v1/scene-47.png
+    - assets-ink-v1/scene-48.png
+    - assets-ink-v1/scene-49.png
+    - assets-ink-v1/scene-50.png
+    - assets-ink-v1/scene-51.png
+    - assets-ink-v1/scene-52.png
+    - assets-ink-v1/scene-53.png
+    - assets-ink-v1/scene-54.png
+    - assets-ink-v1/scene-55.png
+    - assets-ink-v1/scene-56.png
+    - assets-ink-v1/scene-57.png
+    - assets-ink-v1/scene-58.png
+    - assets-ink-v1/scene-59.png
+    - assets-ink-v1/scene-60.png
+drawing:
+  profile: dark-random-brush
+  seed: 260813
+ambient:
+  scenes: 60
+  cues:
+    - 01. 새벽의 바다 수면
+    - 02. 수중으로 내려오는 햇빛 기둥
+    - 03. 산호초 위를 흐르는 빛
+    - 04. 거대한 켈프 숲
+    - 05. 은빛 정어리 떼
+    - 06. 바다거북과 푸른 바다
+    - 07. 만타가오리의 비행
+    - 08. 혹등고래 실루엣
+    - 09. 돌고래 무리와 수면광
+    - 10. 빛이 사라지는 수온약층
+    - 11. 푸른 해파리 군집
+    - 12. 무지갯빛 빗해파리
+    - 13. 작은 발광어 무리
+    - 14. 랜턴피시 무리
+    - 15. 길게 이어진 관해파리
+    - 16. 투명한 유리오징어
+    - 17. 은빛 산갈치
+    - 18. 바다눈처럼 내리는 유기물
+    - 19. 어둠 속 발광 플랑크톤
+    - 20. 짙은 남청색 심해 입구
+    - 21. 빛을 밝힌 초롱아귀
+    - 22. 날카로운 이빨의 바이퍼피시
+    - 23. 붉은 빛을 내는 드래곤피시
+    - 24. 입을 크게 벌린 걸퍼장어
+    - 25. 망토를 펼친 뱀파이어오징어
+    - 26. 어둠 속 대왕오징어 실루엣
+    - 27. 별처럼 빛나는 발광 생물 군집
+    - 28. 멀리 보이는 열수분출공
+    - 29. 검은 연기를 뿜는 블랙 스모커
+    - 30. 관벌레 군락과 붉은 촉수
+    - 31. 끝없이 펼쳐진 심해 평원
+    - 32. 긴 다리로 서 있는 트라이포드피시
+    - 33. 유영하는 덤보문어
+    - 34. 해저를 이동하는 바다돼지
+    - 35. 모래 위의 거미불가사리 군집
+    - 36. 유리해면 정원
+    - 37. 고래 사체 주변의 생태계
+    - 38. 거대한 심해 등각류
+    - 39. 해저 퇴적층 위의 생명 흔적
+    - 40. 심해 협곡으로 떨어지는 절벽
+    - 41. 마리아나 해구의 거대한 능선
+    - 42. 갈라진 해저 지각
+    - 43. 죽음의 호수처럼 보이는 염수 웅덩이
+    - 44. 해저 메탄 분출구
+    - 45. 냉용수구 주변의 조개 군락
+    - 46. 폭발하는 해저 화산
+    - 47. 굳어가는 베개용암
+    - 48. 광물로 뒤덮인 열수 굴뚝
+    - 49. 바닷속 거대한 해산
+    - 50. 해구 사이를 흐르는 심층 해류
+    - 51. 심해를 탐색하는 ROV 조명
+    - 52. 어둠 속 침몰선
+    - 53. 빛이 스며드는 해저 협곡
+    - 54. 밤바다의 산호 산란
+    - 55. 수면을 향해 올라가는 해파리
+    - 56. 혹등고래와 새끼
+    - 57. 달빛이 비치는 수중 표면
+    - 58. 파도 아래의 발광 플랑크톤
+    - 59. 우주에서 내려다본 푸른 해양
+    - 60. 수평선 위로 떠오르는 태양
+bgm:
+  mode: asset
+  assetId: youtube-jesse-gallagher-satya-yuga
+  sourceStartSec: 3.4
+  gainDb: 4
+  fadeInSec: 0.4
+  fadeOutSec: 5.0
+  licensePolicy: strict

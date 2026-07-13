@@ -1,0 +1,24 @@
+projectId: voice-pack-female-08-storybook
+format: shorts
+input:
+  script: narration.txt
+  tts:
+    engine: supertonic
+    voice: female-08
+    speed: 1.10
+    pauseMs: 350
+    timing: tts
+background:
+  strategy: user-images
+  fit: contain
+  images:
+    - ../../../assets/storybook/star-seed/scene-01.png
+drawing:
+  profile: pen-brush
+  sync: auto
+bgm:
+  mode: synth
+  gainDb: 3
+  ducking:
+    enabled: true
+    amountDb: 8

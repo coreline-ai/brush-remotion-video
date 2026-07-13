@@ -1,0 +1,140 @@
+projectId: cosmic-random-brush-v05-ink-60
+format: youtube
+background:
+  strategy: user-images
+  images:
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-01.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-02.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-03.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-04.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-05.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-06.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-07.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-08.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-09.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-10.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-11.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-12.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-13.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-14.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-15.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-16.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-17.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-18.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-19.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-20.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-21.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-22.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-23.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-24.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-25.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-26.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-27.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-28.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-29.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-30.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-31.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-32.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-33.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-34.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-35.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-36.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-37.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-38.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-39.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-40.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-41.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-42.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-43.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-44.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-45.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-46.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-47.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-48.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-49.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-50.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-51.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-52.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-53.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-54.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-55.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-56.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-57.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-58.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-59.png
+  - ../cosmic-fullscreen-v05/assets-ink-v1/scene-60.png
+  fit: cover
+drawing:
+  profile: cosmic-random-brush
+  seed: 260712
+ambient:
+  scenes: 60
+  cues:
+  - 01. 지구 궤도 일출
+  - 02. 밤의 지구 전체
+  - 03. 궤도 위 오로라
+  - 04. 낮의 푸른 구슬
+  - 05. 태풍의 눈
+  - 06. 사하라의 결
+  - 07. 히말라야의 능선
+  - 08. 지구의 도시 불빛
+  - 09. 해양의 구름 소용돌이
+  - 10. 달 지평선 위 지구돋이
+  - 11. 고요의 바다
+  - 12. 코페르니쿠스 크레이터
+  - 13. 달의 뒷면 전체
+  - 14. 달 남극의 긴 그림자
+  - 15. 화성의 지평선
+  - 16. 화성의 모래언덕
+  - 17. 마리너 계곡
+  - 18. 올림푸스 산
+  - 19. 화성의 북극관
+  - 20. 화성 위 포보스
+  - 21. 수성 전체
+  - 22. 금성 전체
+  - 23. 목성 전체
+  - 24. 목성 대적점
+  - 25. 이오 전체
+  - 26. 유로파 전체
+  - 27. 토성 전체
+  - 28. 역광의 토성 고리
+  - 29. 천왕성 전체
+  - 30. 해왕성 전체
+  - 31. 타란툴라 성운
+  - 32. 카리나 우주 절벽
+  - 33. 오리온 성운 중심
+  - 34. 창조의 기둥
+  - 35. 헬릭스 성운
+  - 36. 게 성운
+  - 37. 베일 성운
+  - 38. 장미 성운
+  - 39. 구상성단
+  - 40. W49B 초신성 잔해
+  - 41. 우리은하 중심
+  - 42. 안드로메다 전체
+  - 43. 막대나선은하
+  - 44. 소용돌이 은하 M51
+  - 45. 솜브레로 은하
+  - 46. 옆으로 본 나선은하
+  - 47. 충돌하는 두 은하
+  - 48. 거대 은하단
+  - 49. 허블 울트라 딥 필드
+  - 50. 중력렌즈 은하단
+  - 51. 블랙홀의 상대론적 제트
+  - 52. 이벤트 호라이즌과 강착원반
+  - 53. 중성자별·마그네타
+  - 54. 펄서 바람 성운
+  - 55. 퀘이사
+  - 56. 우주 거대망
+  - 57. 외계행성과 모항성
+  - 58. 태어나는 원시별
+  - 59. JWST 심우주
+  - 60. 지구와 달 — 우주의 집
+bgm:
+  mode: asset
+  assetId: youtube-jesse-gallagher-satya-yuga
+  gainDb: 4
+  sourceStartSec: 3.4
+  fadeInSec: 0.4
+  fadeOutSec: 5.0
+  licensePolicy: strict

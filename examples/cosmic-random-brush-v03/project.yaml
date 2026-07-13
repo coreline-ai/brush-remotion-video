@@ -1,0 +1,137 @@
+projectId: cosmic-random-brush-v03-60
+format: youtube
+background:
+  strategy: user-images
+  images:
+  - assets/scene-01-earth-orbit-sunrise.png
+  - assets/scene-02-earth-at-night.png
+  - assets/scene-03-aurora-from-orbit.png
+  - assets/scene-04-blue-marble.png
+  - assets/scene-05-storm-from-space.png
+  - assets/scene-06-sahara-from-orbit.png
+  - assets/scene-07-himalayas-from-space.png
+  - assets/scene-08-city-lights.png
+  - assets/scene-09-ocean-cloud-swirls.png
+  - assets/scene-10-earthrise.png
+  - assets/scene-11-lunar-tranquility.png
+  - assets/scene-12-copernicus-crater.png
+  - assets/scene-13-lunar-far-side.png
+  - assets/scene-14-apollo-earthrise.png
+  - assets/scene-15-mars-horizon.png
+  - assets/scene-16-mars-dunes.png
+  - assets/scene-17-valles-marineris.png
+  - assets/scene-18-olympus-mons.png
+  - assets/scene-19-mars-polar-cap.png
+  - assets/scene-20-phobos-over-mars.png
+  - assets/scene-21-mercury.png
+  - assets/scene-22-venus.png
+  - assets/scene-23-jupiter.png
+  - assets/scene-24-great-red-spot.png
+  - assets/scene-25-io.png
+  - assets/scene-26-europa.png
+  - assets/scene-27-saturn.png
+  - assets/scene-28-saturn-rings.png
+  - assets/scene-29-uranus.png
+  - assets/scene-30-neptune.png
+  - assets/scene-31-tarantula-nebula.png
+  - assets/scene-32-carina-nebula.png
+  - assets/scene-33-orion-nebula.png
+  - assets/scene-34-pillars-of-creation.png
+  - assets/scene-35-helix-nebula.png
+  - assets/scene-36-crab-nebula.png
+  - assets/scene-37-veil-nebula.png
+  - assets/scene-38-rosette-nebula.png
+  - assets/scene-39-star-cluster.png
+  - assets/scene-40-supernova-remnant.png
+  - assets/scene-41-milky-way-center.png
+  - assets/scene-42-andromeda.png
+  - assets/scene-43-barred-spiral.png
+  - assets/scene-44-whirlpool-galaxy.png
+  - assets/scene-45-sombrero-galaxy.png
+  - assets/scene-46-edge-on-galaxy.png
+  - assets/scene-47-interacting-galaxies.png
+  - assets/scene-48-galaxy-cluster.png
+  - assets/scene-49-deep-field.png
+  - assets/scene-50-gravitational-lens.png
+  - assets/scene-51-black-hole-jet.png
+  - assets/scene-52-accretion-disk.png
+  - assets/scene-53-neutron-star.png
+  - assets/scene-54-pulsar.png
+  - assets/scene-55-quasar.png
+  - assets/scene-56-cosmic-web.png
+  - assets/scene-57-exoplanet.png
+  - assets/scene-58-protostar.png
+  - assets/scene-59-deep-universe.png
+  - assets/scene-60-pale-blue-dot.png
+  fit: cover
+drawing:
+  profile: cosmic-random-brush
+  seed: 260712
+ambient:
+  scenes: 60
+  cues:
+  - 01. 지구 궤도 일출
+  - 02. 밤의 지구
+  - 03. 궤도 위 오로라
+  - 04. 푸른 구슬
+  - 05. 폭풍의 눈
+  - 06. 사하라의 결
+  - 07. 히말라야의 능선
+  - 08. 도시의 불빛
+  - 09. 구름의 소용돌이
+  - 10. 달 너머 지구
+  - 11. 고요의 바다
+  - 12. 코페르니쿠스 크레이터
+  - 13. 달의 뒷면
+  - 14. 아폴로의 지구돋이
+  - 15. 화성의 지평선
+  - 16. 화성의 모래언덕
+  - 17. 마리너 계곡
+  - 18. 올림푸스 산
+  - 19. 화성의 극관
+  - 20. 포보스와 화성
+  - 21. 수성
+  - 22. 금성
+  - 23. 목성
+  - 24. 대적점
+  - 25. 이오
+  - 26. 유로파
+  - 27. 토성
+  - 28. 토성의 고리
+  - 29. 천왕성
+  - 30. 해왕성
+  - 31. 타란툴라 성운
+  - 32. 카리나 성운
+  - 33. 오리온 성운
+  - 34. 창조의 기둥
+  - 35. 헬릭스 성운
+  - 36. 게 성운
+  - 37. 베일 성운
+  - 38. 장미 성운
+  - 39. 별들의 군집
+  - 40. 초신성의 흔적
+  - 41. 우리은하의 중심
+  - 42. 안드로메다
+  - 43. 막대나선은하
+  - 44. 소용돌이 은하
+  - 45. 솜브레로 은하
+  - 46. 옆으로 본 은하
+  - 47. 춤추는 두 은하
+  - 48. 은하단
+  - 49. 허블 딥 필드
+  - 50. 중력렌즈
+  - 51. 블랙홀의 제트
+  - 52. 강착원반
+  - 53. 중성자별
+  - 54. 펄서
+  - 55. 퀘이사
+  - 56. 우주 거대망
+  - 57. 외계행성
+  - 58. 태어나는 별
+  - 59. 심우주
+  - 60. 창백한 푸른 점
+bgm:
+  mode: synth
+  gainDb: 4
+  fadeInSec: 2.5
+  fadeOutSec: 5.0

@@ -21,6 +21,7 @@
 | 처음에 살짝 보여줬다 그리기 / 몽환적 도입 | 프리워시 예고 | 첫 씬만: `prewashOpacity: 0.5~0.7, prewashFrames: 24~48, prewashHoldFrames: 8~12, prewashBlur: 7~16` |
 | 끝에서 부드럽게 사라지게 / 끊기지 않게 | 아웃트로 워시 dissolve | `outroFadeFrames: 18` (길게: 45~90), `outroWashOpacity: 0.9`, `outroBlur: 1.4` (강한 블러 오버랩: 8) |
 | 완성되고 잠깐 감상하게 | develop 후 홀드 | `developFrames: 18~24` + 씬 duration 여유 (routes 기준 develop 후 ~60f 홀드) |
+| 벌렁거림/꿀렁거림 없이, 다른 액션 없이 색감만 진하게 | 무펄스 자연 정착 | 일반 brush 기본 `integrated-develop`, prewash/effect/parallax/blur 0, `colorSettleFrames` 뒤 최소 12f 홀드 |
 
 ## 분위기 · 파티클 (전부 opacity 0.02~0.05로 은은하게)
 
@@ -34,6 +35,10 @@
 | 밤하늘 / 별 / 겨울밤 | `starTwinkle` | + `endFadeOpacity`로 밤 마무리 가능 |
 | 살아있는 느낌 / 미세한 줌 | parallax | `parallaxScale: 1.02~1.03` (develop 후 부유) |
 
+> `parallax`는 정지 레이어의 2D 깊이 근사다. 사용자가 실제 pan/zoom/arc/orbit/tracking/FPV나
+> 장면 통과를 요청하면 [camera-intent-map](camera-intent-map.md)에서 canonical 기법과 타깃
+> 호환성을 해석한다. 그 결과는 선택적 Camera Prompt Pack이며 미지원 YAML 필드가 아니다.
+
 ## 텍스트 · 정보 요소
 
 | 표현 | 번역 | 파라미터 |
@@ -46,17 +51,22 @@
 
 | 표현 | 번역 | 파라미터 |
 |---|---|---|
-| 잔잔한 음악 / 피아노 / BGM | 합성 피아노 패드 | 앰비언트 모드 자동, 또는 별도 BGM wav 제공 |
-| 목소리로 읽어줘 / 더빙 | TTS 내레이션 | `input.tts{voice: F1(여)~M1(남), pauseMs: 350}` — 미설치면 설치 안내 |
+| 잔잔한 음악 / 피아노 / BGM | YouTube 허용 Honor | `bgm{mode: asset, assetId: youtube-chris-zabriskie-fight-for-your-honor}` |
+| 외곽선 후 채색 + 잔잔한 음악 | Satya Yuga + pen-brush | `drawing.profile: pen-brush` + `youtube-jesse-gallagher-satya-yuga` |
+| Pixabay 음악 / Pixabay BGM | **YouTube·Shorts 사용 금지** | 로컬 청취·내부 데모만 허용하고 배포 YAML에는 넣지 않음 |
+| 10분 초과 / 긴 영상 | 2~3곡 playlist | `bgm.mode: playlist`, `crossfadeSec: 3` |
+| 목소리로 읽어줘 / 더빙 | TTS 내레이션 | 일반 `female-01`, 전문 `female-09`, 동화 `female-08`, 쇼츠 `female-07`, 힐링 `female-05`, 장편 다큐 `female-06`; `speed: 1.10`을 명시. 사용자 지정 우선 |
 | 내 목소리 녹음 사용 | 실더빙 우선 | `input.audio` (tts 있어도 실더빙 우선) |
-| 빗소리 / 장작 소리 / 파도 | **확장 후보 (미구현)** | 정직하게 안내: "현재는 합성 피아노 BGM만 — 환경음 팩은 추가 개발 필요" |
+| 빗소리 / 장작 소리 / 파도 | **환경음은 확장 후보 (미구현)** | 음악 BGM은 지원하지만 별도 환경음 레이어는 추가 개발 필요 |
 
 ## 드로잉 프로파일
 
 | 표현 | 번역 |
 |---|---|
 | 펜으로 / 스케치처럼 / 화이트보드 / 손그림 설명 | **pen 프로파일** — `drawing: {profile: pen}` (pen-video 스킬로 위임: 잉크만 빠르게 그려짐) |
+| 외곽선을 먼저 그리고 채색 / 펜 다음 브러시 / 선화 완성 후 색칠 | **pen-brush 프로파일** — `drawing: {profile: pen-brush}` (pen-brush-video로 위임: outline→paint 2단계) |
 | 붓으로 / 수묵화 / 잔잔하게 그려지는 | **brush 프로파일(기본)** — 수묵 faint 리빌 + develop |
+| 어두운 화면 / 우주·행성·성운·심해·야간 풍경을 랜덤 붓 터치로 / golden-single-widgets 같은 브러싱 | **dark-random-brush 프로파일** — `drawing: {profile: dark-random-brush, seed: <고정값>}` (`dark-random-brush-video`로 위임; runtime은 `cosmic-random-brush` 호환키) |
 
 ## 포맷 · 구성
 
@@ -66,3 +76,13 @@
 | 유튜브 / 가로 | `format: youtube` (1920×1080) |
 | N개 장면 / 길이 ~초 | 앰비언트: `ambient.scenes: N` (씬당 10초) · 내레이션: SRT/대본 길이가 결정 |
 | 씬마다 다른 그림 | 배경 N장 생성 (`background.strategy`) — imagegen(주제 프롬프트) / preset(결정적) / user-images |
+
+## 카메라·시점·렌즈·전환 표현
+
+- `당겨 줘`, `돌아 줘`, `뒤에서 따라가 줘`, `지구 밖까지 멀어져 줘` 같은 표현은
+  [camera-intent-map](camera-intent-map.md)에서 먼저 해석한다.
+- 정확한 37개 canonical 값과 37~45 legacy alias는
+  [camera prompt catalog](../../_shared/references/camera-prompt-catalog.json)가 단일 진실이다.
+- 한/영 prompt 조립, `supported`/`external-required` 등의 타깃 분기는
+  [camera prompt guide](../../_shared/references/camera-prompt-guide.md)를 따른다.
+- 카메라 요청이 없으면 Camera Prompt Pack을 만들지 않고 기존 무드·드로잉 변환만 수행한다.

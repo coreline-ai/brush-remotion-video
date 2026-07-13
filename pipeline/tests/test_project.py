@@ -104,6 +104,226 @@ widgets:
     assert cfg.authored_widgets[0]["type"] == "stat"
 
 
+def test_pen_brush_profile_and_timing_options(tmp_path):
+    cfg = load_project(_write_yaml(tmp_path, """
+projectId: demo
+drawing:
+  profile: pen-brush
+  outlineRatio: 0.4
+  handoffFrames: 10
+  paintEndRatio: 0.9
+"""))
+    assert cfg.drawing_profile == "pen-brush"
+    assert cfg.drawing_outline_ratio == 0.4
+    assert cfg.drawing_handoff_frames == 10
+    assert cfg.drawing_paint_end_ratio == 0.9
+
+
+def test_pen_brush_bad_advanced_option_rejected(tmp_path):
+    with pytest.raises(ValueError, match="지원하지 않는 옵션"):
+        load_project(_write_yaml(tmp_path, """
+projectId: demo
+drawing:
+  profile: pen-brush
+  magicZones: true
+"""))
+
+
+def test_cosmic_random_brush_profile_contract(tmp_path):
+    image = tmp_path / "source.png"
+    image.write_bytes(b"png-placeholder")
+    cfg = load_project(_write_yaml(tmp_path, """
+projectId: cosmic-demo
+format: youtube
+background:
+  strategy: user-images
+  images: [source.png]
+drawing:
+  profile: cosmic-random-brush
+  seed: 260712
+ambient:
+  scenes: 1
+"""))
+    assert cfg.drawing_profile == "cosmic-random-brush"
+    assert cfg.seed == 260712
+    assert cfg.ambient_scenes == 1
+
+
+def test_dark_random_brush_public_profile_alias_normalizes_to_runtime_key(tmp_path):
+    image = tmp_path / "source.png"
+    image.write_bytes(b"png-placeholder")
+    cfg = load_project(_write_yaml(tmp_path, """
+projectId: dark-demo
+format: youtube
+background:
+  strategy: user-images
+  images: [source.png]
+  fit: cover
+drawing:
+  profile: dark-random-brush
+  seed: 260712
+ambient:
+  scenes: 1
+"""))
+    # public profile is content-agnostic; runtime keeps the historical golden key.
+    assert cfg.drawing_profile == "cosmic-random-brush"
+    assert cfg.bg_fit == "cover"
+
+
+def test_cosmic_random_brush_v02_six_scene_contract(tmp_path):
+    images = []
+    for i in range(6):
+        image = tmp_path / f"scene-{i + 1:02d}.png"
+        image.write_bytes(b"png-placeholder")
+        images.append(f"    - {image.name}")
+    cfg = load_project(_write_yaml(tmp_path, f"""
+projectId: cosmic-v02
+format: youtube
+background:
+  strategy: user-images
+  images:
+{chr(10).join(images)}
+drawing:
+  profile: cosmic-random-brush
+  seed: 260712
+ambient:
+  scenes: 6
+"""))
+    assert cfg.ambient_scenes == 6
+    assert len(cfg.bg_images) == 6
+
+
+def test_cosmic_random_brush_v03_sixty_scene_contract(tmp_path):
+    images = []
+    cues = []
+    for i in range(60):
+        image = tmp_path / f"scene-{i + 1:02d}.png"
+        image.write_bytes(b"png-placeholder")
+        images.append(f"    - {image.name}")
+        cues.append(f'    - "{i + 1:02d}. scene"')
+    cfg = load_project(_write_yaml(tmp_path, f"""
+projectId: cosmic-v03
+format: youtube
+background:
+  strategy: user-images
+  images:
+{chr(10).join(images)}
+drawing:
+  profile: cosmic-random-brush
+ambient:
+  scenes: 60
+  cues:
+{chr(10).join(cues)}
+"""))
+    assert cfg.ambient_scenes == 60
+    assert len(cfg.bg_images) == len(cfg.ambient_cues) == 60
+
+
+@pytest.mark.parametrize("extra,match", [
+    ("format: shorts", "format: youtube"),
+    ("ambient:\n  scenes: 2", r"1\(골든\), 6\(v0.2\), 60"),
+    ("ambient:\n  scenes: 59", r"1\(골든\), 6\(v0.2\), 60"),
+    ("ambient:\n  scenes: 6", "user-images 필수"),
+])
+def test_cosmic_random_brush_v01_scope_rejected(tmp_path, extra, match):
+    body = f"""
+projectId: cosmic-demo
+{extra}
+drawing:
+  profile: cosmic-random-brush
+"""
+    with pytest.raises(ValueError, match=match):
+        load_project(_write_yaml(tmp_path, body))
+
+
+def test_cosmic_random_brush_rejects_image_count_mismatch(tmp_path):
+    image = tmp_path / "source.png"
+    image.write_bytes(b"png-placeholder")
+    with pytest.raises(ValueError, match="images 수가 ambient.scenes와 같아야"):
+        load_project(_write_yaml(tmp_path, """
+projectId: cosmic-v02-bad-count
+background:
+  strategy: user-images
+  images: [source.png]
+drawing:
+  profile: cosmic-random-brush
+ambient:
+  scenes: 6
+"""))
+
+
+def test_cosmic_random_brush_sixty_scene_rejects_missing_cues(tmp_path):
+    images = []
+    for i in range(60):
+        image = tmp_path / f"scene-{i + 1:02d}.png"
+        image.write_bytes(b"png-placeholder")
+        images.append(f"    - {image.name}")
+    with pytest.raises(ValueError, match="ambient.cues 60개"):
+        load_project(_write_yaml(tmp_path, f"""
+projectId: cosmic-v03-bad-cues
+background:
+  strategy: user-images
+  images:
+{chr(10).join(images)}
+drawing:
+  profile: cosmic-random-brush
+ambient:
+  scenes: 60
+"""))
+
+
+# ── 로컬 BGM 계약 ──
+
+def test_bgm_asset_contract(tmp_path):
+    cfg = load_project(_write_yaml(tmp_path, """
+projectId: demo
+bgm:
+  mode: asset
+  assetId: pixabay-gentle-piano-meditation
+  gainDb: 5
+  sourceStartSec: 3.4
+  fadeInSec: 1.8
+  fadeOutSec: 2
+  ducking:
+    enabled: true
+    amountDb: 8
+    attackMs: 120
+    releaseMs: 600
+  licensePolicy: strict
+"""))
+    assert cfg.bgm.mode == "asset"
+    assert cfg.bgm.asset_id == "pixabay-gentle-piano-meditation"
+    assert cfg.bgm.gain_db == 5
+    assert cfg.bgm.source_start_sec == 3.4
+    assert cfg.bgm.ducking_enabled is True
+
+
+def test_bgm_playlist_contract(tmp_path):
+    cfg = load_project(_write_yaml(tmp_path, """
+projectId: demo
+bgm:
+  mode: playlist
+  playlist:
+    assetIds: [one-track, two-track, three-track]
+    crossfadeSec: 3
+"""))
+    assert cfg.bgm.asset_ids == ("one-track", "two-track", "three-track")
+    assert cfg.bgm.crossfade_sec == 3
+
+
+@pytest.mark.parametrize("body,match", [
+    ("mode: asset", "assetId"),
+    ("mode: playlist\n  playlist:\n    assetIds: [only-one]", "2~3"),
+    ("mode: synth\n  assetId: not-allowed", "지정할 수 없음"),
+    ("mode: asset\n  assetId: okay\n  gainDb: 13", "gainDb"),
+    ("mode: asset\n  assetId: okay\n  sourceStartSec: -1", "sourceStartSec"),
+    ("mode: asset\n  assetId: okay\n  magic: true", "지원하지 않는 옵션"),
+])
+def test_bgm_invalid_contract_rejected(tmp_path, body, match):
+    with pytest.raises(ValueError, match=match):
+        load_project(_write_yaml(tmp_path, f"projectId: demo\nbgm:\n  {body}\n"))
+
+
 # ── TTS 모드 매트릭스 ──
 
 TTS_BLOCK = """
@@ -122,7 +342,10 @@ input:
   srt: voice.srt
 """ + TTS_BLOCK))
     assert cfg.mode == "tts"
-    assert cfg.tts == {"engine": "supertonic", "voice": "F1", "pauseMs": 250, "timing": "tts"}
+    assert cfg.tts == {
+        "engine": "supertonic", "voice": "F1", "speed": 1.05,
+        "pauseMs": 250, "timing": "tts",
+    }
     assert "안녕" in cfg.tts_text()
 
 
@@ -178,4 +401,73 @@ input:
   srt: voice.srt
   tts:
     timing: srtt
+"""))
+
+
+def test_tts_female_preset_and_speed_are_parsed(tmp_path):
+    (tmp_path / "script.txt").write_text("전문 해설입니다.", encoding="utf-8")
+    cfg = load_project(_write_yaml(tmp_path, """
+projectId: demo
+input:
+  script: script.txt
+  tts:
+    engine: supertonic
+    voice: female-09
+    speed: 1.10
+    pauseMs: 350
+    timing: tts
+"""))
+    assert cfg.tts["voice"] == "female-09"
+    assert cfg.tts["speed"] == pytest.approx(1.10)
+
+
+@pytest.mark.parametrize("voice", ["F1", "F5", "M1", "M5", "female-01", "female-10"])
+def test_tts_legacy_and_voice_pack_ids_are_supported(tmp_path, voice):
+    (tmp_path / "script.txt").write_text("한 문장.", encoding="utf-8")
+    cfg = load_project(_write_yaml(tmp_path, f"""
+projectId: demo
+input:
+  script: script.txt
+  tts:
+    voice: {voice}
+"""))
+    assert cfg.tts["voice"] == voice
+
+
+@pytest.mark.parametrize("voice", ["F6", "female-11", "female-1", "m1"])
+def test_tts_unknown_voice_is_rejected_without_fallback(tmp_path, voice):
+    (tmp_path / "script.txt").write_text("한 문장.", encoding="utf-8")
+    with pytest.raises(ValueError, match="지원하지 않는 TTS voice"):
+        load_project(_write_yaml(tmp_path, f"""
+projectId: demo
+input:
+  script: script.txt
+  tts:
+    voice: {voice}
+"""))
+
+
+@pytest.mark.parametrize("speed", [0.70, 2.00])
+def test_tts_speed_boundaries_are_allowed(tmp_path, speed):
+    (tmp_path / "script.txt").write_text("한 문장.", encoding="utf-8")
+    cfg = load_project(_write_yaml(tmp_path, f"""
+projectId: demo
+input:
+  script: script.txt
+  tts:
+    speed: {speed}
+"""))
+    assert cfg.tts["speed"] == pytest.approx(speed)
+
+
+@pytest.mark.parametrize("speed", ["0.69", "2.01", ".nan", ".inf", "true", "fast"])
+def test_tts_invalid_speed_is_rejected(tmp_path, speed):
+    (tmp_path / "script.txt").write_text("한 문장.", encoding="utf-8")
+    with pytest.raises((ValueError, TypeError), match="speed"):
+        load_project(_write_yaml(tmp_path, f"""
+projectId: demo
+input:
+  script: script.txt
+  tts:
+    speed: {speed}
 """))

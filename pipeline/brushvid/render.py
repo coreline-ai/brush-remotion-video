@@ -8,6 +8,8 @@ import logging
 import subprocess
 from pathlib import Path
 
+from .public_assets import public_roots_for_props, scoped_public_dir
+
 log = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -28,17 +30,23 @@ def render(props_path: str | Path, out_path: str | Path, *, composition: str = "
     """
     out = Path(out_path).resolve()
     out.parent.mkdir(parents=True, exist_ok=True)
-    cmd = ["npx", "remotion", "render", ENTRY, composition, str(out),
-           f"--props={Path(props_path).resolve()}", f"--concurrency={concurrency}"]
-    if frames:
-        cmd.append(f"--frames={frames}")
-    _run(cmd, cwd=Path(repo_root))
+    with scoped_public_dir(props_path, repo_root) as public_dir:
+        roots = ", ".join(p.name for p in public_roots_for_props(
+            props_path, Path(repo_root) / "public"))
+        log.info("render scoped public: %s", roots or "(empty)")
+        cmd = ["npx", "remotion", "render", ENTRY, composition, str(out),
+               f"--props={Path(props_path).resolve()}", f"--concurrency={concurrency}",
+               f"--public-dir={public_dir}"]
+        if frames:
+            cmd.append(f"--frames={frames}")
+        _run(cmd, cwd=Path(repo_root))
     return out
 
 
 def render_segments(props_path: str | Path, out_path: str | Path, segments: list[tuple[int, int]],
                     *, composition: str = "BrushLandscape", concurrency: int = 4,
-                    work_dir: str | Path | None = None, repo_root: str | Path = REPO_ROOT) -> Path:
+                    work_dir: str | Path | None = None, repo_root: str | Path = REPO_ROOT,
+                    fps: float = 30.0) -> Path:
     """프레임 구간별 세그먼트 렌더 후 concat. segments = [(start, end), ...] (inclusive)."""
     out = Path(out_path)
     work = Path(work_dir) if work_dir else out.parent / f".{out.stem}-segments"
@@ -46,19 +54,48 @@ def render_segments(props_path: str | Path, out_path: str | Path, segments: list
     parts: list[Path] = []
     for i, (f0, f1) in enumerate(segments):
         part = work / f"seg-{i:03d}.mp4"
-        render(props_path, part, composition=composition, frames=f"{f0}-{f1}",
-               concurrency=concurrency, repo_root=repo_root)
+        expected_sec = (f1 - f0 + 1) / fps
+        reusable = False
+        if part.is_file():
+            try:
+                reusable = abs(probe_video_duration(part) - expected_sec) <= max(0.05, 1.5 / fps)
+            except (OSError, ValueError, subprocess.CalledProcessError):
+                reusable = False
+        if reusable:
+            log.info("render segment reuse: %s (%.3fs)", part.name, expected_sec)
+        else:
+            part.unlink(missing_ok=True)
+            render(props_path, part, composition=composition, frames=f"{f0}-{f1}",
+                   concurrency=concurrency, repo_root=repo_root)
+            # Remotion MP4 청크에는 AAC 인코더 패딩 때문에 영상보다 약 53ms 긴
+            # 무음 오디오 스트림이 포함될 수 있다. 프레임 청크의 진실은 컨테이너
+            # duration이 아니라 v:0 duration이므로 영상 스트림 기준으로 판정한다.
+            actual_sec = probe_video_duration(part)
+            if abs(actual_sec - expected_sec) > max(0.05, 1.5 / fps):
+                raise RuntimeError(
+                    f"render segment duration mismatch: {part.name} "
+                    f"expected={expected_sec:.3f}s actual={actual_sec:.3f}s")
         parts.append(part)
     return concat(parts, out)
 
 
 def concat(parts: list[Path], out_path: str | Path) -> Path:
-    """ffmpeg concat demuxer 로 mp4 세그먼트 무손실 이어붙임."""
+    """영상 세그먼트를 프레임 손실 없이 무손실 이어붙임.
+
+    Remotion MP4 청크에는 영상보다 긴 AAC 패딩이 포함될 수 있다. concat demuxer가
+    컨테이너 길이를 다음 청크의 시작 시각으로 사용하면 청크 경계마다 영상 PTS 공백이
+    누적된다. 각 청크의 *영상 스트림* 길이를 명시하고 영상만 매핑해 이를 방지한다.
+    """
     out = Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
     list_file = out.parent / f".{out.stem}-concat.txt"
-    list_file.write_text("".join(f"file '{Path(p).resolve()}'\n" for p in parts), encoding="utf-8")
-    _run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", list_file, "-c", "copy", out])
+    entries = []
+    for part in parts:
+        entries.append(f"file '{Path(part).resolve()}'\n")
+        entries.append(f"duration {probe_video_duration(part):.9f}\n")
+    list_file.write_text("".join(entries), encoding="utf-8")
+    _run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", list_file,
+          "-map", "0:v:0", "-c:v", "copy", "-an", out])
     list_file.unlink(missing_ok=True)
     return out
 
@@ -81,3 +118,16 @@ def probe_duration(media_path: str | Path) -> float:
          "-of", "default=noprint_wrappers=1:nokey=1", str(media_path)],
         capture_output=True, text=True, check=True)
     return float(res.stdout.strip())
+
+
+def probe_video_duration(media_path: str | Path) -> float:
+    """첫 영상 스트림 길이. AAC 패딩이 컨테이너 길이를 늘려도 프레임 길이를 보존한다."""
+    res = subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "v:0",
+         "-show_entries", "stream=duration",
+         "-of", "default=noprint_wrappers=1:nokey=1", str(media_path)],
+        capture_output=True, text=True, check=True)
+    value = res.stdout.strip()
+    if not value or value == "N/A":
+        raise ValueError(f"영상 스트림 duration 없음: {media_path}")
+    return float(value)

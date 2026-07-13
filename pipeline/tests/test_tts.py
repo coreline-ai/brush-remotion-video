@@ -72,3 +72,52 @@ def test_empty_text_rejected(tmp_path):
     with pytest.raises(ValueError, match="문장"):
         synthesize_narration("   \n ", tmp_path / "x.wav", tmp_path / "x.srt",
                              synth=_fake_synth())
+
+
+def test_injected_synth_still_resolves_canonical_voice_metadata(tmp_path):
+    res = synthesize_narration(
+        "전문 해설입니다.", tmp_path / "x.wav", tmp_path / "x.srt",
+        voice="female-09", speed=1.10, synth=_fake_synth(),
+    )
+    assert res["voice"]["requestedVoice"] == "female-09"
+    assert res["voice"]["voicePresetId"] == "female-09"
+    assert res["voice"]["components"] == {"F4": 0.65, "F1": 0.35}
+    assert res["voice"]["speed"] == pytest.approx(1.10)
+
+
+@pytest.mark.parametrize("speed", [0.69, 2.01, float("nan"), float("inf"), True, "fast"])
+def test_invalid_speed_rejected_by_direct_api(tmp_path, speed):
+    with pytest.raises(ValueError, match="speed"):
+        synthesize_narration(
+            "한 문장.", tmp_path / "x.wav", tmp_path / "x.srt",
+            speed=speed, synth=_fake_synth(),
+        )
+
+
+def test_make_synthesizer_forwards_speed_and_resolved_style(monkeypatch):
+    calls = {}
+
+    class FakeTTS:
+        model_name = "supertonic-3"
+        sample_rate = SR
+
+        def __init__(self, auto_download):
+            assert auto_download is True
+
+        def synthesize(self, text, *, voice_style, lang, speed):
+            calls.update(text=text, voice_style=voice_style, lang=lang, speed=speed)
+            return np.zeros((1, 10), dtype=np.float32), np.array([10 / SR])
+
+    class FakeModule:
+        __version__ = "1.3.1"
+        TTS = FakeTTS
+
+    style = object()
+    metadata = {"voicePresetId": "female-09", "components": {"F4": 0.65, "F1": 0.35}}
+    monkeypatch.setattr(tts_mod, "_import_supertonic", lambda: FakeModule)
+    monkeypatch.setattr(tts_mod, "build_voice_style", lambda *_a, **_k: (style, metadata.copy()))
+    synth, resolved = tts_mod._make_synthesizer("female-09", "ko", 1.10)
+    assert synth("테스트").shape == (10,)
+    assert calls == {"text": "테스트", "voice_style": style, "lang": "ko", "speed": 1.10}
+    assert resolved["voicePresetId"] == "female-09"
+    assert resolved["packageVersion"] == "1.3.1"

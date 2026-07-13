@@ -9,11 +9,20 @@ supertonic 미설치 시 침묵 폴백 없이 설치 명령을 담은 명확한 
 from __future__ import annotations
 
 import logging
+import math
 import re
 import wave
 from pathlib import Path
 
 import numpy as np
+
+from .voice_presets import (
+    SPEED_MAX,
+    SPEED_MIN,
+    build_voice_style,
+    load_catalog,
+    resolve_voice,
+)
 
 log = logging.getLogger(__name__)
 
@@ -46,17 +55,33 @@ def _import_supertonic():
         raise RuntimeError(INSTALL_HINT) from e
 
 
-def _make_synthesizer(voice: str, lang: str):
-    """문장 → (mono float wav 1D 배열) 합성 함수 생성."""
+def _make_synthesizer(voice: str, lang: str, speed: float):
+    """문장 합성 함수와 실제 해석된 voice metadata를 생성."""
     st = _import_supertonic()
+    catalog = load_catalog()
+    expected_package = catalog["engine"]["packageVersion"]
+    actual_package = getattr(st, "__version__", "unknown")
+    if actual_package != expected_package:
+        raise RuntimeError(
+            f"Supertonic 버전 불일치: voice pack은 {expected_package}, 설치 버전은 {actual_package}. "
+            f'설치: pipeline/.venv/bin/pip install "supertonic=={expected_package}"'
+        )
     tts = st.TTS(auto_download=True)
-    style = tts.get_voice_style(voice)
+    style, metadata = build_voice_style(tts, voice, catalog=catalog)
+    metadata.update({
+        "engine": "supertonic",
+        "packageVersion": actual_package,
+        "model": getattr(tts, "model_name", catalog["engine"]["model"]),
+        "language": lang,
+        "sampleRate": getattr(tts, "sample_rate", SR),
+        "speed": speed,
+    })
 
     def synth(text: str) -> np.ndarray:
-        wav, _dur = tts.synthesize(text, voice_style=style, lang=lang)
+        wav, _dur = tts.synthesize(text, voice_style=style, lang=lang, speed=speed)
         return np.asarray(wav, dtype=np.float32).reshape(-1)
 
-    return synth
+    return synth, metadata
 
 
 def format_srt_time(sec: float) -> str:
@@ -69,18 +94,41 @@ def format_srt_time(sec: float) -> str:
 
 def synthesize_narration(text: str, out_wav: str | Path, out_srt: str | Path, *,
                          engine: str = "supertonic", voice: str = "F1", pause_ms: int = 300,
-                         lang: str = "ko", synth=None) -> dict:
+                         speed: float = 1.05, lang: str = "ko", synth=None) -> dict:
     """대본 텍스트 → 더빙 wav + SRT. 반환: {wav, srt, entries, durationSec}.
 
     synth 는 테스트 주입용 (문장 → 1D float 배열). 미지정 시 supertonic 사용.
     """
     if engine != "supertonic":
         raise ValueError(f"지원하지 않는 TTS 엔진: {engine!r} (현재 supertonic 만 지원)")
+    if not isinstance(speed, (int, float)) or isinstance(speed, bool) or not math.isfinite(float(speed)):
+        raise ValueError("TTS speed는 유한한 숫자여야 함")
+    speed = float(speed)
+    if not SPEED_MIN <= speed <= SPEED_MAX:
+        raise ValueError(f"TTS speed는 {SPEED_MIN:.2f}~{SPEED_MAX:.2f} 범위여야 함")
     sentences = split_sentences(text)
     if not sentences:
         raise ValueError("TTS 입력 텍스트에 문장이 없음")
     if synth is None:
-        synth = _make_synthesizer(voice, lang)
+        synth, voice_metadata = _make_synthesizer(voice, lang, speed)
+    else:
+        # 테스트/외부 주입 합성기도 ID 계약은 동일하게 검증한다.
+        catalog = load_catalog()
+        voice_metadata = resolve_voice(voice, catalog)
+        voice_metadata.update({
+            "engine": engine,
+            "packageVersion": "injected-synth",
+            "model": catalog["engine"]["model"],
+            "language": lang,
+            "sampleRate": SR,
+            "speed": speed,
+            "styleSourceSha256": {
+                name: catalog["baseStyleSha256"].get(name)
+                for name in voice_metadata["components"]
+            },
+            "styleSourceKind": "catalog-expected",
+            "styleSha256": None,
+        })
 
     pause = np.zeros(int(SR * pause_ms / 1000), dtype=np.float32)
     parts: list[np.ndarray] = []
@@ -114,4 +162,7 @@ def synthesize_narration(text: str, out_wav: str | Path, out_srt: str | Path, *,
     out_srt.write_text(srt_text, encoding="utf-8")
     total = len(audio) / SR
     log.info("tts 완료: 문장 %d개, %.2fs -> %s / %s", len(sentences), total, out_wav, out_srt)
-    return {"wav": str(out_wav), "srt": str(out_srt), "entries": entries, "durationSec": total}
+    return {
+        "wav": str(out_wav), "srt": str(out_srt), "entries": entries,
+        "durationSec": total, "voice": voice_metadata,
+    }

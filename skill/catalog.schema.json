@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brush-remotion-video.local/schema/skill-catalog.schema.json",
+  "title": "Brush Remotion Video Skill Catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "catalogVersion", "defaultInstallTarget", "skills", "legacyInstallAliases"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "catalogVersion": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "defaultInstallTarget": {"const": "claude"},
+    "skills": {
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
+      "items": {"$ref": "#/$defs/skill"}
+    },
+    "legacyInstallAliases": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/legacyAlias"}
+    }
+  },
+  "$defs": {
+    "skillId": {
+      "type": "string",
+      "enum": [
+        "brush-director",
+        "brush-video",
+        "pen-video",
+        "pen-brush-video",
+        "shorts-brush",
+        "dark-random-brush-video",
+        "storybook-full-touch-video",
+        "brush-qa-review",
+        "video-auditor"
+      ]
+    },
+    "interface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["displayName", "shortDescription", "defaultPrompt"],
+      "properties": {
+        "displayName": {"type": "string", "minLength": 1, "maxLength": 64},
+        "shortDescription": {"type": "string", "minLength": 1, "maxLength": 120},
+        "defaultPrompt": {"type": "string", "minLength": 1, "maxLength": 300}
+      }
+    },
+    "skill": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "folder", "role", "summary", "entrypoint", "profiles", "formats",
+        "defaultVoice", "dependsOn", "version", "status", "interface"
+      ],
+      "properties": {
+        "id": {"$ref": "#/$defs/skillId"},
+        "folder": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+        "role": {"enum": ["design", "production", "qa", "audit"]},
+        "summary": {"type": "string", "minLength": 1, "maxLength": 180},
+        "entrypoint": {"type": "string", "minLength": 1, "maxLength": 160},
+        "profiles": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"enum": ["brush", "pen", "pen-brush", "dark-random-brush"]}
+        },
+        "formats": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"enum": ["youtube", "shorts"]}
+        },
+        "defaultVoice": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "string", "pattern": "^female-(0[1-9]|10)$"}
+          ]
+        },
+        "dependsOn": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/skillId"}
+        },
+        "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "status": {"enum": ["stable", "specialized"]},
+        "interface": {"$ref": "#/$defs/interface"}
+      }
+    },
+    "legacyAlias": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "replacement", "removeOnlyIfSymlink"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+        "replacement": {"$ref": "#/$defs/skillId"},
+        "removeOnlyIfSymlink": {"const": true}
+      }
+    }
+  }
+}

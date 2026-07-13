@@ -1,0 +1,16 @@
+projectId: pen-brush-portrait-demo
+format: shorts
+title: 선에서 색으로
+background:
+  strategy: user-images
+  images:
+    - ../../public/pen-brush-demo/source.png
+drawing:
+  profile: pen-brush
+  sync: auto
+ambient:
+  scenes: 1
+  cues:
+    - 외곽선을 따라 그리고 색을 채웁니다
+widgets: none
+seed: 20260712

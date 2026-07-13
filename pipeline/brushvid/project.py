@@ -9,25 +9,54 @@
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
 
+from .voice_presets import SPEED_MAX, SPEED_MIN, VoicePresetError, validate_voice_id
+
 log = logging.getLogger(__name__)
 
 FORMATS = ("youtube", "shorts")
 BG_STRATEGIES = ("imagegen", "preset", "user-images")
+BG_FITS = ("contain", "cover")
 WIDGET_MODES = ("auto", "none", "authored")
 TTS_ENGINES = ("supertonic",)
 TTS_TIMINGS = ("tts", "srt")
-DRAWING_PROFILES = ("brush", "pen")
+DRAWING_PROFILES = (
+    "brush", "pen", "pen-brush", "dark-random-brush", "cosmic-random-brush",
+)
+# public name is content-agnostic; keep the historical runtime key for golden/build compatibility.
+DRAWING_PROFILE_ALIASES = {"dark-random-brush": "cosmic-random-brush"}
 DRAWING_SYNCS = ("auto", "off")
+BGM_MODES = ("off", "synth", "asset", "playlist")
+BGM_LICENSE_POLICIES = ("strict", "warn")
 
 # 쇼츠 길이 규정 (2026): 최대 180초 = 앰비언트 18씬(씬당 300f/30fps=10초), 60초 미만 권장
 SHORTS_AMBIENT_SCENE_SEC = 10
 SHORTS_AMBIENT_MAX_SCENES = 18
 SHORTS_RECOMMENDED_SEC = 60
+
+
+@dataclass(frozen=True)
+class BgmConfig:
+    """로컬 BGM과 믹싱 설정. None이면 구 프로젝트 오디오 동작을 그대로 사용한다."""
+
+    mode: str
+    asset_id: str | None = None
+    asset_ids: tuple[str, ...] = ()
+    gain_db: float | None = None
+    source_start_sec: float = 0.0
+    fade_in_sec: float = 1.8
+    fade_out_sec: float = 2.0
+    crossfade_sec: float = 3.0
+    ducking_enabled: bool | None = None
+    ducking_amount_db: float = 8.0
+    ducking_attack_ms: int = 120
+    ducking_release_ms: int = 600
+    license_policy: str = "strict"
 
 
 @dataclass
@@ -40,14 +69,20 @@ class ProjectConfig:
     srt: Path | None = None
     audio: Path | None = None
     script: Path | None = None
-    tts: dict | None = None  # {engine, voice, pauseMs, timing}
+    tts: dict | None = None  # {engine, voice, speed, pauseMs, timing}
     bg_strategy: str = "preset"
     bg_subject: str | None = None
     bg_images: list[Path] = field(default_factory=list)
+    bg_fit: str = "contain"
     widgets: str = "none"
     authored_widgets: list[dict] = field(default_factory=list)
-    drawing_profile: str = "brush"  # brush(수묵 리빌) | pen(선화 펜 드로잉)
+    drawing_profile: str = "brush"  # public dark-random-brush normalizes to cosmic-random-brush
     drawing_sync: str = "auto"      # 내레이션 동기 드로잉 auto|off (pen+cue 있을 때만 동작)
+    drawing_preserve_source: bool = False  # pen 완료 시 원본 전체 색면·그림자 복원
+    drawing_outline_ratio: float = 0.38
+    drawing_handoff_frames: int = 8
+    drawing_paint_end_ratio: float = 0.88
+    bgm: BgmConfig | None = None
     ambient_scenes: int = 3
     ambient_cues: list[str] = field(default_factory=list)
     subtitle_style: dict = field(default_factory=dict)  # 사용자 명시 subtitleStyle (기본 프리셋에 병합)
@@ -109,7 +144,7 @@ def load_project(yaml_path: str | Path) -> ProjectConfig:
     if script_p is not None:
         _require(script_p.is_file(), f"input.script 파일 없음: {script_p}")
 
-    # input.tts — {engine, voice, pauseMs, timing}. timing: srt 는 후속 여지(옵션 자리만).
+    # input.tts — {engine, voice, speed, pauseMs, timing}. timing: srt 는 후속 여지(옵션 자리만).
     tts_raw = inp.get("tts")
     tts_cfg: dict | None = None
     if tts_raw is not None:
@@ -120,7 +155,21 @@ def load_project(yaml_path: str | Path) -> ProjectConfig:
         _require(timing in TTS_TIMINGS, f"input.tts.timing 은 {TTS_TIMINGS} 중 하나여야 함 (입력: {timing!r})")
         pause_ms = int(tts_raw.get("pauseMs", 300))
         _require(pause_ms >= 0, "input.tts.pauseMs 는 0 이상")
-        tts_cfg = {"engine": engine, "voice": str(tts_raw.get("voice", "F1")),
+        voice_raw = tts_raw.get("voice", "F1")
+        _require(isinstance(voice_raw, str) and bool(voice_raw.strip()),
+                 "input.tts.voice 는 비어 있지 않은 문자열이어야 함")
+        try:
+            voice = validate_voice_id(voice_raw)
+        except VoicePresetError as exc:
+            raise ValueError(str(exc)) from exc
+        speed_raw = tts_raw.get("speed", 1.05)
+        _require(isinstance(speed_raw, (int, float)) and not isinstance(speed_raw, bool),
+                 "input.tts.speed 는 숫자여야 함")
+        speed = float(speed_raw)
+        _require(math.isfinite(speed), "input.tts.speed 는 유한한 숫자여야 함")
+        _require(SPEED_MIN <= speed <= SPEED_MAX,
+                 f"input.tts.speed 는 {SPEED_MIN:.2f}~{SPEED_MAX:.2f} 범위여야 함 (입력: {speed!r})")
+        tts_cfg = {"engine": engine, "voice": voice, "speed": speed,
                    "pauseMs": pause_ms, "timing": timing}
         if audio_p is not None:
             log.warning("input.audio(실더빙)와 tts 가 함께 설정됨 — 실더빙 우선, TTS 무시")
@@ -131,6 +180,8 @@ def load_project(yaml_path: str | Path) -> ProjectConfig:
     _require(isinstance(bg, dict), "background 는 매핑이어야 함")
     strategy = bg.get("strategy", "preset")
     _require(strategy in BG_STRATEGIES, f"background.strategy 는 {BG_STRATEGIES} 중 하나여야 함 (입력: {strategy!r})")
+    bg_fit = bg.get("fit", "contain")
+    _require(bg_fit in BG_FITS, f"background.fit 은 {BG_FITS} 중 하나여야 함 (입력: {bg_fit!r})")
     images = [(base / p).resolve() for p in (bg.get("images") or [])]
     if strategy == "user-images":
         _require(len(images) >= 1, "user-images 전략에는 background.images 최소 1장 필요")
@@ -153,19 +204,120 @@ def load_project(yaml_path: str | Path) -> ProjectConfig:
     # drawing — {profile: brush|pen}. 기본 brush, 오타는 즉시 거부.
     drawing = raw.get("drawing") or {}
     _require(isinstance(drawing, dict), "drawing 은 매핑이어야 함")
-    profile = drawing.get("profile", "brush")
-    _require(profile in DRAWING_PROFILES,
-             f"drawing.profile 은 {DRAWING_PROFILES} 중 하나여야 함 (입력: {profile!r})")
+    profile_input = drawing.get("profile", "brush")
+    _require(profile_input in DRAWING_PROFILES,
+             f"drawing.profile 은 {DRAWING_PROFILES} 중 하나여야 함 (입력: {profile_input!r})")
+    profile = DRAWING_PROFILE_ALIASES.get(profile_input, profile_input)
     sync = drawing.get("sync", "auto")
     if isinstance(sync, bool):  # YAML bare off/on 은 불리언으로 파싱됨
         sync = "auto" if sync else "off"
     _require(sync in DRAWING_SYNCS,
              f"drawing.sync 는 {DRAWING_SYNCS} 중 하나여야 함 (입력: {sync!r})")
+    preserve_source = drawing.get("preserveSource", False)
+    _require(isinstance(preserve_source, bool), "drawing.preserveSource 는 true/false")
+    _require(not preserve_source or profile == "pen",
+             "drawing.preserveSource 는 drawing.profile: pen 에서만 지원")
+    allowed_drawing = {"profile", "sync", "seed", "preserveSource", "outlineRatio", "handoffFrames", "paintEndRatio"}
+    unknown_drawing = sorted(set(drawing) - allowed_drawing)
+    _require(not unknown_drawing, f"drawing 지원하지 않는 옵션: {', '.join(unknown_drawing)}")
+    outline_ratio = float(drawing.get("outlineRatio", 0.38))
+    handoff_frames = int(drawing.get("handoffFrames", 8))
+    paint_end_ratio = float(drawing.get("paintEndRatio", 0.88))
+    _require(0.20 <= outline_ratio <= 0.55, "drawing.outlineRatio 는 0.20~0.55")
+    _require(0 <= handoff_frames <= 30, "drawing.handoffFrames 는 0~30")
+    _require(outline_ratio + 0.05 < paint_end_ratio <= 0.95,
+             "drawing.paintEndRatio 는 outlineRatio+0.05 초과, 0.95 이하")
+
+    # bgm — input.audio(내레이션)와 완전히 분리된 로컬 음악 트랙.
+    # 블록 자체가 없으면 기존 프로젝트의 오디오 동작을 보존한다.
+    bgm_cfg: BgmConfig | None = None
+    if "bgm" in raw:
+        bgm_raw = raw.get("bgm")
+        _require(isinstance(bgm_raw, dict), "bgm 은 매핑이어야 함")
+        allowed_bgm = {"mode", "assetId", "gainDb", "sourceStartSec", "fadeInSec", "fadeOutSec",
+                       "playlist", "ducking", "licensePolicy"}
+        unknown_bgm = sorted(set(bgm_raw) - allowed_bgm)
+        _require(not unknown_bgm, f"bgm 지원하지 않는 옵션: {', '.join(unknown_bgm)}")
+
+        bgm_mode = bgm_raw.get("mode", "asset")
+        _require(bgm_mode in BGM_MODES,
+                 f"bgm.mode 은 {BGM_MODES} 중 하나여야 함 (입력: {bgm_mode!r})")
+        asset_id = bgm_raw.get("assetId")
+        if asset_id is not None:
+            _require(isinstance(asset_id, str) and asset_id.strip(), "bgm.assetId 는 빈 문자열일 수 없음")
+            asset_id = asset_id.strip()
+
+        playlist_raw = bgm_raw.get("playlist") or {}
+        _require(isinstance(playlist_raw, dict), "bgm.playlist 는 매핑이어야 함")
+        unknown_playlist = sorted(set(playlist_raw) - {"assetIds", "crossfadeSec"})
+        _require(not unknown_playlist,
+                 f"bgm.playlist 지원하지 않는 옵션: {', '.join(unknown_playlist)}")
+        ids_raw = playlist_raw.get("assetIds") or []
+        _require(isinstance(ids_raw, list) and all(isinstance(v, str) and v.strip() for v in ids_raw),
+                 "bgm.playlist.assetIds 는 비어 있지 않은 문자열 목록이어야 함")
+        asset_ids = tuple(v.strip() for v in ids_raw)
+
+        if bgm_mode == "asset":
+            _require(asset_id is not None, "bgm.mode=asset 은 bgm.assetId 필수")
+            _require(not asset_ids, "bgm.mode=asset 에 playlist.assetIds 를 함께 지정할 수 없음")
+        elif bgm_mode == "playlist":
+            _require(asset_id is None, "bgm.mode=playlist 에 assetId 를 함께 지정할 수 없음")
+            _require(2 <= len(asset_ids) <= 3, "bgm.mode=playlist 는 assetIds 2~3개 필요")
+        else:
+            _require(asset_id is None and not asset_ids,
+                     f"bgm.mode={bgm_mode} 에 assetId/playlist 를 지정할 수 없음")
+
+        gain_db = bgm_raw.get("gainDb")
+        if gain_db is not None:
+            gain_db = float(gain_db)
+            _require(-24.0 <= gain_db <= 12.0, "bgm.gainDb 는 -24~12")
+        source_start = float(bgm_raw.get("sourceStartSec", 0.0))
+        fade_in = float(bgm_raw.get("fadeInSec", 1.8))
+        fade_out = float(bgm_raw.get("fadeOutSec", 2.0))
+        crossfade = float(playlist_raw.get("crossfadeSec", 3.0))
+        _require(0.0 <= source_start <= 60.0, "bgm.sourceStartSec 는 0~60")
+        if bgm_mode in ("off", "synth"):
+            _require(source_start == 0.0,
+                     f"bgm.mode={bgm_mode} 에 sourceStartSec 를 지정할 수 없음")
+        _require(0.0 <= fade_in <= 10.0, "bgm.fadeInSec 는 0~10")
+        _require(0.0 <= fade_out <= 10.0, "bgm.fadeOutSec 는 0~10")
+        _require(0.5 <= crossfade <= 10.0, "bgm.playlist.crossfadeSec 는 0.5~10")
+
+        duck_raw = bgm_raw.get("ducking") or {}
+        _require(isinstance(duck_raw, dict), "bgm.ducking 은 매핑이어야 함")
+        unknown_duck = sorted(set(duck_raw) - {"enabled", "amountDb", "attackMs", "releaseMs"})
+        _require(not unknown_duck,
+                 f"bgm.ducking 지원하지 않는 옵션: {', '.join(unknown_duck)}")
+        duck_enabled = duck_raw.get("enabled")
+        _require(duck_enabled is None or isinstance(duck_enabled, bool),
+                 "bgm.ducking.enabled 는 true/false")
+        duck_amount = float(duck_raw.get("amountDb", 8.0))
+        duck_attack = int(duck_raw.get("attackMs", 120))
+        duck_release = int(duck_raw.get("releaseMs", 600))
+        _require(0.0 <= duck_amount <= 24.0, "bgm.ducking.amountDb 는 0~24")
+        _require(1 <= duck_attack <= 2000, "bgm.ducking.attackMs 는 1~2000")
+        _require(10 <= duck_release <= 5000, "bgm.ducking.releaseMs 는 10~5000")
+        license_policy = bgm_raw.get("licensePolicy", "strict")
+        _require(license_policy in BGM_LICENSE_POLICIES,
+                 f"bgm.licensePolicy 는 {BGM_LICENSE_POLICIES} 중 하나여야 함")
+
+        bgm_cfg = BgmConfig(
+            mode=bgm_mode, asset_id=asset_id, asset_ids=asset_ids, gain_db=gain_db,
+            source_start_sec=source_start, fade_in_sec=fade_in,
+            fade_out_sec=fade_out, crossfade_sec=crossfade,
+            ducking_enabled=duck_enabled, ducking_amount_db=duck_amount,
+            ducking_attack_ms=duck_attack, ducking_release_ms=duck_release,
+            license_policy=license_policy,
+        )
 
     amb = raw.get("ambient") or {}
     _require(isinstance(amb, dict), "ambient 는 매핑이어야 함")
     ambient_scenes = int(amb.get("scenes", 3))
     _require(ambient_scenes >= 1, "ambient.scenes 는 1 이상")
+    ambient_cues = amb.get("cues") or []
+    _require(isinstance(ambient_cues, list)
+             and all(isinstance(cue, str) and cue.strip() for cue in ambient_cues),
+             "ambient.cues 는 비어 있지 않은 문자열 목록이어야 함")
 
     subtitle_style = raw.get("subtitleStyle") or {}
     _require(isinstance(subtitle_style, dict), "subtitleStyle 은 매핑이어야 함")
@@ -181,14 +333,20 @@ def load_project(yaml_path: str | Path) -> ProjectConfig:
         bg_strategy=strategy,
         bg_subject=bg.get("subject") or bg.get("style"),
         bg_images=images,
+        bg_fit=bg_fit,
         widgets=widgets_mode,
         authored_widgets=authored,
         drawing_profile=profile,
         drawing_sync=sync,
+        drawing_preserve_source=preserve_source,
+        drawing_outline_ratio=outline_ratio,
+        drawing_handoff_frames=handoff_frames,
+        drawing_paint_end_ratio=paint_end_ratio,
+        bgm=bgm_cfg,
         ambient_scenes=ambient_scenes,
-        ambient_cues=list(amb.get("cues") or []),
+        ambient_cues=list(ambient_cues),
         subtitle_style=subtitle_style,
-        seed=int(raw.get("seed", 1)),
+        seed=int(drawing.get("seed", raw.get("seed", 1))),
         base_dir=base,
     )
 
@@ -201,4 +359,18 @@ def load_project(yaml_path: str | Path) -> ProjectConfig:
         if total_sec > SHORTS_RECOMMENDED_SEC:
             log.warning("쇼츠 총 길이 %d초 — 초기 노출은 %d초 미만 권장",
                         total_sec, SHORTS_RECOMMENDED_SEC)
+    if cfg.drawing_profile == "cosmic-random-brush":
+        _require(cfg.fmt == "youtube", "cosmic-random-brush는 format: youtube만 지원")
+        _require(cfg.mode == "ambient", "cosmic-random-brush는 ambient 모드만 지원")
+        _require(cfg.ambient_scenes in (1, 6, 60),
+                 "cosmic-random-brush는 ambient.scenes: 1(골든), 6(v0.2), 60(v0.3)만 지원")
+        if cfg.bg_strategy == "user-images":
+            _require(len(cfg.bg_images) == cfg.ambient_scenes,
+                     "cosmic-random-brush user-images는 background.images 수가 ambient.scenes와 같아야 함")
+        if cfg.ambient_scenes in (6, 60):
+            _require(cfg.bg_strategy == "user-images",
+                     "cosmic-random-brush 6/60씬은 background.strategy: user-images 필수")
+        if cfg.ambient_scenes == 60:
+            _require(len(cfg.ambient_cues) == 60,
+                     "cosmic-random-brush 60씬은 ambient.cues 60개가 필요")
     return cfg

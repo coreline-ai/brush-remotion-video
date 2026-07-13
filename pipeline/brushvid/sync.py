@@ -15,6 +15,40 @@ log = logging.getLogger(__name__)
 LEAD_FRAC = 0.10  # cue 구간 앞 여유 (펜 이동)
 
 
+def snap_pen_brush_boundary(duration: int, cues: list[dict], *, ratio: float = 0.38,
+                            min_ratio: float = 0.30, max_ratio: float = 0.48) -> float:
+    """기본 phase 경계를 가장 가까운 cue 끝으로 스냅.
+
+    우선 30~48% 창 안의 경계를 선택한다. 창 안에 하나도 없으면 문장 중간 tool swap을
+    만드는 것보다 범위를 조금 벗어나는 편이 안전하므로 전체 내부 cue 경계 중 최근접을 쓴다.
+    """
+    target = duration * ratio
+    lo, hi = duration * min_ratio, duration * max_ratio
+    # 마지막 cue 끝은 "다음 문장으로 넘어가는" 경계가 아니라 씬 종료이므로 제외한다.
+    boundaries = [float(c["to"]) for c in cues[:-1] if 0 < float(c["to"]) < duration]
+    candidates = [value for value in boundaries if lo <= value <= hi]
+    pool = candidates or boundaries
+    return min(pool, key=lambda value: (abs(value - target), value)) if pool else target
+
+
+def retime_range(routes_data: dict, start: float, end: float, *, pen_tail: float = 6) -> dict:
+    """route 상대 진행률은 보존하고 전체 타임 창만 선형 변경."""
+    import copy
+    data = copy.deepcopy(routes_data)
+    strokes = data.get("strokes") or []
+    old_start = float(data["meta"]["drawStart"])
+    old_end = float(data["meta"]["drawEnd"])
+    old_span = max(1e-6, old_end - old_start)
+    new_span = max(1e-6, end - start)
+    for stroke in strokes:
+        stroke["start"] = round(start + (float(stroke["start"]) - old_start) / old_span * new_span, 3)
+        stroke["end"] = round(start + (float(stroke["end"]) - old_start) / old_span * new_span, 3)
+    data["meta"]["drawStart"] = start
+    data["meta"]["drawEnd"] = end
+    data["meta"]["penInvisibleAfter"] = min(float(data["meta"]["durationInFrames"]), end + pen_tail)
+    return data
+
+
 def allocate_zones_to_cues(zone_masses: list[float], cue_lengths: list[float]) -> list[int]:
     """존(드로잉 순서)별 배정 cue 인덱스. 단조 증가, 모든 존 배정.
 

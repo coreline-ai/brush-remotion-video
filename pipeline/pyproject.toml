@@ -14,7 +14,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest"]
-tts = ["supertonic"]
+tts = ["supertonic==1.3.1"]
 stt = ["faster-whisper"]
 
 [build-system]

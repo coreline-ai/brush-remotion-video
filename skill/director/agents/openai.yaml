@@ -1,0 +1,4 @@
+interface:
+  display_name: "Brush Director"
+  short_description: "영상 요청과 카메라 표현을 전문 브리프·한영 프롬프트·YAML 초안으로 변환합니다."
+  default_prompt: "요청한 영상의 무드·화면비·드로잉·오디오·카메라 의도를 분석해 전문 한/영 Camera Prompt Pack과 실행 가능한 project.yaml 초안을 작성해줘."

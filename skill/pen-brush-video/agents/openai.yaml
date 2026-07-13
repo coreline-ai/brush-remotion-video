@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pen Brush Video"
+  short_description: "펜 외곽선을 먼저 그리고 브러시로 채색하는 2단계 영상을 제작합니다."
+  default_prompt: "완성 컬러 이미지의 샤프한 선을 보존하면서 펜 외곽선 다음 브러시 채색이 이어지는 영상을 만들고 audit까지 실행해줘."

@@ -5,6 +5,9 @@ __pycache__/
 .DS_Store
 *.tsbuildinfo
 
+# 공식 페이지에서 직접 받은 BGM 원본과 라이선스 증빙(재배포/커밋 금지)
+local-assets/
+
 # build.py가 생성하는 프로젝트 산출물은 커밋하지 않는다 (골든/공용 에셋만 추적)
 data/*
 !data/golden-single/
@@ -12,10 +15,38 @@ data/*
 !data/golden-widgets/
 !data/golden-single-widgets/
 !data/pipeline-smoke/
+# city-watercolor-600s 는 구 시스템 변환 레퍼런스 props.json 만 추적 (렌더 로그·QA 캡처·중간산출 제외)
 !data/city-watercolor-600s/
+data/city-watercolor-600s/*
+!data/city-watercolor-600s/props.json
 public/*
+# brush-draw 는 붓/펜 커서 에셋만 추적 (자가점검 스크래치 제외)
 !public/brush-draw/
+public/brush-draw/*
+!public/brush-draw/brush.png
+!public/brush-draw/pen.svg
 !public/winter-snow-pine-demo/
 !public/winter-fullcanvas/
 !public/golden-multi/
 !public/pipeline-smoke/
+
+# 작업 스크래치·중간 산출·분석 (전부 재생성 가능 — 커밋하지 않음)
+tmp/
+validation/
+analysis/
+.pytest_cache/
+
+# 프로젝트 생성 워크스페이스 (output/ 처럼 산출물 — 커밋하지 않음)
+projects/
+
+# examples 는 project.yaml·입력파일(txt/srt/mp3)만 추적한다.
+# 생성된 배경/잉크/QA/콘택트시트 등 대용량 이미지는 무시 (기존 커밋 관행 = 설정만 추적)
+examples/**/*.png
+examples/**/*.jpg
+examples/**/*.jpeg
+
+# assets: 코드가 소비하는 카탈로그/스키마/매니페스트(JSON)만 추적한다.
+# 대용량 원본 이미지·미리듣기 음원은 재생성 가능하므로 무시
+assets/storybook/**/*.png
+assets/storybook/**/*.jpg
+assets/voices/previews/

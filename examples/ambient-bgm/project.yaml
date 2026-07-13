@@ -1,0 +1,21 @@
+projectId: ambient-local-bgm-demo
+format: youtube
+title: 고요의 풍경
+background:
+  strategy: preset
+  subject: calm winter forest
+ambient:
+  scenes: 3
+  cues:
+    - 바람이 지나간 자리에 고요가 남는다
+    - 숲은 서두르지 않는다
+    - 눈 내린 아침, 세상이 한 뼘 느려진다
+bgm:
+  mode: asset
+  assetId: youtube-chris-zabriskie-fight-for-your-honor
+  gainDb: 5.0
+  fadeInSec: 1.8
+  fadeOutSec: 2.0
+  licensePolicy: strict
+widgets: none
+seed: 7

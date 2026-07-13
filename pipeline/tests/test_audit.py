@@ -1,4 +1,5 @@
 """audit.py 테스트 — 임계 로직(순수) + 합성 클립(ffmpeg) 검출 + 독립성 가드."""
+import json
 import subprocess
 import wave
 from pathlib import Path
@@ -35,6 +36,51 @@ def test_classify_spike_thresholds():
     assert A.classify_spike(1.8, 1.8, 0.5) == "WARN"
     assert A.classify_spike(0.94, 0.94, 0.7) is None     # 수정 후 정상 페이드 수준
     assert A.classify_spike(3.0, 3.0, 2.0) is None       # 배수 미달(주변도 높음)
+
+
+def test_completion_reversal_metrics_accepts_monotonic_and_rejects_pulse():
+    ok = A.completion_reversal_metrics(np.linspace(210, 150, 55))
+    assert ok["direction"] == "darker"
+    assert ok["reversal"] == pytest.approx(0, abs=0.01)
+    pulse = A.completion_reversal_metrics(np.array([150, 205, 130], dtype=float))
+    assert pulse["direction"] == "darker"
+    assert pulse["reversal"] > A.COMPLETION_REVERSAL_FAIL
+
+
+def test_completion_pulse_issues_and_phase_classification():
+    lums = np.full(300, 180.0)
+    lums[206:261] = np.concatenate([np.linspace(180, 210, 20), np.linspace(210, 140, 35)])
+    windows = [{"sceneId": "s1", "offset": 0, "drawStart": 6,
+                "lastStrokeEnd": 206, "developEnd": 242, "colorSettleEnd": 260,
+                "outroStart": 276, "sceneEnd": 300}]
+    issues, stats = A.completion_pulse_issues(lums, windows, 30)
+    assert issues and issues[0].kind == "completion-pulse" and issues[0].severity == "FAIL"
+    assert stats[0]["reversal"] > A.COMPLETION_REVERSAL_FAIL
+    assert A.phase_for_frame(144, windows) == "drawing"
+    assert A.phase_for_frame(230, windows) == "completion"
+    assert A.phase_for_frame(288, windows) == "outro"
+
+
+def test_completion_windows_are_loaded_from_standard_props(tmp_path):
+    repo = tmp_path / "repo"
+    props_dir = repo / "data" / "demo"
+    route_dir = repo / "public" / "demo" / "routes"
+    props_dir.mkdir(parents=True)
+    route_dir.mkdir(parents=True)
+    (route_dir / "scene-01.routes.json").write_text(json.dumps({
+        "meta": {"drawStart": 6, "drawEnd": 206},
+        "strokes": [{"end": 206}],
+    }), encoding="utf-8")
+    props = props_dir / "props.json"
+    props.write_text(json.dumps({"scenes": [{
+        "id": "scene-01", "routes": "demo/routes/scene-01.routes.json",
+        "durationInFrames": 300, "completionMode": "integrated-develop",
+        "developFrames": 36, "colorSettleFrames": 18, "outroFadeFrames": 24,
+    }]}), encoding="utf-8")
+    windows = A.completion_windows_from_props(props)
+    assert windows[0]["lastStrokeEnd"] == 206
+    assert windows[0]["colorSettleEnd"] == 260
+    assert windows[0]["sceneEnd"] == 300
 
 
 def test_judge_candidate_three_way():
@@ -125,6 +171,204 @@ def test_parse_audio_stderr():
     p = A.parse_audio_stderr(text, 30.0)
     assert p["silences"] == [(3.2, 6.4), (25.0, 30.0)]
     assert p["meanVolume"] == -21.3 and p["maxVolume"] == -0.2
+
+
+def test_parse_loudness_and_issue_ranges():
+    text = '''
+    {
+      "input_i" : "-27.20",
+      "input_tp" : "-0.40",
+      "input_lra" : "2.10",
+      "input_thresh" : "-38.00",
+      "target_offset" : "0.00"
+    }
+    '''
+    metrics = A.parse_loudnorm_stderr(text)
+    assert metrics == {"integratedLufs": -27.2, "truePeakDbtp": -0.4, "lra": 2.1}
+    kinds = {i.kind for i in A.loudness_issues(metrics)}
+    assert kinds == {"audio-loudness", "audio-true-peak"}
+    high = A.loudness_issues({"integratedLufs": -10.0, "truePeakDbtp": -2.0})
+    assert [(i.severity, i.kind) for i in high] == [("WARN", "audio-loudness")]
+
+
+def test_license_manifest_rules(tmp_path):
+    manifest = tmp_path / "bgm-manifest.json"
+    audio = tmp_path / "original.mp3"
+    audio.write_bytes(b"fixture-audio")
+    evidence = tmp_path / "evidence"
+    evidence.mkdir()
+    (evidence / "source-page.png").write_bytes(b"source")
+    (evidence / "license.pdf").write_bytes(b"license")
+    import hashlib
+    digest = hashlib.sha256(audio.read_bytes()).hexdigest()
+    manifest.write_text(json.dumps({
+        "licensePolicy": "strict",
+        "assets": [{
+            "id": "track", "artist": "Artist", "sourcePage": "https://pixabay.com/music/x/",
+            "sha256": digest, "resolvedPath": str(audio),
+            "license": {"url": "https://pixabay.com/service/license-summary/",
+                        "downloadedAt": "2026-07-12", "checkedAt": "2026-07-12",
+                        "contentIdStatus": "not-displayed",
+                        "evidenceFiles": ["evidence/source-page.png", "evidence/license.pdf"]},
+        }],
+    }), encoding="utf-8")
+    issues, summary = A.check_license_manifest(manifest)
+    assert summary["assetIds"] == ["track"]
+    assert [(i.severity, i.kind) for i in issues] == [("WARN", "bgm-content-id")]
+
+    audio.write_bytes(b"changed")
+    issues, _ = A.check_license_manifest(manifest)
+    assert any(i.severity == "FAIL" and "SHA-256 불일치" in i.message for i in issues)
+
+    data = json.loads(manifest.read_text())
+    data["assets"][0]["sha256"] = hashlib.sha256(audio.read_bytes()).hexdigest()
+    data["assets"][0]["license"]["checkedAt"] = "2020-01-01"
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+    issues, _ = A.check_license_manifest(manifest)
+    assert any(i.severity == "WARN" and "일 경과" in i.message for i in issues)
+
+    data = json.loads(manifest.read_text())
+    data["distribution"] = "youtube"
+    data["assets"][0]["source"] = "pixabay"
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+    issues, summary = A.check_license_manifest(manifest)
+    assert summary["distribution"] == "youtube"
+    assert any(i.severity == "FAIL" and i.kind == "bgm-source-policy" for i in issues)
+
+    data["assets"][0]["source"] = "youtube-audio-library"
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+    issues, _ = A.check_license_manifest(manifest)
+    assert not any(i.kind == "bgm-source-policy" for i in issues)
+
+    manifest.write_text('{"assets": []}', encoding="utf-8")
+    issues, _ = A.check_license_manifest(manifest)
+    assert issues[0].severity == "FAIL" and issues[0].kind == "bgm-license"
+
+
+def _valid_voice_manifest():
+    return {
+        "schemaVersion": 1,
+        "projectId": "voice-demo",
+        "requestedVoice": "female-09",
+        "voicePresetId": "female-09",
+        "voicePackVersion": "1.0.0",
+        "engine": "supertonic",
+        "packageVersion": "1.3.1",
+        "model": "supertonic-3",
+        "language": "ko",
+        "sampleRate": 44100,
+        "speed": 1.10,
+        "components": {"F4": 0.65, "F1": 0.35},
+        "catalogSha256": "a" * 64,
+        "styleSourceSha256": {"F4": "b" * 64, "F1": "c" * 64},
+        "styleSha256": "d" * 64,
+        "aiDisclosure": "이 콘텐츠의 내레이션은 Supertonic AI 합성 음성으로 제작되었습니다.",
+        "license": {
+            "model": "OpenRAIL-M", "url": "https://example.com/license",
+            "aiDisclosureRequired": True,
+        },
+        "pauseMs": 350,
+        "timing": "tts",
+        "durationSec": 10.0,
+        "sentenceCount": 2,
+    }
+
+
+def test_voice_manifest_reproducibility_and_disclosure_contract(tmp_path):
+    path = tmp_path / "voice-manifest.json"
+    path.write_text(json.dumps(_valid_voice_manifest()), encoding="utf-8")
+    issues, summary = A.check_voice_manifest(path)
+    assert issues == []
+    assert summary["voicePresetId"] == "female-09"
+    assert summary["components"] == {"F4": 0.65, "F1": 0.35}
+
+
+def test_voice_manifest_missing_hash_and_disclosure_fail(tmp_path):
+    data = _valid_voice_manifest()
+    data["styleSha256"] = None
+    data["aiDisclosure"] = ""
+    path = tmp_path / "voice-manifest.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    issues, _ = A.check_voice_manifest(path)
+    kinds = {(issue.severity, issue.kind) for issue in issues}
+    assert ("FAIL", "tts-voice-manifest") in kinds
+    assert ("FAIL", "tts-ai-disclosure") in kinds
+
+
+def test_voice_manifest_version_drift_warns_without_hiding_contract_errors(tmp_path):
+    data = _valid_voice_manifest()
+    data["packageVersion"] = "1.4.0"
+    path = tmp_path / "voice-manifest.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    issues, _ = A.check_voice_manifest(path)
+    assert [(issue.severity, issue.kind) for issue in issues] == [("WARN", "tts-version-drift")]
+
+
+def test_mix_report_contract(tmp_path):
+    report = tmp_path / "mix-report.json"
+    report.write_text(json.dumps({
+        "durationSec": 10.0, "mode": "playlist",
+        "bgm": {"kind": "playlist", "tracks": [{}, {}], "crossfadeSec": 3.0,
+                "output": {"truePeakDbtp": -2.0}},
+        "voice": {"ducking": {"enabled": True, "ratio": 8.2,
+                               "measuredAttenuationDb": 5.4}},
+    }), encoding="utf-8")
+    issues, summary = A.check_mix_report(report, 10.05)
+    assert not issues
+    assert summary["trackCount"] == 2 and summary["ducking"]["enabled"]
+
+    data = json.loads(report.read_text())
+    data["voice"]["ducking"]["ratio"] = 1
+    report.write_text(json.dumps(data), encoding="utf-8")
+    issues, _ = A.check_mix_report(report, 11.0)
+    assert {i.kind for i in issues} == {"audio-duration", "audio-ducking"}
+
+
+def test_voice_only_mix_report_does_not_require_ducking(tmp_path):
+    report = tmp_path / "mix-report.json"
+    report.write_text(json.dumps({
+        "durationSec": 10.0, "mode": "off", "bgm": None,
+        "voice": {"ducking": {"enabled": False, "reason": "bgm-off"}},
+    }), encoding="utf-8")
+    issues, summary = A.check_mix_report(report, 10.0)
+    assert not issues
+    assert summary["trackCount"] == 0
+    assert summary["ducking"] is None
+
+
+def test_mix_report_prefers_active_region_over_low_whole_timeline_duck_average(tmp_path):
+    report = tmp_path / "mix-report.json"
+    report.write_text(json.dumps({
+        "durationSec": 60.0, "mode": "asset",
+        "bgm": {"kind": "asset", "tracks": [{}], "crossfadeSec": 0,
+                "output": {"truePeakDbtp": -2.8}},
+        "voice": {"ducking": {
+            "enabled": True, "ratio": 8.2, "requestedAmountDb": 8,
+            "measuredAttenuationDb": 0.79,
+            "regionMetrics": {"activeAttenuationDb": 5.8, "inactiveAttenuationDb": 0.22},
+        }},
+    }), encoding="utf-8")
+    issues, _summary = A.check_mix_report(report, 60.0)
+    assert not [issue for issue in issues if issue.kind == "audio-ducking"]
+
+
+def test_audio_shape_fade_detects_missing_and_accepts_faded(tmp_path):
+    raw = tmp_path / "raw.wav"
+    faded = tmp_path / "faded.wav"
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i",
+                    "sine=frequency=440:duration=4", "-c:a", "pcm_s16le", str(raw)], check=True)
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(raw), "-af",
+                    "afade=t=in:d=1,afade=t=out:st=3:d=1", str(faded)], check=True)
+    report = tmp_path / "mix.json"
+    report.write_text(json.dumps({
+        "durationSec": 4, "mode": "asset", "voice": None,
+        "settings": {"fadeInSec": 1, "fadeOutSec": 1},
+        "bgm": {"kind": "asset", "tracks": [{}], "crossfadeSec": 0},
+    }), encoding="utf-8")
+    issues, metrics = A.audio_shape_issues(faded, report)
+    assert not issues and metrics["fade"]["startDb"] < metrics["fade"]["bodyDb"] - 3
+    issues, _ = A.audio_shape_issues(raw, report)
+    assert {i.kind for i in issues} == {"audio-fade"}
 
 
 # ── 합성 클립 통합 (ffmpeg) ──

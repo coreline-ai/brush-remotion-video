@@ -3,10 +3,19 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AbsoluteFill, continueRender, delayRender, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { buildDynamicStrokes } from "../lib/dynamics";
-import { RoutesDataSchema, type Brush, type RoutesData, type Scene } from "../schema";
+import {
+  RandomTouchRoutesDataSchema,
+  RoutesDataSchema,
+  type Brush,
+  type RandomTouchRoutesData,
+  type RoutesData,
+  type Scene,
+} from "../schema";
+import { CosmicRandomBrushLayer } from "./CosmicRandomBrushLayer";
 import { CursorLayer } from "./CursorLayer";
+import { DrawingPhaseLayer } from "./DrawingPhaseLayer";
 import { EffectLayer } from "./EffectLayer";
-import { RevealLayer } from "./RevealLayer";
+import { getRevealTiming, RevealLayer } from "./RevealLayer";
 import { SubtitleLayer } from "./SubtitleLayer";
 import { TitleLayer } from "./TitleLayer";
 import { WidgetLayer } from "./WidgetLayer";
@@ -18,7 +27,7 @@ const PAPER_TEXTURE =
 export const BrushScene: React.FC<{ scene: Scene; paper: string; brush?: Brush }> = ({ scene, paper, brush }) => {
   const frame = useCurrentFrame();
   const { width: W, height: H } = useVideoConfig();
-  const [data, setData] = useState<RoutesData | null>(null);
+  const [data, setData] = useState<RoutesData | RandomTouchRoutesData | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [handle] = useState(() => (scene.routes ? delayRender(`routes:${scene.id}`) : null));
 
@@ -27,9 +36,21 @@ export const BrushScene: React.FC<{ scene: Scene; paper: string; brush?: Brush }
     let alive = true;
     fetch(staticFile(scene.routes))
       .then((r) => r.json())
-      .then((json: unknown) => {
+      .then(async (json: unknown) => {
+        const raw = json as {meta?: {family?: unknown}};
+        const parsed = raw?.meta?.family === "free-random-touch"
+          ? RandomTouchRoutesDataSchema.parse(json)
+          : RoutesDataSchema.parse(json); // 로드 시점 검증 — 침묵 실패 금지
+
+        // SVG <image>는 HTML <img>와 달리 Remotion의 delayRender를 자동으로 잡지 않는다.
+        // 고해상도 RGBA가 decode/paint 되기 전에 병렬 Chromium이 캡처하면 종이 배경만
+        // 1~수 프레임 찍히므로, routes handle을 풀기 전에 명시적으로 decode를 완료한다.
+        const decoded = new Image();
+        decoded.decoding = "sync";
+        decoded.src = staticFile(parsed.meta.image);
+        await decoded.decode();
+
         if (alive) {
-          const parsed = RoutesDataSchema.parse(json); // 로드 시점 검증 — 침묵 실패 금지
           parsed.strokes.sort((a, b) => a.start - b.start);
           setData(parsed);
         }
@@ -49,12 +70,26 @@ export const BrushScene: React.FC<{ scene: Scene; paper: string; brush?: Brush }
     scene.prewashOpacity > 0.001 && scene.prewashFrames > 0 ? Math.max(0, Math.round(scene.prewashFrames)) : 0;
   const drawFrame = frame - introDelayFrames;
 
+  const randomData = data?.meta && "family" in data.meta && data.meta.family === "free-random-touch"
+    ? data as RandomTouchRoutesData
+    : null;
+  const standardData = data && !randomData ? data as RoutesData : null;
+
   const dynamic = useMemo(
-    () => (data ? buildDynamicStrokes(data.strokes, data.meta.penInvisibleAfter, scene.brushDynamics) : null),
-    [data, scene.brushDynamics],
+    () => (standardData ? buildDynamicStrokes(standardData.strokes, standardData.meta.penInvisibleAfter, scene.brushDynamics) : null),
+    [standardData, scene.brushDynamics],
   );
 
-  if (!scene.routes || loadError) {
+  const revealTiming = standardData && dynamic
+    ? getRevealTiming({
+        scene,
+        strokes: dynamic.strokes,
+        penInvisibleAfter: dynamic.penInvisibleAfter,
+        routesDuration: standardData.meta.durationInFrames,
+      })
+    : null;
+
+  if ((!scene.routes && !scene.drawingPhases) || loadError) {
     return (
       <AbsoluteFill style={{ backgroundColor: paper, alignItems: "center", justifyContent: "center" }}>
         <div style={{ fontFamily: "monospace", fontSize: 28, color: "#b45a4a" }}>
@@ -65,27 +100,42 @@ export const BrushScene: React.FC<{ scene: Scene; paper: string; brush?: Brush }
   }
 
   return (
-    <AbsoluteFill style={{ backgroundColor: paper, overflow: "hidden" }}>
-      <AbsoluteFill style={{ backgroundImage: PAPER_TEXTURE }} />
-      {data && dynamic && (
+    <AbsoluteFill style={{ backgroundColor: randomData ? "#01020d" : paper, overflow: "hidden" }}>
+      {!randomData && <AbsoluteFill style={{ backgroundImage: PAPER_TEXTURE }} />}
+      {scene.drawingPhases && (
+        <DrawingPhaseLayer
+          sceneId={scene.id}
+          phases={scene.drawingPhases}
+          frame={frame}
+          W={W}
+          H={H}
+          fallbackBrush={brush}
+          outroFadeFrames={scene.outroFadeFrames}
+          outroWashOpacity={scene.outroWashOpacity}
+          outroBlur={scene.outroBlur}
+        />
+      )}
+      {randomData && <CosmicRandomBrushLayer data={randomData} frame={frame} W={W} H={H} />}
+      {standardData && dynamic && (
         <>
           <RevealLayer
             scene={scene}
-            image={data.meta.image}
+            image={standardData.meta.image}
             strokes={dynamic.strokes}
             penInvisibleAfter={dynamic.penInvisibleAfter}
-            routesDuration={data.meta.durationInFrames}
+            routesDuration={standardData.meta.durationInFrames}
             frame={frame}
             drawFrame={drawFrame}
             W={W}
             H={H}
+            preserveSourceColor={Boolean((standardData.meta as Record<string, unknown>).preserveSourceColor)}
           />
-          {scene.naturalEffects && (
+          {scene.naturalEffects && revealTiming && (
             <EffectLayer
               frame={frame}
               drawFrame={drawFrame}
-              penInvisibleAfter={dynamic.penInvisibleAfter}
-              routesDuration={data.meta.durationInFrames}
+              startFrame={revealTiming.colorSettleEnd + 8}
+              routesDuration={standardData.meta.durationInFrames}
               W={W}
               H={H}
               spec={scene.naturalEffects}

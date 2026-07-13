@@ -1,5 +1,7 @@
 # Implementation Plan: brush_remotion_video — 화이트 브러시 드로잉 영상 생성기 (완전 신규 제작)
 
+> **역사적 초기 설계 스냅샷**: 이 문서의 `스킬 2종`, 초기 테스트 수치와 미완료 체크박스는 2026-07-11 당시 범위다. 현재 정식 스킬 9종과 운영 상태는 `README.md`와 `skill/catalog.json`을 기준으로 하며, 역사 기록 보존을 위해 아래 본문은 갱신하지 않는다.
+
 > SRT/음성만으로 "붓으로 그리는" 수묵화 리빌 영상을 자동 생성하는 독립 프로젝트를 처음부터 새로 만든다.
 > Generated: 2026-07-11
 > Project: brush_remotion_video

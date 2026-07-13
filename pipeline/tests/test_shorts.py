@@ -228,15 +228,22 @@ def test_shorts_props_user_subtitle_style_respected(shorts_pipe):
 
 
 def test_youtube_props_not_injected(tmp_path, monkeypatch):
-    """가로(youtube) 앰비언트는 쇼츠 프리셋이 주입되지 않는다 (기존 산출 무변경)."""
+    """가로 brush는 쇼츠 프리셋 대신 공용 무펄스 완료 프리셋을 사용한다."""
     monkeypatch.setattr(buildmod, "REPO_ROOT", tmp_path)
     cfg = buildmod.ProjectConfig(project_id="yt-unit", fmt="youtube")
     pipe = buildmod.Pipeline(cfg)
     pipe._write_scenes([{"durationInFrames": 300,
                          "cues": [{"text": "cue", "from": 40, "to": 260}]}])
+    route_dir = pipe.public_dir / "routes"
+    route_dir.mkdir(parents=True)
+    (route_dir / "scene-01.routes.json").write_text(json.dumps({
+        "meta": {"drawStart": 8, "drawEnd": 219, "penInvisibleAfter": 228},
+        "strokes": [{"end": 219}],
+    }), encoding="utf-8")
     pipe.stage_props()
     props = json.loads(pipe.props_json.read_text(encoding="utf-8"))
     sc = props["scenes"][0]
     assert "subtitleStyle" not in sc
-    assert "outroFadeFrames" not in sc and "outroWashOpacity" not in sc
-    assert sc["prewashOpacity"] == 0.65  # golden 기본값 그대로
+    assert sc["completionMode"] == "integrated-develop"
+    assert sc["outroFadeFrames"] == 24 and sc["outroWashOpacity"] == 1.0
+    assert sc["prewashOpacity"] == 0

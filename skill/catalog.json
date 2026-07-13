@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 1,
+  "catalogVersion": "1.1.0",
+  "defaultInstallTarget": "claude",
+  "skills": [
+    {
+      "id": "brush-director",
+      "folder": "director",
+      "role": "design",
+      "summary": "일반 영상 요청과 일상적인 카메라 표현을 전문 연출 브리프·한/영 Camera Prompt Pack·project.yaml 초안으로 변환하며 직접 렌더하지 않습니다.",
+      "entrypoint": "conversation -> brief + optional camera prompt pack + project.yaml draft",
+      "profiles": [],
+      "formats": ["youtube", "shorts"],
+      "defaultVoice": null,
+      "dependsOn": ["brush-video"],
+      "version": "1.1.0",
+      "status": "stable",
+      "interface": {
+        "displayName": "Brush Director",
+        "shortDescription": "영상 요청과 카메라 표현을 전문 브리프·한영 프롬프트·YAML 초안으로 변환합니다.",
+        "defaultPrompt": "요청한 영상의 무드·화면비·드로잉·오디오·카메라 의도를 분석해 전문 한/영 Camera Prompt Pack과 실행 가능한 project.yaml 초안을 작성해줘."
+      }
+    },
+    {
+      "id": "brush-video",
+      "folder": "brush-video",
+      "role": "production",
+      "summary": "수묵·수채 이미지를 붓이 그려 완성하는 내레이션·TTS·앰비언트 영상을 제작합니다.",
+      "entrypoint": "bin/build.py",
+      "profiles": ["brush"],
+      "formats": ["youtube", "shorts"],
+      "defaultVoice": "female-01",
+      "dependsOn": [],
+      "version": "1.0.0",
+      "status": "stable",
+      "interface": {
+        "displayName": "Brush Video",
+        "shortDescription": "붓으로 그림을 완성하는 내레이션·TTS·앰비언트 영상을 제작합니다.",
+        "defaultPrompt": "요청한 주제와 화면비에 맞는 brush-video project.yaml을 만들고 렌더·오디오 믹스·QA·audit까지 실행해줘."
+      }
+    },
+    {
+      "id": "pen-video",
+      "folder": "pen-video",
+      "role": "production",
+      "summary": "원본을 자르지 않고 얇고 정교한 펜 윤곽선을 순차적으로 그리는 설명형 영상을 제작합니다.",
+      "entrypoint": "bin/build.py",
+      "profiles": ["pen"],
+      "formats": ["youtube", "shorts"],
+      "defaultVoice": "female-09",
+      "dependsOn": ["brush-video"],
+      "version": "1.0.0",
+      "status": "stable",
+      "interface": {
+        "displayName": "Pen Video",
+        "shortDescription": "얇고 샤프한 펜 윤곽선을 순차적으로 그리는 영상을 제작합니다.",
+        "defaultPrompt": "원본 이미지를 자르지 않는 pen 프로파일로 얇고 정교한 외곽선 영상을 만들고 QA와 audit까지 실행해줘."
+      }
+    },
+    {
+      "id": "pen-brush-video",
+      "folder": "pen-brush-video",
+      "role": "production",
+      "summary": "펜으로 샤프한 외곽선을 먼저 완성한 뒤 브러시로 색을 채우는 2단계 영상을 제작합니다.",
+      "entrypoint": "bin/build.py",
+      "profiles": ["pen-brush"],
+      "formats": ["youtube", "shorts"],
+      "defaultVoice": "female-09",
+      "dependsOn": ["brush-video", "pen-video"],
+      "version": "1.0.0",
+      "status": "stable",
+      "interface": {
+        "displayName": "Pen Brush Video",
+        "shortDescription": "펜 외곽선을 먼저 그리고 브러시로 채색하는 2단계 영상을 제작합니다.",
+        "defaultPrompt": "완성 컬러 이미지의 샤프한 선을 보존하면서 펜 외곽선 다음 브러시 채색이 이어지는 영상을 만들고 audit까지 실행해줘."
+      }
+    },
+    {
+      "id": "shorts-brush",
+      "folder": "shorts-brush",
+      "role": "production",
+      "summary": "1080×1920 세로 화면에서 훅·세이프존·루프 엔딩을 적용한 힐링 브러시 쇼츠를 제작합니다.",
+      "entrypoint": "bin/build.py",
+      "profiles": ["brush"],
+      "formats": ["shorts"],
+      "defaultVoice": "female-07",
+      "dependsOn": ["brush-video"],
+      "version": "1.0.0",
+      "status": "stable",
+      "interface": {
+        "displayName": "Shorts Brush",
+        "shortDescription": "세로 풀블리드 힐링 브러시 쇼츠를 제작합니다.",
+        "defaultPrompt": "1080×1920 세로 화면과 안전 자막 영역을 지키는 힐링 브러시 쇼츠를 만들고 전환·오디오·audit까지 검증해줘."
+      }
+    },
+    {
+      "id": "dark-random-brush-video",
+      "folder": "dark-random-brush-video",
+      "role": "production",
+      "summary": "우주·심해·야간 등 어두운 16:9 이미지 1/6/60씬을 자유 랜덤 붓 터치로 드러냅니다.",
+      "entrypoint": "bin/build.py",
+      "profiles": ["dark-random-brush"],
+      "formats": ["youtube"],
+      "defaultVoice": null,
+      "dependsOn": ["brush-video"],
+      "version": "0.3.0",
+      "status": "specialized",
+      "interface": {
+        "displayName": "Dark Random Brush Video",
+        "shortDescription": "어두운 16:9 이미지를 자유 랜덤 붓 터치 영상으로 제작합니다.",
+        "defaultPrompt": "우주·심해·야간 등 어두운 16:9 이미지 1/6/60씬을 dark-random-brush 프로파일로 영상화하고 coverage와 audit까지 검증해줘."
+      }
+    },
+    {
+      "id": "storybook-full-touch-video",
+      "folder": "storybook-full-touch-video",
+      "role": "production",
+      "summary": "동화 이미지·씬별 TTS·자막·BGM과 펜 외곽선→브러시 채색을 통합한 영상을 제작합니다.",
+      "entrypoint": "scripts/prepare-storybook-full-touch.py + bin/build.py",
+      "profiles": ["pen-brush"],
+      "formats": ["youtube", "shorts"],
+      "defaultVoice": "female-08",
+      "dependsOn": ["brush-video", "pen-brush-video"],
+      "version": "0.1.0",
+      "status": "specialized",
+      "interface": {
+        "displayName": "Storybook Full-Touch Video",
+        "shortDescription": "동화 장면·TTS·펜 외곽선·브러시 채색 영상을 통합 제작합니다.",
+        "defaultPrompt": "동화 주제와 화면비에 맞는 장면별 풀터칭 이미지, 씬별 Supertonic 내레이션, 펜→브러시 채색, BGM, QA를 포함한 영상을 제작해줘."
+      }
+    },
+    {
+      "id": "brush-qa-review",
+      "folder": "qa-review",
+      "role": "qa",
+      "summary": "파이프라인의 씬 캡처와 capture manifest를 검토해 수정 요청과 재빌드 시작점을 제시합니다.",
+      "entrypoint": "bin/qa.py",
+      "profiles": [],
+      "formats": ["youtube", "shorts"],
+      "defaultVoice": null,
+      "dependsOn": ["brush-video"],
+      "version": "1.0.0",
+      "status": "stable",
+      "interface": {
+        "displayName": "Brush QA Review",
+        "shortDescription": "씬별 캡처를 검토해 수정 요청과 재빌드 시작점을 제시합니다.",
+        "defaultPrompt": "brush_remotion_video의 capture manifest와 씬별 캡처를 검토해 문제·근거·scene-fix-request와 최소 재빌드 시작점을 정리해줘."
+      }
+    },
+    {
+      "id": "video-auditor",
+      "folder": "video-auditor",
+      "role": "audit",
+      "summary": "완성 MP4의 하드컷·번쩍임·정지·무음·클리핑·음량·규격을 독립적으로 검사합니다.",
+      "entrypoint": "bin/audit.py",
+      "profiles": [],
+      "formats": ["youtube", "shorts"],
+      "defaultVoice": null,
+      "dependsOn": [],
+      "version": "1.0.0",
+      "status": "stable",
+      "interface": {
+        "displayName": "Video Auditor",
+        "shortDescription": "완성 MP4의 화면 전환·오디오·규격 결함을 독립 검사합니다.",
+        "defaultPrompt": "완성 MP4를 video-auditor로 검사해 PASS/FAIL, 문제 시각, 증거 스틸, 오디오·규격 지표를 정리해줘."
+      }
+    }
+  ],
+  "legacyInstallAliases": [
+    {
+      "id": "cosmic-random-brush-video",
+      "replacement": "dark-random-brush-video",
+      "removeOnlyIfSymlink": true
+    }
+  ]
+}

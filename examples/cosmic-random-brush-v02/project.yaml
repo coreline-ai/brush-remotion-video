@@ -1,0 +1,33 @@
+projectId: cosmic-random-brush-v02
+format: youtube
+
+background:
+  strategy: user-images
+  images:
+    - assets/scene-01-earth-orbit-sunrise.png
+    - assets/scene-02-saturn-rings.png
+    - assets/scene-03-barred-spiral-galaxy.png
+    - assets/scene-04-tarantula-nebula.png
+    - assets/scene-05-black-hole-accretion-disk.png
+    - assets/scene-06-low-contrast-lunar-surface.png
+  fit: cover
+
+drawing:
+  profile: cosmic-random-brush
+  seed: 260712
+
+ambient:
+  scenes: 6
+  cues:
+    - "01. 지구 궤도 일출"
+    - "02. 토성의 고리"
+    - "03. 나선은하의 중심"
+    - "04. 타란툴라 성운"
+    - "05. 블랙홀과 강착원반"
+    - "06. 고요의 바다"
+
+bgm:
+  mode: synth
+  gainDb: 4
+  fadeInSec: 2.0
+  fadeOutSec: 3.0

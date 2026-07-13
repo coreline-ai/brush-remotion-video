@@ -96,3 +96,22 @@ Absolutely NO text, no letters, no numbers. Minimal, serene, 9:16 portrait, full
 
 - 씬마다 소재·팔레트를 바꾼다 (예: 안개 호수 → 아침 숲길 → 노을 바다) — 무드는 하나로 통일
 - 하단 15%는 자막 밴드가 얹히므로 핵심 디테일을 두지 않는다
+
+---
+
+## 🖋️→🖌️ pen-brush 프로파일용 — 외곽선 후 채색
+
+`drawing.profile: pen-brush`는 완성 컬러 이미지에서 얇은 선과 색면을 분리한다.
+
+```
+A polished hand-drawn editorial illustration on uniform warm-white paper. Subject: {SUBJECT}.
+Very fine, crisp black ink outlines with consistent thin line weight; broad clearly separated
+flat pastel color regions inside the outlines; minimal texture; generous clean paper margin.
+No thick contour, no marker stroke, no gray shadow, no gradient, no text or labels.
+High-detail but airy, sharp line-art, 16:9 landscape.
+```
+
+- 굵은 marker/comic outline 금지
+- 종이 배경은 균일해야 하며 최소 3% 이상 여백 확보
+- outline 안쪽에 넓은 색면을 두고 미세 점묘만으로 채색하지 않기
+- 세로 출력은 같은 조건의 9:16 원본을 별도로 생성

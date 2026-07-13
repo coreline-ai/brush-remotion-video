@@ -26,12 +26,23 @@ projectId: my-sketch
 format: youtube
 drawing:
   profile: pen          # ← 이 한 줄이 pen 프로파일 전체를 켠다
+  preserveSource: true  # 선택: 완료 시 원본 전체 색면·그림자까지 자연스럽게 복원
 background:
   strategy: imagegen    # 선화 프롬프트는 background-prompt.md의 "pen 프로파일용" 섹션 사용
 input:
   script: 대본.txt      # TTS 더빙 (선택) — brush-video와 동일
-  tts: { engine: supertonic, voice: F1 }
+  tts: { engine: supertonic, voice: female-09, speed: 1.10 }
+bgm:
+  mode: asset
+  assetId: youtube-chris-zabriskie-chance-luck-finale
+  gainDb: 3                 # TTS 구간은 자동 덕킹
 ```
+
+YouTube 선화 기본 BGM은 `Chance, Luck, Errors in Nature, Fate, Destruction As a Finale`이다.
+Pixabay 음원은 YouTube/Shorts 제작·교체·배포에 사용하지 않는다. 공식 다운로드·증빙·로컬 등록은
+[공통 BGM 정책](../_shared/references/bgm-policy.md)을 따른다.
+전문 설명형 기본 음성은 `female-09`이며 10종 특징·청취 방법은
+[공통 Supertonic 음성 카탈로그](../_shared/references/supertonic-voice-catalog.md)를 따른다.
 
 ```bash
 cd /Users/hwanchoi/project_202606/brush_remotion_video
@@ -55,6 +66,9 @@ pipeline/.venv/bin/python bin/build.py <project.yaml>
 3. **이미지 잘림 금지** — 배경은 항상 contain
 4. 배경은 **선화(line-art)** 가 최적 — 수채·그라데이션은 잉크 분리 시 사라지므로 imagegen 프롬프트는
    [brush-video/references/background-prompt.md](../brush-video/references/background-prompt.md)의 "✒️ pen 프로파일용" 섹션을 쓸 것
+5. 기존 컬러 인포그래픽을 마지막에 원본 그대로 보여줘야 하면 `preserveSource: true`를 사용한다.
+   펜 경로는 잉크에서 추출하고, 원본 전체를 32% 가이드로 유지하면서 그린 구간만 선명하게 만든다.
+   완료 마스크는 18프레임 동안 원본 전체를 점진적으로 복원하며 마지막 이미지 팝업은 만들지 않는다.
 
 ## 내레이션 동기 드로잉 (자동)
 
@@ -86,4 +100,8 @@ pen 프로파일 + 내레이션(srt/tts/whisper)이면 **기본으로 동기가 
 
 실물 예시: `examples/pen-sketch/project.yaml` (무입력 앰비언트 1씬 — E2E 검증됨)
 
+> 완성 선언 전 씬 전환·완성(develop) 번쩍 공통 체크를 통과할 것:
+> [씬 전환·번쩍 공통 체크](../_shared/references/transition-checklist.md)
+> (pen은 faint 1.0이므로 `completionMode: masked-hold` 필수 — 교차합성 펄스 원천 제거).
+>
 > 제작 중 발견한 갭은 `FIELD-LOG.md`에 기록하고 문서/검증기에 환류한다 (brush-video §갭 환류와 동일).

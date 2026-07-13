@@ -1,0 +1,14 @@
+{
+  "scene": 2,
+  "title": "밤의 지구 전체",
+  "file": "examples/cosmic-fullscreen-v05/assets/scene-02.png",
+  "source": "/Users/hwanchoi/.codex/generated_images/019f53e5-ba65-7c72-b571-a03932e87ef0/exec-1cbc510a-5c8f-4caa-ab7c-17337dc45d1e.png",
+  "sourceWidth": 1672,
+  "sourceHeight": 941,
+  "ratioError": 0.00053135,
+  "width": 1920,
+  "height": 1080,
+  "sha256": "aa2c64b9d467fb7474e295e6be7f8c0fcd22956efb78c2d7a30494e994b1d992",
+  "cropApplied": false,
+  "fullBleed": true
+}

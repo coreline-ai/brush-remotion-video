@@ -83,6 +83,28 @@ def contain_fit(image: Image.Image, size: tuple[int, int] = DEFAULT_SIZE,
     return canvas
 
 
+def compose_dark_rgba(image_path: str | Path, out_path: str | Path, *,
+                      size: tuple[int, int] = DEFAULT_SIZE, fit: str = "cover") -> Path:
+    """우주 프로파일용 RGBA 합성 — 투명 화소의 숨은 RGB 노출을 막고 alpha를 보존한다."""
+    if fit not in {"contain", "cover"}:
+        raise ValueError(f"dark RGBA fit은 contain|cover: {fit!r}")
+    tw, th = size
+    im = Image.open(image_path).convert("RGBA")
+    scale = max(tw / im.width, th / im.height) if fit == "cover" else min(tw / im.width, th / im.height)
+    nw, nh = max(1, int(round(im.width * scale))), max(1, int(round(im.height * scale)))
+    im = im.resize((nw, nh), Image.LANCZOS)
+    if fit == "cover":
+        left, top = max(0, (nw - tw) // 2), max(0, (nh - th) // 2)
+        im = im.crop((left, top, left + tw, top + th))
+        nw, nh = im.size
+    canvas = Image.new("RGBA", (tw, th), (0, 0, 0, 0))
+    canvas.alpha_composite(im, ((tw - nw) // 2, (th - nh) // 2))
+    out = Path(out_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    canvas.save(out)
+    return out
+
+
 def separate_ink(bg_path: str | Path, out_alpha_path: str | Path, out_flat_path: str | Path,
                  paper: tuple[int, int, int] = PEN_PAPER,
                  size: tuple[int, int] = DEFAULT_SIZE) -> dict:
@@ -126,7 +148,8 @@ def find_codex() -> str | None:
 
 def generate(strategy: str, out_path: str | Path, *, subject: str | None = None,
              images: list[str | Path] | None = None, seed: int = 1,
-             codex_bin: str | None = None, size: tuple[int, int] = DEFAULT_SIZE) -> dict:
+             codex_bin: str | None = None, size: tuple[int, int] = DEFAULT_SIZE,
+             fit: str = "contain") -> dict:
     """전략에 따라 배경 PNG 생성. 반환: {"strategy": 실제 사용 전략, "path": 경로}."""
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -146,8 +169,10 @@ def generate(strategy: str, out_path: str | Path, *, subject: str | None = None,
     if strategy == "user-images":
         if not images:
             raise ValueError("user-images 전략에는 images 가 최소 1장 필요")
-        _compose_user_images([Path(p) for p in images], out_path, size=size)
-        return {"strategy": "user-images", "path": out_path}
+        if fit not in {"contain", "cover"}:
+            raise ValueError(f"user-images fit은 contain|cover 중 하나여야 함: {fit!r}")
+        _compose_user_images([Path(p) for p in images], out_path, size=size, fit=fit)
+        return {"strategy": "user-images", "path": out_path, "fit": fit}
 
     raise ValueError(f"알 수 없는 배경 전략: {strategy}")
 
@@ -227,19 +252,26 @@ def _gen_preset(out_path: Path, subject: str | None = None, seed: int = 1,
 
 
 def _compose_user_images(images: list[Path], out_path: Path,
-                         size: tuple[int, int] = DEFAULT_SIZE) -> None:
-    """사용자 이미지들을 종이 캔버스에 contain-fit 으로 가로 배치."""
+                         size: tuple[int, int] = DEFAULT_SIZE,
+                         fit: str = "contain") -> None:
+    """사용자 이미지들을 가로 배치. cover는 슬롯을 빈틈없이 채우고 중앙 크롭한다."""
     w, h = size
     canvas = Image.new("RGB", (w, h), PAPER)
     n = len(images)
-    margin = 90
+    margin = 0 if fit == "cover" else 90
     slot_w = (w - margin * 2) // n
     slot_h = h - margin * 2
     for i, p in enumerate(images):
         im = Image.open(p).convert("RGB")
-        scale = min(slot_w / im.width, slot_h / im.height)
+        scale = max(slot_w / im.width, slot_h / im.height) if fit == "cover" \
+            else min(slot_w / im.width, slot_h / im.height)
         nw, nh = max(1, int(im.width * scale)), max(1, int(im.height * scale))
         im = im.resize((nw, nh), Image.LANCZOS)
+        if fit == "cover":
+            left = max(0, (nw - slot_w) // 2)
+            top = max(0, (nh - slot_h) // 2)
+            im = im.crop((left, top, left + slot_w, top + slot_h))
+            nw, nh = im.size
         x = margin + i * slot_w + (slot_w - nw) // 2
         y = margin + (slot_h - nh) // 2
         canvas.paste(im, (x, y))

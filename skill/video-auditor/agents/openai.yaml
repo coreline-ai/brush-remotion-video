@@ -1,0 +1,4 @@
+interface:
+  display_name: "Video Auditor"
+  short_description: "완성 MP4의 화면 전환·오디오·규격 결함을 독립 검사합니다."
+  default_prompt: "완성 MP4를 video-auditor로 검사해 PASS/FAIL, 문제 시각, 증거 스틸, 오디오·규격 지표를 정리해줘."

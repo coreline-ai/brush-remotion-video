@@ -1,0 +1,14 @@
+{
+  "scene": 4,
+  "title": "낮의 푸른 구슬",
+  "file": "examples/cosmic-fullscreen-v05/assets/scene-04.png",
+  "source": "/Users/hwanchoi/.codex/generated_images/019f53e5-ba65-7c72-b571-a03932e87ef0/exec-6cfad9bc-232a-4215-ad61-484fde1c1d67.png",
+  "sourceWidth": 1672,
+  "sourceHeight": 941,
+  "ratioError": 0.00053135,
+  "width": 1920,
+  "height": 1080,
+  "sha256": "a7ce8301b496eee8d4db4f8d469a1936453adec33ac745f86e214c9d16c75bb7",
+  "cropApplied": false,
+  "fullBleed": true
+}

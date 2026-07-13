@@ -1,0 +1,4 @@
+interface:
+  display_name: "Storybook Full-Touch Video"
+  short_description: "동화 장면·TTS·펜 외곽선·브러시 채색 영상을 통합 제작합니다."
+  default_prompt: "동화 주제와 화면비에 맞는 장면별 풀터칭 이미지, 씬별 Supertonic 내레이션, 펜→브러시 채색, BGM, QA를 포함한 영상을 제작해줘."

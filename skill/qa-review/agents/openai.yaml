@@ -1,0 +1,4 @@
+interface:
+  display_name: "Brush QA Review"
+  short_description: "씬별 캡처를 검토해 수정 요청과 재빌드 시작점을 제시합니다."
+  default_prompt: "brush_remotion_video의 capture manifest와 씬별 캡처를 검토해 문제·근거·scene-fix-request와 최소 재빌드 시작점을 정리해줘."

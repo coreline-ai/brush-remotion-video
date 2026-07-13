@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://brush-remotion-video.local/schema/camera-prompt-catalog.schema.json",
+  "title": "Camera Prompt Interpreter Catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "catalogVersion",
+    "targets",
+    "compatibilityLevels",
+    "globalNegativeRules",
+    "techniques",
+    "aliases"
+  ],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "catalogVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "targets": {
+      "type": "array",
+      "const": ["remotionStill", "aiVideo", "imageGeneration", "sceneTransition"]
+    },
+    "compatibilityLevels": {
+      "type": "array",
+      "const": [
+        "supported",
+        "simulated",
+        "composition-only",
+        "external-required",
+        "not-applicable"
+      ]
+    },
+    "globalNegativeRules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["common", "lineArt", "identity", "product", "text"],
+      "properties": {
+        "common": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "lineArt": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "identity": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "product": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "text": {"$ref": "#/$defs/nonEmptyStringArray"}
+      }
+    },
+    "techniques": {
+      "type": "array",
+      "minItems": 37,
+      "maxItems": 37,
+      "items": {"$ref": "#/$defs/technique"}
+    },
+    "aliases": {
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
+      "items": {"$ref": "#/$defs/alias"}
+    }
+  },
+  "$defs": {
+    "nonEmptyStringArray": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "slot": {
+      "enum": [
+        "subject",
+        "direction",
+        "speed",
+        "durationSec",
+        "distance",
+        "startComposition",
+        "endComposition",
+        "focalPoint",
+        "subjectLock",
+        "stabilization",
+        "motionBlur",
+        "screenDirection",
+        "continuity"
+      ]
+    },
+    "compatibilityLevel": {
+      "enum": [
+        "supported",
+        "simulated",
+        "composition-only",
+        "external-required",
+        "not-applicable"
+      ]
+    },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["remotionStill", "aiVideo", "imageGeneration", "sceneTransition"],
+      "properties": {
+        "remotionStill": {"$ref": "#/$defs/compatibilityLevel"},
+        "aiVideo": {"$ref": "#/$defs/compatibilityLevel"},
+        "imageGeneration": {"$ref": "#/$defs/compatibilityLevel"},
+        "sceneTransition": {"$ref": "#/$defs/compatibilityLevel"}
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": ["string", "number", "boolean"]
+      }
+    },
+    "technique": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "canonicalNo",
+        "nameKo",
+        "nameEn",
+        "category",
+        "aliases",
+        "naturalLanguage",
+        "emotionalIntents",
+        "requiredSlots",
+        "defaults",
+        "conflictsWith",
+        "compatibility",
+        "promptKo",
+        "promptEn",
+        "negativeRules"
+      ],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+        "canonicalNo": {
+          "enum": [
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+            13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 46
+          ]
+        },
+        "nameKo": {"type": "string", "minLength": 1},
+        "nameEn": {"type": "string", "minLength": 1},
+        "category": {
+          "enum": [
+            "camera-motion",
+            "tracking",
+            "rig",
+            "aerial",
+            "viewpoint",
+            "lens-effect",
+            "time-effect",
+            "transition"
+          ]
+        },
+        "aliases": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "integer", "minimum": 37, "maximum": 45}
+        },
+        "naturalLanguage": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "emotionalIntents": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "requiredSlots": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/slot"}
+        },
+        "defaults": {"$ref": "#/$defs/defaults"},
+        "conflictsWith": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^[a-z0-9-]+$"}
+        },
+        "compatibility": {"$ref": "#/$defs/compatibility"},
+        "promptKo": {"type": "string", "minLength": 1},
+        "promptEn": {"type": "string", "minLength": 1},
+        "negativeRules": {"$ref": "#/$defs/nonEmptyStringArray"}
+      }
+    },
+    "alias": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["legacyNo", "canonicalNo", "nameKo", "nameEn"],
+      "properties": {
+        "legacyNo": {"type": "integer", "minimum": 37, "maximum": 45},
+        "canonicalNo": {"type": "integer", "minimum": 28, "maximum": 36},
+        "nameKo": {"type": "string", "minLength": 1},
+        "nameEn": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

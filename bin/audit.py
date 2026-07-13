@@ -34,6 +34,11 @@ def main() -> int:
     ap.add_argument("video", help="검수할 mp4 경로")
     ap.add_argument("--props", default=None, help="render-props JSON (씬 경계 정확 판정용, 선택)")
     ap.add_argument("--out", default=None, help="리포트 산출 디렉토리 (기본: data/audit/{영상이름})")
+    ap.add_argument("--license-manifest", default=None,
+                    help="BGM 라이선스 매니페스트 JSON (외부 BGM 사용 시)")
+    ap.add_argument("--mix-report", default=None, help="BGM mix-report.json (선택)")
+    ap.add_argument("--voice-manifest", default=None,
+                    help="TTS voice-manifest.json (합성 음성 재현성·AI 고지 검사)")
     ap.add_argument("--no-evidence", action="store_true", help="증거 스틸 PNG 생략")
     a = ap.parse_args()
 
@@ -43,7 +48,9 @@ def main() -> int:
         return 2
     out_dir = Path(a.out) if a.out else REPO_ROOT / "data" / "audit" / video.stem
 
-    result = run_audit(video, props=a.props, out_dir=out_dir, evidence=not a.no_evidence)
+    result = run_audit(video, props=a.props, out_dir=out_dir, evidence=not a.no_evidence,
+                       license_manifest=a.license_manifest, mix_report=a.mix_report,
+                       voice_manifest=a.voice_manifest)
 
     print(f"[{result['verdict']}] {video.name} — FAIL {result['summary']['FAIL']} / "
           f"WARN {result['summary']['WARN']} / INFO {result['summary']['INFO']} "

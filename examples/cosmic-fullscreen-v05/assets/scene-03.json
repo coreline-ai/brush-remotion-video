@@ -1,0 +1,14 @@
+{
+  "scene": 3,
+  "title": "궤도 위 오로라",
+  "file": "examples/cosmic-fullscreen-v05/assets/scene-03.png",
+  "source": "/Users/hwanchoi/.codex/generated_images/019f53e5-ba65-7c72-b571-a03932e87ef0/exec-e1db0a87-e5d7-4d40-bc39-6104aefcea43.png",
+  "sourceWidth": 1672,
+  "sourceHeight": 941,
+  "ratioError": 0.00053135,
+  "width": 1920,
+  "height": 1080,
+  "sha256": "546c14c5d778d3fd983e90ed3031f4f7f430ec622604ff8df0773504619787a2",
+  "cropApplied": false,
+  "fullBleed": true
+}

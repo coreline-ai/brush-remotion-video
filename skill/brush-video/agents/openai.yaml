@@ -1,0 +1,4 @@
+interface:
+  display_name: "Brush Video"
+  short_description: "붓으로 그림을 완성하는 내레이션·TTS·앰비언트 영상을 제작합니다."
+  default_prompt: "요청한 주제와 화면비에 맞는 brush-video project.yaml을 만들고 렌더·오디오 믹스·QA·audit까지 실행해줘."

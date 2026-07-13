@@ -2,7 +2,9 @@
 import jsonschema
 import pytest
 
-from brushvid.props import SCHEMA_PATH, build_props, build_scene, validate_props
+from brushvid.props import (BRUSH_NO_PULSE_PRESET, SCHEMA_PATH, build_props,
+                            build_scene, fit_brush_completion_timing,
+                            validate_brush_completion_timing, validate_props)
 
 
 def test_tc_3_3_props_validate():
@@ -38,3 +40,40 @@ def test_golden_single_props_pass():
     import json
     golden = SCHEMA_PATH.parent.parent / "data" / "golden-single" / "props.json"
     validate_props(json.loads(golden.read_text(encoding="utf-8")))
+
+
+def test_brush_no_pulse_preset_is_explicit_and_schema_valid():
+    scene = build_scene("scene-01", "demo/routes.json", 300, **BRUSH_NO_PULSE_PRESET)
+    props = build_props("no-pulse", [scene])
+    validate_props(props)
+    assert scene["completionMode"] == "integrated-develop"
+    assert scene["colorSettleFrames"] == 18
+    assert scene["prewashOpacity"] == 0
+    assert scene["outroWashOpacity"] == 1.0
+
+
+def test_completion_timing_prefers_36_18_when_tail_is_long_enough():
+    timing = fit_brush_completion_timing(300, 206, outro_fade_frames=24)
+    assert timing["developFrames"] == 36
+    assert timing["colorSettleFrames"] == 18
+    assert timing["colorSettleEnd"] == 260
+    assert timing["outroStart"] == 276
+
+
+def test_completion_timing_scales_without_overlap_for_short_scene():
+    timing = fit_brush_completion_timing(240, 175, outro_fade_frames=24)
+    assert timing["developFrames"] == 19
+    assert timing["colorSettleFrames"] == 10
+    assert timing["colorSettleEnd"] + timing["holdFrames"] <= timing["outroStart"]
+
+
+def test_completion_timing_rejects_impossible_tail():
+    with pytest.raises(ValueError, match="완료 시간 부족"):
+        fit_brush_completion_timing(120, 90, outro_fade_frames=24)
+
+
+def test_serialized_completion_timing_rejects_overlap():
+    scene = build_scene("scene-bad", "demo/routes.json", 300, **BRUSH_NO_PULSE_PRESET)
+    strokes = [{"end": 230}]
+    with pytest.raises(ValueError, match="outro 중첩"):
+        validate_brush_completion_timing(scene, strokes)

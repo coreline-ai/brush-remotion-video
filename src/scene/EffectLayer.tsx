@@ -1,4 +1,4 @@
-// 자연 분위기 이펙트 6종 — develop 완료 직후(penInvisibleAfter+8)부터 서서히 나타나는 입자/글로우.
+// 자연 분위기 이펙트 6종 — 전체 이미지의 색감 정착이 끝난 뒤부터 서서히 나타난다.
 // 전부 seed 기반 deterministic (Math.random 금지). 자막 영역(H*0.72 아래)에는 입자를 올리지 않는다.
 import React, { useId } from "react";
 import { interpolate } from "remotion";
@@ -10,23 +10,40 @@ const particleCoord = (seed: number, i: number, axis: "x" | "y") => {
   return n - Math.floor(n);
 };
 
+// 이펙트 가시 창 계약 — on 램프(startFrame..+RAMP_UP, drawFrame 기준)와
+// off 램프(routesDuration-36..-18, frame 기준)의 단일 정의.
+// prewash 가 없으면 drawFrame≈frame 이므로 onStart >= offEnd 이면 두 램프가 겹치지 않아
+// alpha 가 전 프레임 0 이 된다(이펙트 미표시). 저opacity(예: mist 0.035) 이펙트의 표시/소멸은
+// 골든 픽셀 diff(2% 임계)로는 감지되지 않으므로, 이 계약을 단위 테스트로 고정해 램프 공식의
+// 무의식적 변경을 잡는다 (FIELD-LOG 2026-07-13 EffectLayer 타이밍 사각지대).
+export const EFFECT_RAMP_UP = 24;
+export const effectWindow = (startFrame: number, routesDuration: number) => {
+  const onStart = startFrame;
+  const onFull = startFrame + EFFECT_RAMP_UP;
+  const offStart = routesDuration - 36;
+  const offEnd = routesDuration - 18;
+  return { onStart, onFull, offStart, offEnd, hasVisibleWindow: onStart < offEnd };
+};
+
 type Props = {
   frame: number;
   drawFrame: number;
-  penInvisibleAfter: number;
+  startFrame: number;
   routesDuration: number;
   W: number;
   H: number;
   spec: NaturalEffects;
 };
 
-export const EffectLayer: React.FC<Props> = ({ frame, drawFrame, penInvisibleAfter, routesDuration, W, H, spec }) => {
+export const EffectLayer: React.FC<Props> = ({ frame, drawFrame, startFrame, routesDuration, W, H, spec }) => {
   const baseOpacity = Math.max(0, Math.min(0.1, spec.opacity));
   const seed = spec.seed;
   const id = `natural-${useId().replace(/[:]/g, "")}`;
-  const start = penInvisibleAfter + 8;
-  const on = interpolate(drawFrame, [start, start + 24], [0, 1], clamp);
-  const off = interpolate(drawFrame, [routesDuration - 18, routesDuration], [1, 0.78], clamp);
+  const win = effectWindow(startFrame, routesDuration);
+  const on = interpolate(drawFrame, [win.onStart, win.onFull], [0, 1], clamp);
+  // 자연 이펙트는 outro 전에 완전히 종료한다. 워시 위에 안개·글로우가 남으면
+  // 장면이 다시 흐려지거나 커지는 것처럼 보일 수 있다.
+  const off = interpolate(frame, [win.offStart, win.offEnd], [1, 0], clamp);
   const alpha = baseOpacity * on * off;
   if (alpha <= 0.001) return null;
 

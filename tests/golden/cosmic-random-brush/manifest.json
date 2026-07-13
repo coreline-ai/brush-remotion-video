@@ -1,0 +1,76 @@
+{
+  "profile": "cosmic-random-brush",
+  "version": "0.1-golden-source",
+  "seed": 260712,
+  "source": {
+    "path": "public/cosmic-dark-pilot/luminous.png",
+    "sha256": "48a7d8be41dfdf489cd459366ef5f043a2823aa138c2e04d74abcf5827732483"
+  },
+  "routes": {
+    "path": "public/cosmic-dark-pilot/random-brush-routes.json",
+    "sha256": "aede54b83dd215a42d8ad0a5c98fc7cb4f8897ab91853413279895d955cb7850"
+  },
+  "video": {
+    "path": "output/cosmic-dark-pilot/cosmic-random-brush-pilot.mp4",
+    "sha256": "71953516562d19ffe49ad81fc567fd65083a866d29dc65c560dbd0964a58c821"
+  },
+  "frames": [
+    21,
+    51,
+    102,
+    174,
+    209,
+    291
+  ],
+  "routeMetrics": {
+    "family": "free-random-touch",
+    "strokeCount": 46,
+    "baseStrokeCount": 36,
+    "coverageStrokeCount": 10,
+    "brushWidthRange": [
+      232.8,
+      364.2
+    ],
+    "seed": 260712,
+    "drawStart": 37.0,
+    "drawEnd": 207.31,
+    "meanCenterJump": 852.01,
+    "maxCenterJump": 1928.28,
+    "maskCoverage": 0.9929,
+    "routes": "public/cosmic-dark-pilot/random-brush-routes.json"
+  },
+  "production": {
+    "routesPath": "public/cosmic-random-brush-golden/routes/scene-01.routes.json",
+    "routesSha256": "8270fadb350c3bd192ef270d6c8107e47848b97451164b371a15389369be260f",
+    "geometrySha256": "6950cac8abd6ba3ec43a0397a666e041bb016101b3c0ea758bcd4680b8193cbe",
+    "videoPath": "output/cosmic-random-brush-golden.mp4",
+    "videoSha256": "8b8bb6738fb3879a8ce2211e4d199906890ac7b7f3977cac14012ea6ae88ba17",
+    "routeMetrics": {
+      "family": "free-random-touch",
+      "image": "cosmic-random-brush-golden/bg/scene-01-content.png",
+      "width": 1920,
+      "height": 1080,
+      "fps": 30,
+      "durationInFrames": 300,
+      "drawStart": 37.0,
+      "drawEnd": 207.31,
+      "settleStart": 216.0,
+      "settleEnd": 232.0,
+      "brushInvisibleAfter": 214.0,
+      "strokeCount": 46,
+      "baseStrokeCount": 36,
+      "coverageStrokeCount": 10,
+      "targetMaskCoverage": 0.991,
+      "maskCoverage": 0.992944,
+      "brushWidthRange": [
+        232.8,
+        364.2
+      ],
+      "meanCenterJump": 852.01,
+      "maxCenterJump": 1928.28,
+      "seed": 260712,
+      "deterministic": true
+    },
+    "goldenFrameThresholdPct": 2.0
+  }
+}

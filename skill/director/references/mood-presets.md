@@ -51,7 +51,7 @@ outroWashOpacity: 0.9
 # 파티클 없음 — 위젯·타이틀이 주인공
 faint: 0.72
 topTitle: { wash: true, fontSize: 44, enterAt: 12 }
-# widgets: 내용에 맞게 2~4장 (타이틀 아래 y ≥ 230), TTS 더빙 권장
+# widgets: 내용에 맞게 2~4장 (타이틀 아래 y ≥ 230), TTS female-09 더빙 권장
 ```
 
 > 쇼츠(`format: shorts`)일 때: **shorts-brush 스킬로 위임** — 자막 세이프존(bottom 290)·씬별 강조색 동조·훅/루프 엔딩이 자동. 위 프리셋들은 세로에서도 그대로 쓰되 씬마다 소재·팔레트 변주.
@@ -60,6 +60,14 @@ topTitle: { wash: true, fontSize: 44, enterAt: 12 }
 ```yaml
 drawing: { profile: pen }   # 잉크-알파 분리 + 정밀 routes + 펜 커서 자동
 background: { strategy: imagegen }   # 선화 프롬프트 (background-prompt.md ✒️ 섹션)
+# 설명 내레이션은 input.tts{voice: female-09, speed: 1.10}
 # 특징: 종이 항상 보임, 잉크 선만 빠르게(씬의 35%) 그려짐, faint 1.0 즉시 또렷
 # 무드가 "펜/스케치/화이트보드/설명"이면 이 프리셋 — 실행은 pen-video 스킬
+```
+
+## 🖋️→🖌️ 펜 외곽선 + 브러시 채색 (pen-brush-video로 위임)
+```yaml
+drawing: { profile: pen-brush }
+background: { strategy: user-images, images: [./source.png] }
+# 특징: 얇은 outline 완성 → 8f handoff → 넓은 브러시 채색 → 원본 샤프 선 복원
 ```

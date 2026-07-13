@@ -29,6 +29,20 @@ def test_profile_default_brush(tmp_path):
 def test_profile_pen(tmp_path):
     cfg = load_project(_yaml(tmp_path, "projectId: demo\ndrawing:\n  profile: pen\n"))
     assert cfg.drawing_profile == "pen"
+    assert cfg.drawing_preserve_source is False
+
+
+def test_pen_preserve_source_option(tmp_path):
+    cfg = load_project(_yaml(
+        tmp_path,
+        "projectId: demo\ndrawing:\n  profile: pen\n  preserveSource: true\n",
+    ))
+    assert cfg.drawing_preserve_source is True
+    with pytest.raises(ValueError, match="preserveSource"):
+        load_project(_yaml(
+            tmp_path,
+            "projectId: demo\ndrawing:\n  profile: brush\n  preserveSource: true\n",
+        ))
 
 
 def test_profile_typo_rejected(tmp_path):

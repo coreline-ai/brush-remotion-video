@@ -14,11 +14,13 @@
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import subprocess
 import time
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 
 import numpy as np
@@ -39,6 +41,9 @@ FREEZE_TAIL_SEC = 2.0    # 씬 끝/영상 끝 이내면 감상 구간(info)
 SILENCE_NOISE_DB = -50
 SILENCE_MIN_SEC = 2.0
 CLIP_DB = -0.5
+TRUE_PEAK_WARN_DBTP = -1.0
+LOUDNESS_LOW_LUFS = -24.0
+LOUDNESS_HIGH_LUFS = -13.0
 FULL_SILENCE_FRAC = 0.98  # 무음 합산이 전체의 이 비율 이상이면 전체 무음
 SHORTS_MAX_SEC = 180.0
 SCAN_WIDTH = 192         # 1-패스 분석 폭
@@ -52,6 +57,10 @@ OUTRO_WINDOW = 36        # 씬 끝 직전(경계 앞 프레임 수) — 워시 �
 MAX_REMEASURE = 240      # 2-패스 재측정 상한
 EVIDENCE_MAX = 8         # 증거 스틸 저장 이슈 상한
 CANON_SIZES = ((1920, 1080), (1080, 1920))
+# city 무펄스 정상본의 콘텐츠 채움 변동 최대 1.30, 기존 체감 펄스는 luma +6.
+# 정상 공간 채움은 허용하고 실제 역방향 혹만 검토/실패시킨다.
+COMPLETION_REVERSAL_WARN = 2.0   # luma 0~255, 완료 구간 반대 방향 이동
+COMPLETION_REVERSAL_FAIL = 4.0
 
 SEV_ORDER = {"FAIL": 0, "WARN": 1, "INFO": 2}
 
@@ -189,6 +198,105 @@ def boundaries_from_props(props_path: str | Path) -> tuple[list[int], int]:
         t += d
         cum.append(t)
     return cum, t + durations[-1]
+
+
+def completion_windows_from_props(props_path: str | Path) -> list[dict]:
+    """props와 public routes에서 integrated-develop 완료 구간을 계산한다.
+
+    auditor의 mp4 단독 독립성은 유지하며, props가 표준 data/<pid>/props.json 위치에
+    있고 routes를 찾을 수 있을 때만 정밀 완료 검사를 활성화한다.
+    """
+    path = Path(props_path).resolve()
+    props = json.loads(path.read_text(encoding="utf-8"))
+    root = path.parents[2] if len(path.parents) >= 3 else path.parent
+    public = root / "public"
+    windows: list[dict] = []
+    offset = 0
+    for scene in props.get("scenes") or []:
+        duration = int(scene.get("durationInFrames", 0))
+        route_ref = scene.get("routes")
+        if scene.get("completionMode") == "integrated-develop" and route_ref:
+            route_path = Path(route_ref)
+            if not route_path.is_absolute():
+                route_path = public / route_path
+            if route_path.is_file():
+                routes = json.loads(route_path.read_text(encoding="utf-8"))
+                strokes = routes.get("strokes") or []
+                meta = routes.get("meta") or {}
+                last_end = max((float(s.get("end", 0)) for s in strokes),
+                               default=float(meta.get("drawEnd", 0)))
+                develop_end = last_end + int(scene.get("developFrames", 0))
+                settle_end = develop_end + int(scene.get("colorSettleFrames", 0))
+                windows.append({
+                    "sceneId": scene.get("id", "<scene>"),
+                    "offset": offset,
+                    "drawStart": offset + float(meta.get("drawStart", 0)),
+                    "lastStrokeEnd": offset + last_end,
+                    "developEnd": offset + develop_end,
+                    "colorSettleEnd": offset + settle_end,
+                    "outroStart": offset + duration - int(scene.get("outroFadeFrames", 0)),
+                    "sceneEnd": offset + duration,
+                })
+        offset += duration
+    return windows
+
+
+def completion_reversal_metrics(lums: np.ndarray) -> dict:
+    """완료 luma가 최종 방향과 반대로 움직인 최대 폭을 계산한다."""
+    values = np.asarray(lums, dtype=np.float64)
+    if values.size < 3:
+        return {"direction": "flat", "delta": 0.0, "reversal": 0.0}
+    if values.size >= 5:
+        values = np.convolve(values, np.ones(5) / 5.0, mode="valid")
+    delta = float(values[-1] - values[0])
+    if delta < -0.25:
+        running = np.minimum.accumulate(values)
+        reversal = float(np.max(values - running))
+        direction = "darker"
+    elif delta > 0.25:
+        running = np.maximum.accumulate(values)
+        reversal = float(np.max(running - values))
+        direction = "lighter"
+    else:
+        reversal = float(values.max() - values.min())
+        direction = "flat"
+    return {"direction": direction, "delta": round(delta, 3),
+            "reversal": round(reversal, 3)}
+
+
+def completion_pulse_issues(lums: np.ndarray, windows: list[dict], fps: float) -> tuple[list[Issue], list[dict]]:
+    issues: list[Issue] = []
+    stats: list[dict] = []
+    for window in windows:
+        start = max(0, round(float(window["lastStrokeEnd"])))
+        end = min(len(lums) - 1, round(float(window["colorSettleEnd"])))
+        metrics = completion_reversal_metrics(lums[start:end + 1])
+        stat = {**window, **metrics, "startFrame": start, "endFrame": end}
+        stats.append(stat)
+        reversal = float(metrics["reversal"])
+        severity = "FAIL" if reversal > COMPLETION_REVERSAL_FAIL \
+            else ("WARN" if reversal > COMPLETION_REVERSAL_WARN else None)
+        if severity:
+            issues.append(Issue(
+                severity, "completion-pulse",
+                f"{window['sceneId']} 완료 구간 밝기 역전 {reversal:.2f} luma "
+                f"(방향 {metrics['direction']}, f{start}~f{end})",
+                frame=start, timeSec=start / fps,
+                metrics={"reversal": reversal, "delta": metrics["delta"],
+                         "direction": metrics["direction"], "endFrame": end},
+            ))
+    return issues, stats
+
+
+def phase_for_frame(frame: int, windows: list[dict]) -> str | None:
+    for w in windows:
+        if float(w["drawStart"]) <= frame <= float(w["lastStrokeEnd"]):
+            return "drawing"
+        if float(w["lastStrokeEnd"]) < frame <= float(w["colorSettleEnd"]):
+            return "completion"
+        if float(w["outroStart"]) <= frame < float(w["sceneEnd"]):
+            return "outro"
+    return None
 
 
 def estimate_boundaries(lums: np.ndarray) -> list[int]:
@@ -329,6 +437,7 @@ _SIL_START = re.compile(r"silence_start:\s*([0-9.]+)")
 _SIL_END = re.compile(r"silence_end:\s*([0-9.]+)")
 _MEAN_VOL = re.compile(r"mean_volume:\s*(-?[0-9.]+) dB")
 _MAX_VOL = re.compile(r"max_volume:\s*(-?[0-9.]+) dB")
+_LOUDNORM_JSON = re.compile(r"\{\s*\"input_i\".*?\}", re.DOTALL)
 
 
 def parse_audio_stderr(text: str, duration: float) -> dict:
@@ -370,13 +479,366 @@ def audio_issues(parsed: dict, duration: float) -> list[Issue]:
     return issues
 
 
-def run_audio_checks(video: str | Path, duration: float) -> list[Issue]:
+def parse_loudnorm_stderr(text: str) -> dict:
+    """loudnorm JSON의 Integrated LUFS/True Peak/LRA를 파싱한다."""
+    matches = _LOUDNORM_JSON.findall(text)
+    if not matches:
+        return {"integratedLufs": None, "truePeakDbtp": None, "lra": None}
+    raw = json.loads(matches[-1])
+
+    def finite(key: str) -> float | None:
+        try:
+            value = float(raw.get(key))
+            return value if np.isfinite(value) else None
+        except (TypeError, ValueError):
+            return None
+
+    return {"integratedLufs": finite("input_i"), "truePeakDbtp": finite("input_tp"),
+            "lra": finite("input_lra")}
+
+
+def loudness_issues(metrics: dict) -> list[Issue]:
+    issues: list[Issue] = []
+    integrated = metrics.get("integratedLufs")
+    peak = metrics.get("truePeakDbtp")
+    if integrated is not None and integrated < LOUDNESS_LOW_LUFS:
+        issues.append(Issue("WARN", "audio-loudness",
+                            f"평균 음량이 작음: {integrated:.1f} LUFS < {LOUDNESS_LOW_LUFS:.0f} LUFS",
+                            metrics={"integratedLufs": integrated}))
+    elif integrated is not None and integrated > LOUDNESS_HIGH_LUFS:
+        issues.append(Issue("WARN", "audio-loudness",
+                            f"평균 음량이 큼: {integrated:.1f} LUFS > {LOUDNESS_HIGH_LUFS:.0f} LUFS",
+                            metrics={"integratedLufs": integrated}))
+    if peak is not None and peak > TRUE_PEAK_WARN_DBTP:
+        issues.append(Issue("WARN", "audio-true-peak",
+                            f"True Peak 여유 부족: {peak:.1f} dBTP > {TRUE_PEAK_WARN_DBTP:.1f} dBTP",
+                            metrics={"truePeakDbtp": peak}))
+    return issues
+
+
+def analyze_audio(video: str | Path, duration: float) -> tuple[list[Issue], dict]:
     res = subprocess.run(
         ["ffmpeg", "-v", "info", "-i", str(video),
          "-af", f"silencedetect=noise={SILENCE_NOISE_DB}dB:d={SILENCE_MIN_SEC},volumedetect",
          "-f", "null", "-"],
         capture_output=True, text=True)
-    return audio_issues(parse_audio_stderr(res.stderr, duration), duration)
+    volume = parse_audio_stderr(res.stderr, duration)
+    loud = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-nostats", "-i", str(video),
+         "-af", "loudnorm=I=-23:LRA=11:TP=-1.0:print_format=json", "-f", "null", "-"],
+        capture_output=True, text=True)
+    loudness = parse_loudnorm_stderr(loud.stderr)
+    metrics = {**volume, **loudness}
+    return [*audio_issues(volume, duration), *loudness_issues(loudness)], metrics
+
+
+def run_audio_checks(video: str | Path, duration: float) -> list[Issue]:
+    """하위 호환 wrapper."""
+    return analyze_audio(video, duration)[0]
+
+
+def check_license_manifest(path: str | Path | None) -> tuple[list[Issue], dict | None]:
+    """BGM 라이선스 매니페스트 기본 계약. auditor 독립성을 위해 bgm 모듈을 import하지 않는다."""
+    if path is None:
+        return [], None
+    manifest_path = Path(path)
+    if not manifest_path.is_file():
+        return [Issue("FAIL", "bgm-license", f"BGM 라이선스 매니페스트 없음: {manifest_path}")], None
+    try:
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return [Issue("FAIL", "bgm-license", f"BGM 라이선스 매니페스트 파싱 실패: {exc}")], None
+    issues: list[Issue] = []
+    assets = data.get("assets")
+    if not isinstance(assets, list) or not assets:
+        issues.append(Issue("FAIL", "bgm-license", "BGM 라이선스 매니페스트 assets가 비어 있음"))
+        return issues, data
+    today = date.today()
+    distribution = data.get("distribution")
+    for asset in assets:
+        asset_id = asset.get("id") or "<unknown>"
+        youtube_blocked = (
+            asset.get("source") == "pixabay" or asset.get("youtubeAllowed") is False
+        )
+        if distribution in ("youtube", "shorts") and youtube_blocked:
+            issues.append(Issue(
+                "FAIL", "bgm-source-policy",
+                f"{asset_id}: Pixabay 음원은 YouTube/Shorts 제작·교체·배포에 사용 금지",
+            ))
+        for key in ("sourcePage", "sha256", "artist"):
+            if not asset.get(key):
+                issues.append(Issue("FAIL", "bgm-license", f"{asset_id}: {key} 누락"))
+        lic = asset.get("license") or {}
+        if not lic.get("url") or not lic.get("downloadedAt") or not lic.get("checkedAt"):
+            issues.append(Issue("FAIL", "bgm-license", f"{asset_id}: 라이선스 URL/날짜 증빙 누락"))
+        if not lic.get("evidenceFiles"):
+            issues.append(Issue("FAIL", "bgm-license", f"{asset_id}: 라이선스 증빙 파일 목록 누락"))
+        digest = asset.get("sha256") or ""
+        if not re.fullmatch(r"[0-9a-fA-F]{64}", digest):
+            issues.append(Issue("FAIL", "bgm-license", f"{asset_id}: SHA-256 형식 오류"))
+        resolved = asset.get("resolvedPath")
+        if not resolved:
+            issues.append(Issue("FAIL", "bgm-license", f"{asset_id}: resolvedPath 누락"))
+        else:
+            audio_path = Path(resolved)
+            if not audio_path.is_file():
+                issues.append(Issue("FAIL", "bgm-license", f"{asset_id}: 로컬 음원 없음: {audio_path}"))
+            elif re.fullmatch(r"[0-9a-fA-F]{64}", digest):
+                hasher = hashlib.sha256()
+                with audio_path.open("rb") as handle:
+                    for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                        hasher.update(chunk)
+                if hasher.hexdigest().lower() != digest.lower():
+                    issues.append(Issue("FAIL", "bgm-license", f"{asset_id}: 로컬 음원 SHA-256 불일치"))
+            for evidence in lic.get("evidenceFiles") or []:
+                evidence_path = (audio_path.parent / evidence).resolve()
+                try:
+                    evidence_path.relative_to(audio_path.parent.resolve())
+                except ValueError:
+                    issues.append(Issue("FAIL", "bgm-license",
+                                        f"{asset_id}: 증빙 경로가 에셋 폴더 밖을 가리킴: {evidence}"))
+                    continue
+                if not evidence_path.is_file():
+                    issues.append(Issue("FAIL", "bgm-license",
+                                        f"{asset_id}: 라이선스 증빙 파일 없음: {evidence}"))
+        status = lic.get("contentIdStatus", "unknown")
+        if status in ("unknown", "registered"):
+            issues.append(Issue("FAIL", "bgm-content-id", f"{asset_id}: Content ID 상태 {status}"))
+        elif status == "not-displayed":
+            issues.append(Issue("WARN", "bgm-content-id",
+                                f"{asset_id}: 페이지 표시 없음은 Content ID 미등록을 보장하지 않음"))
+        try:
+            age = (today - date.fromisoformat(lic.get("checkedAt", ""))).days
+            if age > 90:
+                issues.append(Issue("WARN", "bgm-license",
+                                    f"{asset_id}: 라이선스/Content ID 확인 후 {age}일 경과"))
+        except ValueError:
+            issues.append(Issue("FAIL", "bgm-license", f"{asset_id}: checkedAt 날짜 형식 오류"))
+    summary = {"path": str(manifest_path), "assetIds": [a.get("id") for a in assets],
+               "licensePolicy": data.get("licensePolicy"), "distribution": distribution}
+    return issues, summary
+
+
+def check_voice_manifest(path: str | Path | None) -> tuple[list[Issue], dict | None]:
+    """TTS voice manifest의 재현성·AI 고지 계약. 미제공이면 독립 mp4 검사를 유지한다."""
+    if path is None:
+        return [], None
+    manifest_path = Path(path)
+    if not manifest_path.is_file():
+        return [Issue("FAIL", "tts-voice-manifest", f"TTS voice manifest 없음: {manifest_path}")], None
+    try:
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return [Issue("FAIL", "tts-voice-manifest", f"TTS voice manifest 파싱 실패: {exc}")], None
+
+    issues: list[Issue] = []
+    required = (
+        "schemaVersion", "projectId", "requestedVoice", "voicePresetId", "voicePackVersion",
+        "engine", "packageVersion", "model", "language", "sampleRate", "speed",
+        "components", "catalogSha256", "styleSourceSha256", "styleSha256",
+        "aiDisclosure", "license", "pauseMs", "durationSec", "sentenceCount",
+    )
+    for key in required:
+        if data.get(key) is None or data.get(key) == "":
+            issues.append(Issue("FAIL", "tts-voice-manifest", f"voice manifest {key} 누락"))
+
+    for key in ("catalogSha256", "styleSha256"):
+        value = data.get(key)
+        if value is not None and not re.fullmatch(r"[0-9a-f]{64}", str(value)):
+            issues.append(Issue("FAIL", "tts-voice-manifest", f"{key} SHA-256 형식 오류"))
+    sources = data.get("styleSourceSha256")
+    if not isinstance(sources, dict) or not sources:
+        issues.append(Issue("FAIL", "tts-voice-manifest", "styleSourceSha256가 비어 있음"))
+    else:
+        for name, digest in sources.items():
+            if not re.fullmatch(r"[0-9a-f]{64}", str(digest or "")):
+                issues.append(Issue("FAIL", "tts-voice-manifest", f"{name} style SHA-256 형식 오류"))
+
+    components = data.get("components")
+    if not isinstance(components, dict) or not components:
+        issues.append(Issue("FAIL", "tts-voice-manifest", "components가 비어 있음"))
+    else:
+        try:
+            weights = [float(value) for value in components.values()]
+            if any(value <= 0 for value in weights) or abs(sum(weights) - 1.0) > 1e-8:
+                issues.append(Issue("FAIL", "tts-voice-manifest", "component 비율 합이 1.0이 아님"))
+        except (TypeError, ValueError):
+            issues.append(Issue("FAIL", "tts-voice-manifest", "component 비율이 숫자가 아님"))
+        preset_id = str(data.get("voicePresetId") or "")
+        if preset_id.startswith("female-") and any(not re.fullmatch(r"F[1-5]", name) for name in components):
+            issues.append(Issue("FAIL", "tts-voice-manifest", "여성 preset에 F1~F5 외 component 포함"))
+
+    try:
+        speed = float(data.get("speed"))
+        if not 0.70 <= speed <= 2.00:
+            issues.append(Issue("FAIL", "tts-voice-manifest", f"speed 범위 밖: {speed}"))
+    except (TypeError, ValueError):
+        if data.get("speed") is not None:
+            issues.append(Issue("FAIL", "tts-voice-manifest", "speed가 숫자가 아님"))
+
+    license_info = data.get("license") or {}
+    if not license_info.get("url") or not license_info.get("aiDisclosureRequired"):
+        issues.append(Issue("FAIL", "tts-voice-manifest", "모델 라이선스 URL/AI 고지 의무 누락"))
+    if not str(data.get("aiDisclosure") or "").strip():
+        issues.append(Issue("FAIL", "tts-ai-disclosure", "AI 합성 음성 고지 문구 누락"))
+
+    expected = {"voicePackVersion": "1.0.0", "packageVersion": "1.3.1", "model": "supertonic-3"}
+    for key, value in expected.items():
+        actual = data.get(key)
+        if actual is not None and actual != value:
+            issues.append(Issue("WARN", "tts-version-drift", f"{key} drift: expected={value}, actual={actual}"))
+
+    summary = {
+        "path": str(manifest_path),
+        "voicePresetId": data.get("voicePresetId"),
+        "requestedVoice": data.get("requestedVoice"),
+        "voicePackVersion": data.get("voicePackVersion"),
+        "packageVersion": data.get("packageVersion"),
+        "model": data.get("model"),
+        "components": data.get("components"),
+        "speed": data.get("speed"),
+        "aiDisclosure": data.get("aiDisclosure"),
+    }
+    return issues, summary
+
+
+def check_mix_report(path: str | Path | None, video_duration: float) -> tuple[list[Issue], dict | None]:
+    """실제 mix 스테이지가 기록한 정규화·playlist·ducking 결과를 교차 검증한다."""
+    if path is None:
+        return [], None
+    report_path = Path(path)
+    if not report_path.is_file():
+        return [Issue("FAIL", "audio-mix-report", f"mix report 없음: {report_path}")], None
+    try:
+        data = json.loads(report_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return [Issue("FAIL", "audio-mix-report", f"mix report 파싱 실패: {exc}")], None
+    issues: list[Issue] = []
+    duration = float(data.get("durationSec") or 0)
+    if abs(duration - video_duration) > 0.15:
+        issues.append(Issue("FAIL", "audio-duration",
+                            f"mix/video 길이 불일치: {duration:.3f}s vs {video_duration:.3f}s"))
+    bgm = data.get("bgm") or {}
+    tracks = bgm.get("tracks") or []
+    if bgm.get("kind") == "playlist":
+        if len(tracks) < 2 or float(bgm.get("crossfadeSec") or 0) <= 0:
+            issues.append(Issue("FAIL", "audio-crossfade", "playlist track/crossfade 기록 누락"))
+    bgm_out = bgm.get("output") or {}
+    if bgm_out.get("truePeakDbtp") is not None and bgm_out["truePeakDbtp"] > TRUE_PEAK_WARN_DBTP:
+        issues.append(Issue("WARN", "audio-true-peak",
+                            f"BGM master True Peak {bgm_out['truePeakDbtp']:.1f} dBTP"))
+    voice = data.get("voice")
+    # 음성만 있는 bgm=off 결과에는 ducking 자체가 필요 없다.
+    if voice and tracks:
+        duck = voice.get("ducking") or {}
+        if duck.get("enabled") and float(duck.get("ratio") or 0) <= 1:
+            issues.append(Issue("FAIL", "audio-ducking", "ducking enabled지만 compressor ratio가 1 이하"))
+        if duck.get("enabled") and duck.get("measuredAttenuationDb") is None:
+            issues.append(Issue("FAIL", "audio-ducking", "ducking 실제 감쇄량 측정값 누락"))
+        elif duck.get("enabled"):
+            attenuation = float(duck["measuredAttenuationDb"])
+            regions = duck.get("regionMetrics")
+            if regions:
+                active_attenuation = float(regions.get("activeAttenuationDb") or 0)
+                inactive_attenuation = float(regions.get("inactiveAttenuationDb") or 0)
+                requested = float(duck.get("requestedAmountDb") or 0)
+                if active_attenuation < 1.0:
+                    issues.append(Issue("WARN", "audio-ducking",
+                                        f"음성 활성 구간 BGM 감쇄가 낮음: {active_attenuation:.1f}dB"))
+                if inactive_attenuation > active_attenuation - 1.0:
+                    issues.append(Issue("WARN", "audio-ducking",
+                                        "음성 비활성 구간에서 BGM 복귀가 확인되지 않음"))
+                if requested > 0 and active_attenuation > requested + 1.0:
+                    issues.append(Issue("WARN", "audio-ducking",
+                                        f"음성 활성 구간 감쇄가 요청값을 초과함: "
+                                        f"{active_attenuation:.1f}dB > {requested:.1f}dB"))
+            elif attenuation < 1.0:
+                # 음성/무음 구간을 분리 측정하지 못한 구형 report에서만 전체 평균을 대체 지표로 쓴다.
+                # 긴 감상 구간이 있는 영상은 전체 평균이 낮아도 활성 구간 덕킹은 정상일 수 있다.
+                issues.append(Issue("WARN", "audio-ducking",
+                                    f"ducking 실제 평균 감쇄량이 낮음: {attenuation:.1f}dB"))
+            elif attenuation > 24.0:
+                issues.append(Issue("WARN", "audio-ducking",
+                                    f"ducking 실제 평균 감쇄량이 과도함: {attenuation:.1f}dB"))
+        if not duck.get("enabled"):
+            issues.append(Issue("WARN", "audio-ducking", "내레이션+BGM인데 ducking 비활성"))
+    summary = {"path": str(report_path), "mode": data.get("mode"),
+               "durationSec": duration, "trackCount": len(tracks),
+               "crossfadeSec": bgm.get("crossfadeSec"),
+               "ducking": (voice or {}).get("ducking") if voice and tracks else None}
+    return issues, summary
+
+
+def audio_envelope(video: str | Path, rate: int = 100) -> np.ndarray:
+    """긴 영상도 가볍게 검사하도록 mono 100Hz float envelope 입력을 만든다."""
+    res = subprocess.run(
+        ["ffmpeg", "-v", "error", "-i", str(video), "-vn",
+         "-af", f"aeval=abs(val(0)),aresample={rate}", "-ac", "1", "-ar", str(rate),
+         "-f", "f32le", "pipe:1"], capture_output=True, check=True)
+    return np.frombuffer(res.stdout, dtype="<f4")
+
+
+def _rms_db(samples: np.ndarray, rate: int, start: float, end: float) -> float:
+    lo = max(0, min(len(samples), int(start * rate)))
+    hi = max(lo + 1, min(len(samples), int(end * rate)))
+    if lo >= len(samples):
+        return -120.0
+    rms = float(np.sqrt(np.mean(np.square(samples[lo:hi].astype(np.float64)))))
+    return 20.0 * np.log10(max(rms, 1e-6))
+
+
+def audio_shape_issues(video: str | Path, mix_report: str | Path | None) -> tuple[list[Issue], dict | None]:
+    """앰비언트 fade와 playlist 전환의 무음 틈을 실제 master 파형에서 확인한다."""
+    if mix_report is None or not Path(mix_report).is_file():
+        return [], None
+    data = json.loads(Path(mix_report).read_text(encoding="utf-8"))
+    # 음성이 있으면 master envelope로 BGM fade만 분리할 수 없으므로 playlist gap만 검사한다.
+    has_voice = bool(data.get("voice"))
+    duration = float(data.get("durationSec") or 0)
+    settings = data.get("settings") or {}
+    bgm = data.get("bgm") or {}
+    rate = 100
+    samples = audio_envelope(video, rate=rate)
+    issues: list[Issue] = []
+    metrics: dict = {"rate": rate, "fade": None, "transitions": []}
+
+    if not has_voice and duration > 1:
+        fi = min(float(settings.get("fadeInSec") or 0), duration * 0.45)
+        fo = min(float(settings.get("fadeOutSec") or 0), duration * 0.45)
+        start_db = _rms_db(samples, rate, 0, min(0.2, max(0.05, fi / 3)))
+        body_start = min(duration - 0.1, max(0.25, fi + 0.1))
+        body_db = _rms_db(samples, rate, body_start, min(duration, body_start + 0.5))
+        tail_db = _rms_db(samples, rate, max(0, duration - min(0.2, max(0.05, fo / 3))), duration)
+        before_tail = max(0, duration - fo - 0.6)
+        before_tail_db = _rms_db(samples, rate, before_tail, min(duration, before_tail + 0.5))
+        metrics["fade"] = {"startDb": round(start_db, 2), "bodyDb": round(body_db, 2),
+                           "beforeTailDb": round(before_tail_db, 2), "tailDb": round(tail_db, 2)}
+        if fi > 0.2 and start_db > body_db - 3.0:
+            issues.append(Issue("WARN", "audio-fade", "BGM fade-in 감쇄가 3dB 미만",
+                                metrics=metrics["fade"]))
+        if fo > 0.2 and tail_db > before_tail_db - 3.0:
+            issues.append(Issue("WARN", "audio-fade", "BGM fade-out 감쇄가 3dB 미만",
+                                metrics=metrics["fade"]))
+
+    tracks = bgm.get("tracks") or []
+    crossfade = float(bgm.get("crossfadeSec") or 0)
+    if len(tracks) > 1 and crossfade > 0:
+        transition_times = bgm.get("transitionTimesSec")
+        if not transition_times:
+            seg = float(tracks[0].get("segmentSec") or 0)
+            transition_times = [i * seg - (i - 0.5) * crossfade
+                                for i in range(1, len(tracks))]
+        for center_value in transition_times:
+            center = float(center_value)
+            if center >= duration:
+                continue
+            db = _rms_db(samples, rate, max(0, center - 0.2), min(duration, center + 0.2))
+            item = {"timeSec": round(center, 3), "rmsDb": round(db, 2)}
+            metrics["transitions"].append(item)
+            if db < -50.0:
+                issues.append(Issue("FAIL", "audio-crossfade", f"playlist 전환 무음 틈 {db:.1f}dB",
+                                    timeSec=center, metrics=item))
+    return issues, metrics
 
 
 # ── 2-패스: 원본 해상도 재측정 / 증거 스틸 ──
@@ -455,7 +917,10 @@ def save_evidence_pair(video: str | Path, frame: int, fps: float, width: int, he
 # ── 오케스트레이션 ──
 
 def run_audit(video: str | Path, props: str | Path | None = None,
-              out_dir: str | Path | None = None, evidence: bool = True) -> dict:
+              out_dir: str | Path | None = None, evidence: bool = True,
+              license_manifest: str | Path | None = None,
+              mix_report: str | Path | None = None,
+              voice_manifest: str | Path | None = None) -> dict:
     """전체 검수 실행 → 결과 dict (issues/verdict/stats). out_dir 주면 리포트 파일 산출."""
     video = Path(video)
     t0 = time.perf_counter()
@@ -472,9 +937,15 @@ def run_audit(video: str | Path, props: str | Path | None = None,
     # 씬 경계
     boundary_source = "none"
     boundaries: list[int] = []
+    completion_windows: list[dict] = []
     if props is not None:
         boundaries, props_total = boundaries_from_props(props)
         boundary_source = "props"
+        try:
+            completion_windows = completion_windows_from_props(props)
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            issues.append(Issue("INFO", "completion-pulse",
+                                f"완료 구간 정밀 분석 생략: {exc}"))
         if props_total != n_frames:
             issues.append(Issue("INFO", "spec",
                                 f"props 총 프레임({props_total}) ≠ 영상 프레임({n_frames}) — 경계는 props 기준"))
@@ -505,6 +976,9 @@ def run_audit(video: str | Path, props: str | Path | None = None,
                                 metrics={"diff": round(d, 2), "lowres": round(low, 2),
                                          "source": boundary_source}))
 
+    completion_issues, completion_stats = completion_pulse_issues(lums, completion_windows, fps)
+    issues.extend(completion_issues)
+
     # 씬 중간 후보: 원본 해상도 정밀 분석 → 번쩍 스파이크 / 워시 점프 / 씬 중간 하드컷 3분류
     labels = {"spike": "씬 중간 번쩍 스파이크", "outro-wash": "씬 끝 워시 온셋(연출)",
               "wash-jump": "씬 중간 급격한 워시 점프", "hardcut": "씬 중간 하드컷"}
@@ -523,13 +997,19 @@ def run_audit(video: str | Path, props: str | Path | None = None,
         kind, sev = judge_candidate(peak, low, float(roll[f]),
                                     transient=transient, corr=corr, near_scene_end=near_end)
         if sev:
+            phase = phase_for_frame(f, completion_windows)
+            # 큰 seal stroke는 그림을 실제로 확장하는 정상 draw 이벤트다. 빠른 transient
+            # spike/hardcut은 그대로 두고, 구도 유지 wash-jump만 참고 정보로 낮춘다.
+            if phase == "drawing" and kind == "wash-jump":
+                sev = "INFO"
             issues.append(Issue(sev, kind,
                                 f"{labels[kind]} diff {peak:.2f}% "
                                 f"(주변 중앙값 {roll[f]:.2f}%, corr {corr:.2f}, f{f})",
                                 frame=f, timeSec=f / fps,
                                 metrics={"diff": round(peak, 3), "lowres": round(low, 3),
                                          "rollingMedian": round(float(roll[f]), 3),
-                                         "corr": round(corr, 3), "transient": transient}))
+                                         "corr": round(corr, 3), "transient": transient,
+                                         "phase": phase}))
 
     # 정지
     for run in find_freeze_runs(diffs, fps):
@@ -545,8 +1025,18 @@ def run_audit(video: str | Path, props: str | Path | None = None,
     issues.extend(detect_letterbox(scan["meanFrame"]))
 
     # 오디오
+    audio_metrics = None
     if spec["hasAudio"]:
-        issues.extend(run_audio_checks(video, spec["duration"]))
+        audio_issues_found, audio_metrics = analyze_audio(video, spec["duration"])
+        issues.extend(audio_issues_found)
+    license_issues, license_summary = check_license_manifest(license_manifest)
+    issues.extend(license_issues)
+    voice_issues, voice_summary = check_voice_manifest(voice_manifest)
+    issues.extend(voice_issues)
+    mix_issues, mix_summary = check_mix_report(mix_report, spec["duration"])
+    issues.extend(mix_issues)
+    shape_issues, shape_summary = audio_shape_issues(video, mix_report)
+    issues.extend(shape_issues)
     t2 = time.perf_counter()
 
     issues.sort(key=lambda i: (SEV_ORDER.get(i.severity, 9), -(i.metrics.get("diff") or 0)))
@@ -559,6 +1049,12 @@ def run_audit(video: str | Path, props: str | Path | None = None,
         "boundarySource": boundary_source,
         "boundaryCount": len(boundaries),
         "boundaryStats": boundary_stats,
+        "completionStats": completion_stats,
+        "audio": audio_metrics,
+        "bgmLicense": license_summary,
+        "ttsVoice": voice_summary,
+        "mixReport": mix_summary,
+        "audioShape": shape_summary,
         "issues": [i.to_dict() for i in issues],
         "stats": {"frames": n_frames, "remeasured": remeasured,
                   "scanSec": round(t1 - t0, 2), "detectSec": round(t2 - t1, 2),
@@ -606,6 +1102,36 @@ def write_reports(result: dict, out_dir: Path, video: Path, fps: float,
           f"- 씬 경계: {result['boundarySource']} ({result['boundaryCount']}개) · "
           f"스캔 {result['stats']['scanSec']}s + 검출 {result['stats']['detectSec']}s "
           f"= 총 {result['stats']['totalSec']}s · 재측정 {result['stats']['remeasured']}건", ""]
+
+    if result.get("audio"):
+        a = result["audio"]
+        md += ["## 오디오 요약",
+               f"- Integrated: {a.get('integratedLufs')} LUFS · True Peak: {a.get('truePeakDbtp')} dBTP "
+               f"· mean/max: {a.get('meanVolume')}/{a.get('maxVolume')} dB", ""]
+    if result.get("completionStats"):
+        stats = result["completionStats"]
+        worst = max((float(x.get("reversal", 0)) for x in stats), default=0.0)
+        md += ["## 완료 구간 요약",
+               f"- integrated-develop {len(stats)}씬 · 최대 밝기 역전 {worst:.2f} luma "
+               f"(WARN>{COMPLETION_REVERSAL_WARN:.1f}, FAIL>{COMPLETION_REVERSAL_FAIL:.1f})", ""]
+    if result.get("bgmLicense"):
+        lic = result["bgmLicense"]
+        md += ["## BGM 라이선스",
+               f"- assetId: {', '.join(str(x) for x in lic.get('assetIds', []))}",
+               f"- 정책: {lic.get('licensePolicy')} · 매니페스트: `{lic.get('path')}`", ""]
+    if result.get("mixReport"):
+        mix = result["mixReport"]
+        md += ["## 믹싱 계약",
+               f"- mode: {mix.get('mode')} · tracks: {mix.get('trackCount')} · "
+               f"crossfade: {mix.get('crossfadeSec')}s · ducking: {mix.get('ducking')}",
+               f"- report: `{mix.get('path')}`", ""]
+    if result.get("ttsVoice"):
+        voice = result["ttsVoice"]
+        md += ["## TTS 음성 재현성",
+               f"- voice: {voice.get('voicePresetId')} (요청 {voice.get('requestedVoice')}) · "
+               f"pack {voice.get('voicePackVersion')} · Supertonic {voice.get('packageVersion')} / {voice.get('model')}",
+               f"- components: {voice.get('components')} · speed: {voice.get('speed')}",
+               f"- AI 고지: {voice.get('aiDisclosure')} · manifest: `{voice.get('path')}`", ""]
 
     md += ["## 검출 이슈", ""]
     if result["issues"]:

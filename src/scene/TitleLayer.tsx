@@ -65,10 +65,12 @@ export const TitleLayer: React.FC<{ frame: number; spec: TopTitle }> = ({ frame,
           fontSize,
           fontWeight: 950,
           lineHeight: 1.14,
-          color: "#26313D",
+          color: spec.color ?? "#26313D",
           letterSpacing: "-1.4px",
           whiteSpace: "nowrap",
-          textShadow: "0 1px 2px rgba(255,255,255,0.86), 0 0 16px rgba(255,255,255,0.58)",
+          textShadow: spec.color
+            ? "0 2px 16px rgba(0,0,0,0.62), 0 0 22px rgba(85,205,255,0.20)"
+            : "0 1px 2px rgba(255,255,255,0.86), 0 0 16px rgba(255,255,255,0.58)",
         };
         if (i === 0 && spec.firstWordColor) {
           const sp = ln.indexOf(" ");

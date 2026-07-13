@@ -1,0 +1,86 @@
+{
+  "profile": "cosmic-random-brush",
+  "version": "0.2-validation",
+  "sceneCount": 6,
+  "fps": 30,
+  "framesPerScene": 300,
+  "totalFrames": 1800,
+  "v01Control": {
+    "scene": 1,
+    "sourceSha256": "48a7d8be41dfdf489cd459366ef5f043a2823aa138c2e04d74abcf5827732483",
+    "routesGeometrySha256": "6950cac8abd6ba3ec43a0397a666e041bb016101b3c0ea758bcd4680b8193cbe",
+    "goldenFrameThresholdPct": 2.0
+  },
+  "quality": {
+    "baseStrokeCount": 36,
+    "coverageStrokeCountRange": [
+      1,
+      20
+    ],
+    "brushWidthRange": [
+      230,
+      365
+    ],
+    "maskCoverageMin": 0.991,
+    "visibleContentCoverageMin": 0.985,
+    "meanCenterJumpMin": 650,
+    "maxCenterJumpMin": 1200,
+    "drawEndMax": 210
+  },
+  "scenes": [
+    {
+      "scene": 1,
+      "slug": "earth-orbit-sunrise",
+      "title": "01. 지구 궤도 일출",
+      "seed": 260712,
+      "file": "examples/cosmic-random-brush-v02/assets/scene-01-earth-orbit-sunrise.png",
+      "normalizedSha256": "48a7d8be41dfdf489cd459366ef5f043a2823aa138c2e04d74abcf5827732483",
+      "fit": "identity"
+    },
+    {
+      "scene": 2,
+      "slug": "saturn-rings",
+      "title": "02. 토성의 고리",
+      "seed": 260749,
+      "file": "examples/cosmic-random-brush-v02/assets/scene-02-saturn-rings.png",
+      "normalizedSha256": "00884444452ba3f2d47fc5147485538695f64042b3899b746dee334dce29d6d1",
+      "fit": "cover"
+    },
+    {
+      "scene": 3,
+      "slug": "barred-spiral-galaxy",
+      "title": "03. 나선은하의 중심",
+      "seed": 260786,
+      "file": "examples/cosmic-random-brush-v02/assets/scene-03-barred-spiral-galaxy.png",
+      "normalizedSha256": "d5fac2fc2734fa4009c40c38a4801578b55f2cbf6ded3205dd0eac861cf8f22a",
+      "fit": "cover"
+    },
+    {
+      "scene": 4,
+      "slug": "tarantula-nebula",
+      "title": "04. 타란툴라 성운",
+      "seed": 260823,
+      "file": "examples/cosmic-random-brush-v02/assets/scene-04-tarantula-nebula.png",
+      "normalizedSha256": "87316c0b393ecc8ce8401575dfb0cdc31a5c62b57ac914ea631193012c988c9b",
+      "fit": "cover"
+    },
+    {
+      "scene": 5,
+      "slug": "black-hole-accretion-disk",
+      "title": "05. 블랙홀과 강착원반",
+      "seed": 260860,
+      "file": "examples/cosmic-random-brush-v02/assets/scene-05-black-hole-accretion-disk.png",
+      "normalizedSha256": "b2e17d017b9b60bfb627505aea8d0a8075e881ab5e938588814a519f51259fe0",
+      "fit": "cover"
+    },
+    {
+      "scene": 6,
+      "slug": "low-contrast-lunar-surface",
+      "title": "06. 고요의 바다",
+      "seed": 260897,
+      "file": "examples/cosmic-random-brush-v02/assets/scene-06-low-contrast-lunar-surface.png",
+      "normalizedSha256": "040a79116132e77d82f385c10fb516b77f91ea7308d1d644d87b2bc82d2ec9b1",
+      "fit": "cover-dark-low-contrast"
+    }
+  ]
+}

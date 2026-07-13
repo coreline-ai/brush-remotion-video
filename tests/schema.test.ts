@@ -22,6 +22,7 @@ describe("RenderPropsSchema", () => {
     expect(parsed.format).toBe("youtube");
     expect(parsed.scenes[0].faint).toBe(0.6);
     expect(parsed.scenes[0].linearDraw).toBe(false);
+    expect(parsed.scenes[0].colorSettleFrames).toBe(36);
     expect(parsed.scenes[0].prewashHoldFrames).toBe(6);
   });
 
@@ -57,6 +58,27 @@ describe("RenderPropsSchema", () => {
     const bad = structuredClone(validProps) as Record<string, unknown> & typeof validProps;
     (bad.scenes[0] as Record<string, unknown>).naturalEffects = { kind: "mistt" };
     expect(RenderPropsSchema.safeParse(bad).success).toBe(false);
+  });
+
+  it("pen-brush drawingPhases outline→paint 계약을 허용한다", () => {
+    const phases = [
+      { kind: "outline", routes: "demo/outline.routes.json", cursor: { kind: "pen" }, zIndex: 20,
+        fadeOutFrom: 120, fadeOutTo: 132 },
+      { kind: "paint", routes: "demo/paint.routes.json", cursor: { kind: "image", src: "brush.png",
+        w: 100, h: 80, tipx: 10, tipy: 70 }, zIndex: 10 },
+    ];
+    const props = structuredClone(validProps) as Record<string, unknown> & typeof validProps;
+    delete (props.scenes[0] as Record<string, unknown>).routes;
+    (props.scenes[0] as Record<string, unknown>).drawingPhases = phases;
+    expect(RenderPropsSchema.safeParse(props).success).toBe(true);
+  });
+
+  it("drawingPhases 순서·개수·fade pair 위반을 거부한다", () => {
+    const props = structuredClone(validProps) as Record<string, unknown> & typeof validProps;
+    (props.scenes[0] as Record<string, unknown>).drawingPhases = [
+      { kind: "paint", routes: "a.json" }, { kind: "outline", routes: "b.json", fadeOutFrom: 10 },
+    ];
+    expect(RenderPropsSchema.safeParse(props).success).toBe(false);
   });
 });
 

@@ -12,7 +12,8 @@ description: >-
 # shorts-brush — 세로 힐링 브러시 쇼츠
 
 **실행 대상 리포**: `/Users/hwanchoi/project_202606/brush_remotion_video`
-**brush-video와 같은 엔진·같은 빌더**를 쓴다. 공통 사항(설치·QA·갭 환류)은 [brush-video SKILL.md](../brush-video/SKILL.md)를 따른다.
+**brush-video와 같은 엔진·같은 빌더**를 쓴다. 공통 사항(설치·QA·갭 환류)은 [brush-video SKILL.md](../brush-video/SKILL.md)를 따르고,
+완성 선언 전 [씬 전환·번쩍 공통 체크](../_shared/references/transition-checklist.md)를 통과한다 (루프 엔딩의 순백 수렴 1.0이 A계열 표준 처방).
 
 ## 언제 이 스킬인가
 
@@ -32,6 +33,10 @@ ambient:
     - "고요한 아침이 열린다"
     - "복잡한 생각은 바람에 흘려보내고"
     - "오늘도 다시, 가볍게 시작해"
+bgm:
+  mode: asset
+  assetId: youtube-jesse-gallagher-satya-yuga
+  gainDb: 5
 ```
 
 ```bash
@@ -49,13 +54,20 @@ pipeline/.venv/bin/python bin/build.py <project.yaml>
 | 훅 | 첫 씬 프리워시 짧게(0.5/18f) — 첫 1~2초 안에 그림이 움직임 |
 | 루프 엔딩 | 마지막 씬 outro 순백 수렴(washOpacity 1.0) — 반복 재생이 매끄러움 |
 | 타이틀·위젯 | 사용 시 상단 세이프존(y ≥ 120)·자막 밴드 침범을 검증이 hard-fail로 차단 |
-| BGM | 앰비언트 모드 합성 피아노 자동 (씬 경계 무끊김) |
+| BGM | 기본 추천 Satya Yuga 로컬 1곡. Pixabay는 YouTube Shorts 사용 금지. 미등록/미지정 기존 프로젝트는 합성 피아노 |
 
 ## 길이 규정 (2026 쇼츠 기준)
 
 - **한도: 180초** (씬 18개) — 초과는 빌드가 거부
 - **권장: 30초 내외** (알고리즘 초기 노출은 60초 미만이 유리) — 60초 초과 시 빌드가 경고
 - 씬 구성 관행: 씬마다 **다른 풍경·다른 팔레트** (예: 호수 → 숲길 → 노을), 무드는 하나로 통일
+- 쇼츠는 기본 1곡을 쓰며 2~3곡 playlist는 60초를 넘는 특별한 경우에만 사용한다.
+
+## TTS 쇼츠
+
+목소리가 필요한 새 프로젝트는 밝고 명료한 `female-07`, `speed: 1.10`을 기본 추천한다.
+사용자가 지정한 음성은 유지하며 `voice:auto`는 쓰지 않는다. 10종 비교와 청취는
+[공통 Supertonic 음성 카탈로그](../_shared/references/supertonic-voice-catalog.md)를 따른다.
 
 ## 세로 배경
 

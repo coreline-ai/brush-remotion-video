@@ -1,0 +1,572 @@
+{
+  "profile": "cosmic-random-brush",
+  "version": "0.3-production",
+  "sceneCount": 60,
+  "fps": 30,
+  "framesPerScene": 300,
+  "totalFrames": 18000,
+  "v01Control": {
+    "scene": 1,
+    "sourceSha256": "48a7d8be41dfdf489cd459366ef5f043a2823aa138c2e04d74abcf5827732483",
+    "routesGeometrySha256": "6950cac8abd6ba3ec43a0397a666e041bb016101b3c0ea758bcd4680b8193cbe",
+    "goldenFrameThresholdPct": 2.0
+  },
+  "quality": {
+    "baseStrokeCount": 36,
+    "coverageStrokeCountRange": [
+      1,
+      20
+    ],
+    "brushWidthRange": [
+      230,
+      365
+    ],
+    "maskCoverageMin": 0.991,
+    "visibleContentCoverageMin": 0.985,
+    "meanCenterJumpMin": 650,
+    "maxCenterJumpMin": 1200,
+    "drawEndMax": 210
+  },
+  "scenes": [
+    {
+      "scene": 1,
+      "slug": "earth-orbit-sunrise",
+      "title": "01. 지구 궤도 일출",
+      "seed": 260712,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-01-earth-orbit-sunrise.png",
+      "normalizedSha256": "48a7d8be41dfdf489cd459366ef5f043a2823aa138c2e04d74abcf5827732483",
+      "fit": "cover"
+    },
+    {
+      "scene": 2,
+      "slug": "earth-at-night",
+      "title": "02. 밤의 지구",
+      "seed": 260749,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-02-earth-at-night.png",
+      "normalizedSha256": "11bbee8dfabf3c65ea206b513fa9d5e719865a0a018ffd510ae55f88cffa51a4",
+      "fit": "cover"
+    },
+    {
+      "scene": 3,
+      "slug": "aurora-from-orbit",
+      "title": "03. 궤도 위 오로라",
+      "seed": 260786,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-03-aurora-from-orbit.png",
+      "normalizedSha256": "4ef003987b24fda32f57d2024fe149219f88d2b28a3368e924ae143c3003f848",
+      "fit": "cover"
+    },
+    {
+      "scene": 4,
+      "slug": "blue-marble",
+      "title": "04. 푸른 구슬",
+      "seed": 260823,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-04-blue-marble.png",
+      "normalizedSha256": "8a19f7110ee79ca009af3e93918efef332140dbf2484c8ecd3160a93385b6030",
+      "fit": "cover"
+    },
+    {
+      "scene": 5,
+      "slug": "storm-from-space",
+      "title": "05. 폭풍의 눈",
+      "seed": 260860,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-05-storm-from-space.png",
+      "normalizedSha256": "c1a1a01d49f404399e6fdb9bccc189b6b7e1f7e36c7d2f81b522b50a07a68d62",
+      "fit": "cover"
+    },
+    {
+      "scene": 6,
+      "slug": "sahara-from-orbit",
+      "title": "06. 사하라의 결",
+      "seed": 260897,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-06-sahara-from-orbit.png",
+      "normalizedSha256": "6115515a2acb4d246ac1f683e3f392dc4578d7f8bcbb972805cc71207e9e9dca",
+      "fit": "cover"
+    },
+    {
+      "scene": 7,
+      "slug": "himalayas-from-space",
+      "title": "07. 히말라야의 능선",
+      "seed": 260934,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-07-himalayas-from-space.png",
+      "normalizedSha256": "cf2091fa1348b24a6fbf6d6aa50ad7874f4f05b0b860d5f5b71d666b26ade982",
+      "fit": "cover"
+    },
+    {
+      "scene": 8,
+      "slug": "city-lights",
+      "title": "08. 도시의 불빛",
+      "seed": 260971,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-08-city-lights.png",
+      "normalizedSha256": "b26dbb16072fa3f125022f3e14946f1f36471e9a8dbd604fe6b92615e6a8c5d5",
+      "fit": "cover"
+    },
+    {
+      "scene": 9,
+      "slug": "ocean-cloud-swirls",
+      "title": "09. 구름의 소용돌이",
+      "seed": 261008,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-09-ocean-cloud-swirls.png",
+      "normalizedSha256": "3035fecc569458ca9dbf736aec947e6feb8b36933d3b3b3624caef4651c9f9ac",
+      "fit": "cover"
+    },
+    {
+      "scene": 10,
+      "slug": "earthrise",
+      "title": "10. 달 너머 지구",
+      "seed": 261045,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-10-earthrise.png",
+      "normalizedSha256": "d5651272d9efd4ceb208f9e3b057c5d732257472894a58694020ce2cc3d3a5b3",
+      "fit": "contain-dark"
+    },
+    {
+      "scene": 11,
+      "slug": "lunar-tranquility",
+      "title": "11. 고요의 바다",
+      "seed": 261082,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-11-lunar-tranquility.png",
+      "normalizedSha256": "040a79116132e77d82f385c10fb516b77f91ea7308d1d644d87b2bc82d2ec9b1",
+      "fit": "cover"
+    },
+    {
+      "scene": 12,
+      "slug": "copernicus-crater",
+      "title": "12. 코페르니쿠스 크레이터",
+      "seed": 261119,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-12-copernicus-crater.png",
+      "normalizedSha256": "3f43dd9c68cc24c65952d88fe4d83635cc94f081885d3caa6911872e14098df6",
+      "fit": "cover"
+    },
+    {
+      "scene": 13,
+      "slug": "lunar-far-side",
+      "title": "13. 달의 뒷면",
+      "seed": 261156,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-13-lunar-far-side.png",
+      "normalizedSha256": "e7903e3345b7c3914b530490e72e678d140513a5059e63e957ad01449b01a0cc",
+      "fit": "cover"
+    },
+    {
+      "scene": 14,
+      "slug": "apollo-earthrise",
+      "title": "14. 아폴로의 지구돋이",
+      "seed": 261193,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-14-apollo-earthrise.png",
+      "normalizedSha256": "d2c3ef8d8a8223b238c6d6860dc279d64e889b4831a2dc29d21fdc12775534d9",
+      "fit": "contain-dark"
+    },
+    {
+      "scene": 15,
+      "slug": "mars-horizon",
+      "title": "15. 화성의 지평선",
+      "seed": 261230,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-15-mars-horizon.png",
+      "normalizedSha256": "814b5910b703c6c99635b5fd07d93aef0602f5b70be5a0a081df51c399d0b3f6",
+      "fit": "cover"
+    },
+    {
+      "scene": 16,
+      "slug": "mars-dunes",
+      "title": "16. 화성의 모래언덕",
+      "seed": 261267,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-16-mars-dunes.png",
+      "normalizedSha256": "714a483229a5519510c9a6f59eab916ad33961b32bd6de1fbe96f6dfee7ef377",
+      "fit": "cover"
+    },
+    {
+      "scene": 17,
+      "slug": "valles-marineris",
+      "title": "17. 마리너 계곡",
+      "seed": 261304,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-17-valles-marineris.png",
+      "normalizedSha256": "68eeef72ea5eca4bc0acb4ca46bf2919227d3ecec98610e741d58d500645e82e",
+      "fit": "cover"
+    },
+    {
+      "scene": 18,
+      "slug": "olympus-mons",
+      "title": "18. 올림푸스 산",
+      "seed": 261341,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-18-olympus-mons.png",
+      "normalizedSha256": "0a1141d99f3780792ecf7dbfcf03a01765a26e89fa754f153f61abd1aa8f39f0",
+      "fit": "cover"
+    },
+    {
+      "scene": 19,
+      "slug": "mars-polar-cap",
+      "title": "19. 화성의 극관",
+      "seed": 261378,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-19-mars-polar-cap.png",
+      "normalizedSha256": "664cea745232e0ae3848e887d6e9b65151c92ff12bced41282b8ff3fb411b283",
+      "fit": "cover"
+    },
+    {
+      "scene": 20,
+      "slug": "phobos-over-mars",
+      "title": "20. 포보스와 화성",
+      "seed": 261415,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-20-phobos-over-mars.png",
+      "normalizedSha256": "4477f83afe36a7cf337c49f8bda5b13d2a0257e7a08ff8b1d7804ddeb20f5f70",
+      "fit": "contain-dark"
+    },
+    {
+      "scene": 21,
+      "slug": "mercury",
+      "title": "21. 수성",
+      "seed": 261452,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-21-mercury.png",
+      "normalizedSha256": "e0a0605053ab9c698e10cdbfd0b4ac83e05265ba3116462b3906fe6506fe357b",
+      "fit": "contain-dark"
+    },
+    {
+      "scene": 22,
+      "slug": "venus",
+      "title": "22. 금성",
+      "seed": 261489,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-22-venus.png",
+      "normalizedSha256": "d37686f327fd62cce229a71db4e1dcc96ff53d967037a2bf47ed7e3dfee5a979",
+      "fit": "contain-dark"
+    },
+    {
+      "scene": 23,
+      "slug": "jupiter",
+      "title": "23. 목성",
+      "seed": 261526,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-23-jupiter.png",
+      "normalizedSha256": "d02e243caec93c3024b96eccc58c028a658f546ad34aaf7e784e09187649c62e",
+      "fit": "contain-dark"
+    },
+    {
+      "scene": 24,
+      "slug": "great-red-spot",
+      "title": "24. 대적점",
+      "seed": 261563,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-24-great-red-spot.png",
+      "normalizedSha256": "0a81202da318dfeb20c6de4f2fb641f6e967f74ac1b1d8f252218f316a81f7ab",
+      "fit": "cover"
+    },
+    {
+      "scene": 25,
+      "slug": "io",
+      "title": "25. 이오",
+      "seed": 261600,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-25-io.png",
+      "normalizedSha256": "fef1ee277600f150f917227fab44c677f8fc8b349d3d0fa8fbb6e8458340e0ef",
+      "fit": "contain-dark"
+    },
+    {
+      "scene": 26,
+      "slug": "europa",
+      "title": "26. 유로파",
+      "seed": 261637,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-26-europa.png",
+      "normalizedSha256": "6652ebfeb6f531abdd7d03f5fe2eeb9d8043f8805a6c646d4bc3e7ec84085d56",
+      "fit": "contain-dark"
+    },
+    {
+      "scene": 27,
+      "slug": "saturn",
+      "title": "27. 토성",
+      "seed": 261674,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-27-saturn.png",
+      "normalizedSha256": "093a9bdec5ac9f0469fc23b3695fabd0e34cca356c535f1e95cb7a44caed4677",
+      "fit": "contain-dark"
+    },
+    {
+      "scene": 28,
+      "slug": "saturn-rings",
+      "title": "28. 토성의 고리",
+      "seed": 261711,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-28-saturn-rings.png",
+      "normalizedSha256": "00884444452ba3f2d47fc5147485538695f64042b3899b746dee334dce29d6d1",
+      "fit": "cover"
+    },
+    {
+      "scene": 29,
+      "slug": "uranus",
+      "title": "29. 천왕성",
+      "seed": 261748,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-29-uranus.png",
+      "normalizedSha256": "ef44d5eb043e2089bbe7ce96a147718aeb59a05ba6e2284645805d1053addde6",
+      "fit": "contain-dark"
+    },
+    {
+      "scene": 30,
+      "slug": "neptune",
+      "title": "30. 해왕성",
+      "seed": 261785,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-30-neptune.png",
+      "normalizedSha256": "d0eebd0126621fe564a5c688b150f7ab693ed9bd570c25fd0092d371f413ee5e",
+      "fit": "contain-dark"
+    },
+    {
+      "scene": 31,
+      "slug": "tarantula-nebula",
+      "title": "31. 타란툴라 성운",
+      "seed": 261822,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-31-tarantula-nebula.png",
+      "normalizedSha256": "87316c0b393ecc8ce8401575dfb0cdc31a5c62b57ac914ea631193012c988c9b",
+      "fit": "cover"
+    },
+    {
+      "scene": 32,
+      "slug": "carina-nebula",
+      "title": "32. 카리나 성운",
+      "seed": 261859,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-32-carina-nebula.png",
+      "normalizedSha256": "5b2d7c806248dbcd862f0c380f99fbf976bd734c19ae918d6b4b257303b9810a",
+      "fit": "cover"
+    },
+    {
+      "scene": 33,
+      "slug": "orion-nebula",
+      "title": "33. 오리온 성운",
+      "seed": 261896,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-33-orion-nebula.png",
+      "normalizedSha256": "e213d00433165839083c4cc54e781092bbe4005e90e2aa9daba6640ea74a4968",
+      "fit": "cover"
+    },
+    {
+      "scene": 34,
+      "slug": "pillars-of-creation",
+      "title": "34. 창조의 기둥",
+      "seed": 261933,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-34-pillars-of-creation.png",
+      "normalizedSha256": "0df010c7082798bd915cd50e70e21ebba9693dbc4a0e2829688366240ca3312c",
+      "fit": "cover"
+    },
+    {
+      "scene": 35,
+      "slug": "helix-nebula",
+      "title": "35. 헬릭스 성운",
+      "seed": 261970,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-35-helix-nebula.png",
+      "normalizedSha256": "0432eb400b4a2f566d70a7be991198adbd11dfeb8d2c797b09c6bb33a77c936a",
+      "fit": "cover"
+    },
+    {
+      "scene": 36,
+      "slug": "crab-nebula",
+      "title": "36. 게 성운",
+      "seed": 262007,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-36-crab-nebula.png",
+      "normalizedSha256": "4f7fac9aa169787b0a004ccddb96bde435c480f40eab63ad782117a4c7b87e7b",
+      "fit": "cover"
+    },
+    {
+      "scene": 37,
+      "slug": "veil-nebula",
+      "title": "37. 베일 성운",
+      "seed": 262044,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-37-veil-nebula.png",
+      "normalizedSha256": "48e2d8531f38324e2cbaa7837f2394aaa278a70ad3b393fb027c08655b2bf2f3",
+      "fit": "cover"
+    },
+    {
+      "scene": 38,
+      "slug": "rosette-nebula",
+      "title": "38. 장미 성운",
+      "seed": 262081,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-38-rosette-nebula.png",
+      "normalizedSha256": "f6e9d204ff74a4bff6290e851ad1e0948fb779f24d2d396b72dbf80a2a69a633",
+      "fit": "cover"
+    },
+    {
+      "scene": 39,
+      "slug": "star-cluster",
+      "title": "39. 별들의 군집",
+      "seed": 262118,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-39-star-cluster.png",
+      "normalizedSha256": "0c4a366cce9471a16ef898e16e007147e622b05570d8744db7a90146e67f5c73",
+      "fit": "cover"
+    },
+    {
+      "scene": 40,
+      "slug": "supernova-remnant",
+      "title": "40. 초신성의 흔적",
+      "seed": 262155,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-40-supernova-remnant.png",
+      "normalizedSha256": "97bee51cadc483e74635fee60828041f975b19588ce17e6c704dd89c9ae83c3e",
+      "fit": "cover"
+    },
+    {
+      "scene": 41,
+      "slug": "milky-way-center",
+      "title": "41. 우리은하의 중심",
+      "seed": 262192,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-41-milky-way-center.png",
+      "normalizedSha256": "73ac05ebb30df9f5a91b9d15466b41eab1660551ec4fbf53cec6e1e0acf50a71",
+      "fit": "cover"
+    },
+    {
+      "scene": 42,
+      "slug": "andromeda",
+      "title": "42. 안드로메다",
+      "seed": 262229,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-42-andromeda.png",
+      "normalizedSha256": "033814789cf86eb8d9e41b38fe9d494b96a33c52c6e520fca13ad6f9d92ebbe8",
+      "fit": "cover"
+    },
+    {
+      "scene": 43,
+      "slug": "barred-spiral",
+      "title": "43. 막대나선은하",
+      "seed": 262266,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-43-barred-spiral.png",
+      "normalizedSha256": "d5fac2fc2734fa4009c40c38a4801578b55f2cbf6ded3205dd0eac861cf8f22a",
+      "fit": "cover"
+    },
+    {
+      "scene": 44,
+      "slug": "whirlpool-galaxy",
+      "title": "44. 소용돌이 은하",
+      "seed": 262303,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-44-whirlpool-galaxy.png",
+      "normalizedSha256": "7321864c1c290887562ac886c3b33e64607f726aafa701a411db35c1db32dbaf",
+      "fit": "cover"
+    },
+    {
+      "scene": 45,
+      "slug": "sombrero-galaxy",
+      "title": "45. 솜브레로 은하",
+      "seed": 262340,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-45-sombrero-galaxy.png",
+      "normalizedSha256": "968493d4cfeb53e6de9e7236ef3dbbe55ce5a3c33438d58cd477744dfb0abf4b",
+      "fit": "cover"
+    },
+    {
+      "scene": 46,
+      "slug": "edge-on-galaxy",
+      "title": "46. 옆으로 본 은하",
+      "seed": 262377,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-46-edge-on-galaxy.png",
+      "normalizedSha256": "0cdfffe4fb4926cf75f3057b0d005396c419bb38cf33e5b009f426ff57f64070",
+      "fit": "cover"
+    },
+    {
+      "scene": 47,
+      "slug": "interacting-galaxies",
+      "title": "47. 춤추는 두 은하",
+      "seed": 262414,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-47-interacting-galaxies.png",
+      "normalizedSha256": "dee52a30c1b218df3e39c7380400c911e319ae3da2edde109d71d49098dae72b",
+      "fit": "cover"
+    },
+    {
+      "scene": 48,
+      "slug": "galaxy-cluster",
+      "title": "48. 은하단",
+      "seed": 262451,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-48-galaxy-cluster.png",
+      "normalizedSha256": "a73e2980300e67e560a9b628d948b50cc1bb0fb0e0cbd36b1df30ad8cbd9780b",
+      "fit": "cover"
+    },
+    {
+      "scene": 49,
+      "slug": "deep-field",
+      "title": "49. 허블 딥 필드",
+      "seed": 262488,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-49-deep-field.png",
+      "normalizedSha256": "f2531a6c80a5c94667047652242fda8b6278f63ae5da2823db1be207bcb43174",
+      "fit": "cover"
+    },
+    {
+      "scene": 50,
+      "slug": "gravitational-lens",
+      "title": "50. 중력렌즈",
+      "seed": 262525,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-50-gravitational-lens.png",
+      "normalizedSha256": "08d9f018b04254bc37777c3d9b3e31a6c1a03efc4fc00e60a974f16a668d263b",
+      "fit": "cover"
+    },
+    {
+      "scene": 51,
+      "slug": "black-hole-jet",
+      "title": "51. 블랙홀의 제트",
+      "seed": 262562,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-51-black-hole-jet.png",
+      "normalizedSha256": "b2e17d017b9b60bfb627505aea8d0a8075e881ab5e938588814a519f51259fe0",
+      "fit": "cover"
+    },
+    {
+      "scene": 52,
+      "slug": "accretion-disk",
+      "title": "52. 강착원반",
+      "seed": 262599,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-52-accretion-disk.png",
+      "normalizedSha256": "83236f49bdff70f3c7cd955750482bd25270e690e3255b3c498e140745274331",
+      "fit": "cover"
+    },
+    {
+      "scene": 53,
+      "slug": "neutron-star",
+      "title": "53. 중성자별",
+      "seed": 262636,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-53-neutron-star.png",
+      "normalizedSha256": "d8e467c2791d53b7a59e083865da25e561fce9d3575ed3339cb3bf23c45d17fc",
+      "fit": "contain-dark"
+    },
+    {
+      "scene": 54,
+      "slug": "pulsar",
+      "title": "54. 펄서",
+      "seed": 262673,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-54-pulsar.png",
+      "normalizedSha256": "3097dff8bef2b1698b61efc0c3b034489f48dfa9ffc9338b901af5b5c941896c",
+      "fit": "cover"
+    },
+    {
+      "scene": 55,
+      "slug": "quasar",
+      "title": "55. 퀘이사",
+      "seed": 262710,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-55-quasar.png",
+      "normalizedSha256": "2092bcde00b10ea8dbfa8dc544d929ff75e0b13f35a56c1c910401647d51b9ea",
+      "fit": "cover"
+    },
+    {
+      "scene": 56,
+      "slug": "cosmic-web",
+      "title": "56. 우주 거대망",
+      "seed": 262747,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-56-cosmic-web.png",
+      "normalizedSha256": "c1cfb137da895abeb1ba7319fb412a22f28b5c62ca0e791163eb239346e88a70",
+      "fit": "cover"
+    },
+    {
+      "scene": 57,
+      "slug": "exoplanet",
+      "title": "57. 외계행성",
+      "seed": 262784,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-57-exoplanet.png",
+      "normalizedSha256": "a5a71d149664bc0a6c64b5b5a1aaf38fd50afe802a4abbde5fac01646d0fd870",
+      "fit": "cover"
+    },
+    {
+      "scene": 58,
+      "slug": "protostar",
+      "title": "58. 태어나는 별",
+      "seed": 262821,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-58-protostar.png",
+      "normalizedSha256": "a6fe97c4b272f2bb51f49b89433df0bb24021937ff287db36566d6f8db07ff8f",
+      "fit": "cover"
+    },
+    {
+      "scene": 59,
+      "slug": "deep-universe",
+      "title": "59. 심우주",
+      "seed": 262858,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-59-deep-universe.png",
+      "normalizedSha256": "19e5fc8cad9651022d7b020cf516d68ebbf069f11ff614af9079cea96ddbbdba",
+      "fit": "cover"
+    },
+    {
+      "scene": 60,
+      "slug": "pale-blue-dot",
+      "title": "60. 창백한 푸른 점",
+      "seed": 262895,
+      "file": "examples/cosmic-random-brush-v03/assets/scene-60-pale-blue-dot.png",
+      "normalizedSha256": "091f075e7222326c9fcffbaf4109dd4dcdb8e69af0e18e29ef7e33003f16206b",
+      "fit": "contain-dark"
+    }
+  ]
+}

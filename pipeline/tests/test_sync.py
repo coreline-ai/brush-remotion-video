@@ -96,9 +96,10 @@ _bm = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_bm)
 
 
-def _pen_pipeline(tmp_path, monkeypatch, sync="auto", cues=None):
+def _pen_pipeline(tmp_path, monkeypatch, sync="auto", cues=None, preserve_source=False):
     monkeypatch.setattr(_bm, "REPO_ROOT", tmp_path)
-    cfg = _bm.ProjectConfig(project_id="sync-unit", drawing_profile="pen", drawing_sync=sync)
+    cfg = _bm.ProjectConfig(project_id="sync-unit", drawing_profile="pen", drawing_sync=sync,
+                            drawing_preserve_source=preserve_source)
     pipe = _bm.Pipeline(cfg)
     scenes = [{"durationInFrames": 300, "cues": cues or []}]
     pipe._write_scenes(scenes)
@@ -139,6 +140,18 @@ def test_stage_sync_applies_and_cue0_skips(tmp_path, monkeypatch):
     payload = pipe2.stage_sync()
     assert rp2.read_bytes() == before
     assert payload["synced"] == [None]
+
+
+def test_stage_sync_preserve_source_reserves_completion_tail(tmp_path, monkeypatch):
+    pipe, rp = _pen_pipeline(
+        tmp_path, monkeypatch, preserve_source=True,
+        cues=[{"text": "첫 문장", "from": 0, "to": 115},
+              {"text": "둘째 문장", "from": 115, "to": 270}],
+    )
+    pipe.stage_sync()
+    data = _json.loads(rp.read_text(encoding="utf-8"))
+    assert data["meta"]["drawEnd"] <= 240
+    assert data["meta"]["completionTailFrames"] >= 60
 
 
 def test_project_drawing_sync_validation(tmp_path):
