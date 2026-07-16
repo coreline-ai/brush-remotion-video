@@ -75,18 +75,37 @@ PEN_SCENE_PRESET = {
     "completionMode": "integrated-develop",
     "previewOpacity": 0,
     "prewashOpacity": 0, "prewashFrames": 0, "prewashHoldFrames": 0,
-    # 완성 이미지에서 다음 씬의 종이 화면으로 1프레임 하드컷되지 않도록 짧게 dissolve.
-    "outroFadeFrames": 18, "outroWashOpacity": 1.0, "outroBlur": 0,
+    # 완성 이미지에서 다음 씬의 종이 화면으로 1프레임 하드컷되지 않도록 충분히 긴 dissolve.
+    # 고대비 장면도 마지막 1프레임에 번쩍이지 않도록 36f(1.2s)로 균일하게 녹인다.
+    "outroFadeFrames": 36, "outroWashOpacity": 1.0, "outroBlur": 0,
 }
 PEN_BRUSH_DYNAMICS = {"drawSpeedScale": 1.0, "touchScale": 1.0, "touchJitter": 0,
                       "pathJitter": 0, "randomizeOrder": False, "randomReverse": False}
 
+# 카드형 플레이어는 MP4 attached_pic보다 실제 v:0의 0프레임을 우선할 수 있다.
+# 첫 씬만 정규화된 원본을 흐리게 보여준 뒤 종이로 지우고, 같은 12f 지연 뒤 첫 획을 시작한다.
+OPENING_POSTER_FRAMES = 12  # 30fps 기준 0.40초
+BRUSH_FIRST_SCENE_BLURRED_POSTER = {
+    "prewashOpacity": 0.50,
+    "prewashFrames": OPENING_POSTER_FRAMES,
+    "prewashHoldFrames": 0,
+    "prewashFadeOutFrames": OPENING_POSTER_FRAMES,
+    "prewashBlur": 12,
+}
+PEN_FIRST_SCENE_BLURRED_POSTER = {
+    "prewashOpacity": 0.35,
+    "prewashFrames": OPENING_POSTER_FRAMES,
+    "prewashHoldFrames": 0,
+    "prewashFadeOutFrames": OPENING_POSTER_FRAMES,
+    "prewashBlur": 10,
+}
 
-def pen_route_params(duration: int, seed: int) -> RouteParams:
+
+def pen_route_params(duration: int, seed: int, *, draw_start: float = 8) -> RouteParams:
     """pen 프로파일 정밀 routes 파라미터 — drawEnd 를 앞당겨(35%) 감상 구간 확보."""
     draw_end = round(duration * 0.35)
     return RouteParams(
-        duration=duration, draw_start=8, draw_end=draw_end, pen_invisible_after=draw_end + 8,
+        duration=duration, draw_start=draw_start, draw_end=draw_end, pen_invisible_after=draw_end + 8,
         seed=seed, analyze_scale=1.5, contour_width=18, rdp_eps=1.5, max_len=300,
         min_route_len=12, seal_width=24, seal_step=18,
         group_by_zone=True,  # 매크로 존(오브젝트) 단위 드로잉 순서
@@ -395,6 +414,23 @@ class Pipeline:
         self.scenes_json.parent.mkdir(parents=True, exist_ok=True)
         self.scenes_json.write_text(json.dumps(scenes, ensure_ascii=False, indent=2), encoding="utf-8")
 
+    def _uses_first_scene_blurred_poster(self, scene_index: int) -> bool:
+        """종이 썸네일을 흐린 원본으로 바꾸는 첫 씬 전용 계약.
+
+        shorts 앰비언트는 이미 별도 18f 훅을 갖고, preserveSource pen은 명시적인
+        32% 원본 가이드가 연출 목적이므로 이 표준 포스터에서 제외한다.
+        """
+        if scene_index != 0:
+            return False
+        if self.cfg.drawing_profile == "pen":
+            return not self.cfg.drawing_preserve_source
+        return self.cfg.drawing_profile == "brush" and not (
+            self.cfg.fmt == "shorts" and self.cfg.mode == "ambient"
+        )
+
+    def _first_scene_poster_image(self) -> str:
+        return f"{self.cfg.project_id}/bg/scene-01.png"
+
     def _voice_path(self) -> Path | None:
         """내레이션/whisper/TTS 음성 경로. BGM은 이 경로에 섞지 않는다."""
         if self.cfg.audio is not None:
@@ -580,10 +616,12 @@ class Pipeline:
                     Path(f"{stem}-outline.png"), Path(f"{stem}-outline-flat.png"),
                     Path(f"{stem}-color.png"), size=self.canvas,
                     content_path=Path(f"{stem}-content.png"),
+                    allow_full_bleed=self.cfg.drawing_full_bleed,
                 )
                 metrics.append({"contentFraction": round(result["contentFraction"], 6),
                                 "outlineFraction": round(result["outlineFraction"], 6),
-                                "lineThickness": round(result["lineThickness"], 4)})
+                                "lineThickness": round(result["lineThickness"], 4),
+                                "fullBleed": result["fullBleed"]})
             return {"profile": "pen-brush", "layers": metrics}
         if self.cfg.drawing_profile == "pen":
             # pen: 준비된 캔버스에서 잉크-알파 분리. background.fit=cover이면 full-bleed 유지.
@@ -612,6 +650,7 @@ class Pipeline:
             content = self.public_dir / "bg" / f"scene-{i + 1:02d}-content.png"
             d = scene["durationInFrames"]
             seed = self.cfg.seed + i * 37
+            opening_draw_start = 0 if self._uses_first_scene_blurred_poster(i) else 8
             if cosmic:
                 image_rel = f"{self.cfg.project_id}/bg/scene-{i + 1:02d}-content.png"
                 coordinate_scale = self.canvas[0] / 1920
@@ -662,7 +701,7 @@ class Pipeline:
                                   "paintMissingPixels": paint["meta"]["missingPixels"]})
                 continue
             if pen:
-                params = pen_route_params(d, seed)
+                params = pen_route_params(d, seed, draw_start=opening_draw_start)
                 # 기본 pen은 잉크 알파만 리빌한다. preserveSource는 같은 펜 경로를
                 # 사용하되 완료 마스크에서 원본 전체 이미지로 자연스럽게 복원한다.
                 image_rel = f"{self.cfg.project_id}/bg/scene-{i + 1:02d}.png" \
@@ -670,7 +709,8 @@ class Pipeline:
                     else f"{self.cfg.project_id}/bg/scene-{i + 1:02d}-ink.png"
             else:
                 params = RouteParams(
-                    duration=d, draw_start=8, draw_end=round(d * 0.73), pen_invisible_after=round(d * 0.76),
+                    duration=d, draw_start=opening_draw_start, draw_end=round(d * 0.73),
+                    pen_invisible_after=round(d * 0.76),
                     seed=seed, contour_width=40, seal_width=56, seal_step=20,
                 )
                 image_rel = f"{self.cfg.project_id}/bg/scene-{i + 1:02d}-content.png"
@@ -897,6 +937,9 @@ class Pipeline:
                     # 원본 전체를 희미한 가이드로 먼저 보여주고 펜이 그린 구간만
                     # 선명하게 만든다. 밝은 카드 면이 8초 동안 빈 종이로 보이는 현상을 막는다.
                     kwargs["previewOpacity"] = 0.32
+                elif self._uses_first_scene_blurred_poster(i):
+                    kwargs.update(PEN_FIRST_SCENE_BLURRED_POSTER)
+                    kwargs["prewashImage"] = self._first_scene_poster_image()
                 dynamics = {**PEN_BRUSH_DYNAMICS, "seed": self.cfg.seed + i}
             elif cosmic:
                 dynamics = {**PEN_BRUSH_DYNAMICS, "seed": self.cfg.seed + i}
@@ -938,6 +981,9 @@ class Pipeline:
                     preset["developFrames"] = fitted["developFrames"]
                     preset["colorSettleFrames"] = fitted["colorSettleFrames"]
                     kwargs.update(preset)
+                if self._uses_first_scene_blurred_poster(i):
+                    kwargs.update(BRUSH_FIRST_SCENE_BLURRED_POSTER)
+                    kwargs["prewashImage"] = self._first_scene_poster_image()
             built_scene = build_scene(
                 f"scene-{i + 1:02d}", None if pen_brush else f"{self.cfg.project_id}/routes/scene-{i + 1:02d}.routes.json",
                 sm["durationInFrames"], cues=None if cosmic else (sm.get("cues") or None),
@@ -1104,13 +1150,28 @@ class Pipeline:
     def stage_mux(self) -> dict:
         audio_value = self.ledger.payload("mix").get("audio")
         audio = Path(audio_value) if audio_value else None
+        # pen-brush 동화는 색칠 완료 첫 장면을 MP4 cover art에도 첨부한다. 카드형 플레이어는
+        # attached_pic을 무시할 수 있으므로 실제 v:0 0프레임 포스터는 DrawingPhaseLayer가 담당한다.
+        cover = self.public_dir / "bg" / "scene-01-content.png"
+        cover = cover if self.cfg.drawing_profile == "pen-brush" and cover.is_file() else None
         if audio is None:
-            log.info("mux: 오디오 없음 — 영상만 복사")
             self.output.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(self.video_only, self.output)
-            return {"audio": None}
+            if cover is None:
+                log.info("mux: 오디오 없음 — 영상만 복사")
+                shutil.copyfile(self.video_only, self.output)
+            else:
+                bv_render.attach_cover_art(self.video_only, cover, self.output)
+            return {"audio": None, "coverArt": str(cover) if cover else None}
         bv_render.mux_audio(self.video_only, audio, self.output)
-        return {"audio": str(audio), "mixMode": self.ledger.payload("mix").get("mode")}
+        if cover is not None:
+            covered_output = self.output.with_name(f".{self.output.stem}.cover.mp4")
+            try:
+                bv_render.attach_cover_art(self.output, cover, covered_output)
+                covered_output.replace(self.output)
+            finally:
+                covered_output.unlink(missing_ok=True)
+        return {"audio": str(audio), "mixMode": self.ledger.payload("mix").get("mode"),
+                "coverArt": str(cover) if cover else None}
 
     def stage_qa(self) -> dict:
         # 대량 프로젝트는 상위 오케스트레이터가 전수 QA를 한 번 수행할 수 있다.

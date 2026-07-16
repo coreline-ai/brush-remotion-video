@@ -60,6 +60,20 @@ description: >-
 5. **갭 환류** — 제작 중 발견한 품질 갭·빠진 규칙은 리포 루트 `FIELD-LOG.md`에 기록하고,
    반드시 해당 문서/검증기에 반영해 재발을 막는다 (기록만 하고 끝내지 않기).
 
+## 첫 씬 카드 썸네일 — 흐린 원본 포스터
+
+일반 `brush` 프로파일의 첫 씬은 카드형 플레이어가 실제 재생 스트림(`v:0`)의 0프레임을
+썸네일로 쓴다는 전제에서 다음을 자동 적용한다.
+
+- `scene-01.png` 원본을 `opacity: 0.50`, `blur: 12px`로 0프레임에 표시한다.
+- 12프레임(30fps 기준 0.4초) 동안 종이 배경으로 선형 페이드한다.
+- 드로잉 시간도 같은 12프레임만큼 지연하고 첫 route를 0에서 시작시켜, 페이드가 끝나는
+  f12에 붓이 바로 시작한다. 완성 컬러 이미지를 먼저 노출하지 않는다.
+- 첫 씬에만 적용한다. 중간 씬은 종이 전환과 기존 드로잉 흐름을 유지한다.
+- `shorts-brush`의 앰비언트 훅은 별도 18프레임 프리워시 계약을 유지한다.
+
+MP4 `attached_pic` 표지는 보조 수단일 뿐이므로, 카드 썸네일 보장은 반드시 실제 `v:0` 0프레임으로 검수한다.
+
 ## 배경 이미지
 
 - `strategy: imagegen` — codex exec 내장 image_gen (API 키 불필요). 프롬프트 규칙은
@@ -106,7 +120,7 @@ pipeline/.venv/bin/python scripts/tts-doctor.py --check supertonic
 - 선호값: `developFrames 36`, `colorSettleFrames 18`, 최소 홀드 12f
 - 짧은 씬은 기존 routes를 바꾸지 않고 2:1 비율로 12/6까지 결정적으로 축소한다.
 - 그래도 완료→홀드→outro 시간이 부족하면 props 단계에서 실패한다.
-- 기본 prewash/preview/blur/parallax/naturalEffects는 0 또는 비활성이다. 요청 시에만 opt-in한다.
+- 첫 씬 카드 포스터 외의 prewash/preview/blur/parallax/naturalEffects는 0 또는 비활성이다. 요청 시에만 opt-in한다.
 - 기본 outro는 `24f / washOpacity 1.0 / blur 0`으로 마지막 실재 프레임에서 종이에 수렴한다.
 - QA는 고정 mid/end가 아니라 draw-end→develop→settle→hold 프레임과
   `completion-report.json`을 사용한다.

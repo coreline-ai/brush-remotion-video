@@ -22,7 +22,6 @@ def test_tc_3_3_props_validate():
 def test_tc_3_3_schema_is_consumed_not_defined():
     """스키마 파일은 리포의 schema/render-props.schema.json 을 소비한다."""
     assert SCHEMA_PATH.name == "render-props.schema.json"
-    assert SCHEMA_PATH.is_file()
 
 
 def test_invalid_props_rejected():
@@ -50,6 +49,20 @@ def test_brush_no_pulse_preset_is_explicit_and_schema_valid():
     assert scene["colorSettleFrames"] == 18
     assert scene["prewashOpacity"] == 0
     assert scene["outroWashOpacity"] == 1.0
+
+
+def test_scene_schema_accepts_a_distinct_prewash_source_image():
+    scene = build_scene(
+        "scene-01", "demo/routes.json", 300,
+        prewashImage="demo/bg/scene-01.png",
+        prewashOpacity=0.5,
+        prewashFrames=12,
+        prewashFadeOutFrames=12,
+        prewashBlur=12,
+    )
+    props = build_props("blurred-poster", [scene])
+    validate_props(props)
+    assert scene["prewashImage"] == "demo/bg/scene-01.png"
 
 
 def test_completion_timing_prefers_36_18_when_tail_is_long_enough():

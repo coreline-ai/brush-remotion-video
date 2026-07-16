@@ -88,6 +88,25 @@ def test_prepare_layers_rejects_full_bleed_and_low_contrast(tmp_path: Path):
                                  size=(120, 80))
 
 
+def test_prepare_layers_allows_opt_in_full_bleed_pen_brush(tmp_path: Path):
+    """풀블리드 쇼츠는 여백 없이 전체 원본을 brush 마스크로 사용한다."""
+    src = tmp_path / "full-illustration.png"
+    im = Image.new("RGB", (160, 100), "#65adc3")
+    d = ImageDraw.Draw(im)
+    d.ellipse((28, 20, 118, 85), fill="#f3bd6b", outline="#292724", width=3)
+    d.line((4, 92, 156, 92), fill="#292724", width=3)
+    im.save(src)
+    result = prepare_pen_brush_layers(
+        src, tmp_path / "o.png", tmp_path / "of.png", tmp_path / "c.png",
+        size=(160, 100), allow_full_bleed=True,
+    )
+    color = np.asarray(Image.open(result["color"]).convert("RGBA"))
+    assert result["fullBleed"] is True
+    assert result["contentFraction"] == 1.0
+    assert color[..., 3].min() == 255
+    assert result["outlineFraction"] > 0.00005
+
+
 @pytest.mark.parametrize("size", [(240, 140), (140, 240)])
 def test_fill_routes_are_general_and_complete(tmp_path: Path, size: tuple[int, int]):
     w, h = size

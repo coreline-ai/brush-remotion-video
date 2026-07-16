@@ -142,11 +142,14 @@ def prepare_pen_brush_layers(
     size: tuple[int, int],
     paper: tuple[int, int, int] = PEN_PAPER,
     content_path: str | Path | None = None,
+    allow_full_bleed: bool = False,
 ) -> dict:
     """원본 한 장을 pen-brush 렌더 자산으로 분리하고 계측값을 반환.
 
-    빈 이미지와 사실상 전체 화면이 콘텐츠인 입력은 명시적으로 거부한다. 후자는
-    종이 배경을 투명화할 근거가 없어 색상 누출 없는 2단계 리빌을 보장할 수 없다.
+    빈 이미지는 명시적으로 거부한다. 기본값에서는 사실상 전체 화면이 콘텐츠인
+    입력도 거부한다. 다만 ``allow_full_bleed``를 명시하면 전체 캔버스를 채색
+    마스크로 사용한다. 이 opt-in 경로는 외곽 여백을 추가하지 않고, 펜 외곽선 뒤
+    자유 브러시가 원본의 모든 색을 정갈하게 채우는 세로 풀블리드 쇼츠용이다.
     """
     src = contain_fit(Image.open(image_path), size=size, paper=paper)
     arr = np.asarray(src).astype(np.float32)
@@ -162,8 +165,19 @@ def prepare_pen_brush_layers(
     content_fraction = float((color_alpha >= 0.10).mean())
     if content_fraction < 0.0005:
         raise ValueError("pen-brush 레이어 분리 실패: 콘텐츠가 없는 빈 이미지")
-    if content_fraction > 0.97:
+    detected_full_bleed = content_fraction > 0.97
+    if detected_full_bleed and not allow_full_bleed:
         raise ValueError("pen-brush 레이어 분리 실패: 종이 배경을 식별할 수 없는 full-bleed 이미지")
+
+    # 풀블리드에는 종이 영역이 없으므로 추정 종이색 기반 알파를 쓰지 않는다.
+    # 그렇지 않으면 배경의 밝은 부분이 중간에 투명해져 색칠 완료 후 흰 구멍으로
+    # 남는다. 이 분기는 caller가 의도적으로 요청한 경우에만 허용한다.
+    # 호출자가 fullBleed를 선언했다면, 자동 감지가 0.97 바로 아래로 흔들려도
+    # 외곽에 투명/흰 틈이 남지 않도록 전체 캔버스를 일관되게 채색한다.
+    full_bleed = bool(allow_full_bleed)
+    if full_bleed:
+        color_alpha = np.ones(arr.shape[:2], dtype=np.float32)
+        content_fraction = 1.0
 
     outline_alpha = _outline_alpha(arr, color_alpha)
     outline_fraction = float((outline_alpha >= 0.20).mean())
@@ -208,6 +222,7 @@ def prepare_pen_brush_layers(
         "outlineFraction": outline_fraction,
         "lineThickness": line_thickness(outline_alpha),
         "paperRgb": [round(float(v), 2) for v in estimated_paper],
+        "fullBleed": full_bleed,
     }
     log.info(
         "pen-brush layers: content %.2f%% outline %.2f%% thickness %.3fpx -> %s",

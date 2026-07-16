@@ -61,7 +61,7 @@ def test_repository_catalog_schema_and_unique_ids():
     assert "youtube-jesse-gallagher-satya-yuga" in asset_ids
     assert all(asset["youtubeAllowed"] is (asset["source"] != "pixabay")
                for asset in catalog["assets"])
-    assert sum(asset["youtubeAllowed"] for asset in catalog["assets"]) == 4
+    assert sum(asset["youtubeAllowed"] for asset in catalog["assets"]) == 9
 
 
 def test_cc_by_asset_requires_attribution_text(tmp_path):

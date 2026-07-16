@@ -272,6 +272,8 @@ export const SceneSchema = z.object({
   previewOpacity: z.number().min(0).max(1).default(0),
 
   // prewash (씬 시작 시 흐린 원본 예고)
+  // routes 이미지와 다른 정규화 원본을 카드용 첫 화면에 쓸 때만 지정한다.
+  prewashImage: z.string().min(1).optional(),
   prewashOpacity: z.number().min(0).max(1).default(0),
   prewashFrames: frame.default(0),
   prewashHoldFrames: frame.default(6),

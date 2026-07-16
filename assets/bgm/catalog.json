@@ -455,6 +455,188 @@
         "storybook-full-touch-video"
       ],
       "youtubeAllowed": true
+    },
+    {
+      "id": "artist-site-chris-zabriskie-i-need-to-start-writing-things-down",
+      "title": "I Need to Start Writing Things Down",
+      "artist": "Chris Zabriskie",
+      "source": "artist-site",
+      "sourcePage": "http://chriszabriskie.com/darkglow/",
+      "artistPage": "http://chriszabriskie.com/",
+      "durationSec": 431.667,
+      "localPath": "local-assets/bgm/artist-site-chris-zabriskie-i-need-to-start-writing-things-down/original.mp3",
+      "downloaded": true,
+      "sha256": "3b0b66a62cba41207889a5ca996d09a59119b9dc86ff2fc592c88040448881df",
+      "license": {
+        "name": "Creative Commons Attribution 4.0 International",
+        "url": "https://creativecommons.org/licenses/by/4.0/",
+        "downloadedAt": "2026-07-14",
+        "checkedAt": "2026-07-14",
+        "contentIdStatus": "not-displayed",
+        "attributionRequired": true,
+        "attributionText": "I Need to Start Writing Things Down by Chris Zabriskie is licensed under a Creative Commons Attribution 4.0 license.\nhttps://creativecommons.org/licenses/by/4.0/\nSource: http://chriszabriskie.com/darkglow/\nArtist: http://chriszabriskie.com/\nChanges: The initial 0.294 seconds of silence are skipped; the following audio is normalized, mixed under narration, and converted to AAC for this video.",
+        "modificationNotice": "The initial 0.294 seconds of silence are skipped; the following audio is normalized, mixed under narration, and converted to AAC for this video.",
+        "evidenceFiles": [
+          "evidence/source-page.txt",
+          "evidence/license.txt"
+        ]
+      },
+      "tags": [
+        "ambient",
+        "calm",
+        "storybook",
+        "cc-by-4.0"
+      ],
+      "recommendedSkills": [
+        "pen-brush-video",
+        "storybook-full-touch-video"
+      ],
+      "youtubeAllowed": true
+    },
+    {
+      "id": "artist-site-kevin-macleod-canon-in-d-major",
+      "title": "Canon in D Major",
+      "artist": "Kevin MacLeod",
+      "source": "artist-site",
+      "sourcePage": "http://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100301",
+      "artistPage": "http://incompetech.com/",
+      "durationSec": 355.683,
+      "localPath": "local-assets/bgm/artist-site-kevin-macleod-canon-in-d-major/original.mp3",
+      "downloaded": true,
+      "sha256": "9db6f7eca213e58de9af472ddd793a28c429dcfe1feca30927df76920f2991d6",
+      "license": {
+        "name": "Creative Commons Attribution 4.0 International",
+        "url": "https://creativecommons.org/licenses/by/4.0/",
+        "downloadedAt": "2026-07-14",
+        "checkedAt": "2026-07-14",
+        "contentIdStatus": "not-displayed",
+        "attributionRequired": true,
+        "attributionText": "Canon in D Major by Kevin MacLeod is licensed under a Creative Commons Attribution 4.0 license.\nhttps://creativecommons.org/licenses/by/4.0/\nSource: http://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100301\nArtist: http://incompetech.com/\nChanges: The initial 0.163 seconds of silence are skipped; the following audio is normalized, mixed under narration, and converted to AAC for this video.",
+        "modificationNotice": "The initial 0.163 seconds of silence are skipped; the following audio is normalized, mixed under narration, and converted to AAC for this video.",
+        "evidenceFiles": [
+          "evidence/source-page.txt",
+          "evidence/license.txt"
+        ]
+      },
+      "tags": [
+        "classical",
+        "calm",
+        "storybook",
+        "cc-by-4.0"
+      ],
+      "recommendedSkills": [
+        "pen-brush-video",
+        "storybook-full-touch-video"
+      ],
+      "youtubeAllowed": true
+    },
+    {
+      "id": "youtube-chris-haugen-morning-mandolin",
+      "title": "Morning Mandolin",
+      "artist": "Chris Haugen",
+      "source": "youtube-audio-library",
+      "sourcePage": "https://www.youtube.com/audiolibrary",
+      "durationSec": 219.299,
+      "localPath": "local-assets/bgm/youtube-chris-haugen-morning-mandolin/original.mp3",
+      "downloaded": true,
+      "sha256": "ca673a07c6ccd15a9e19b4dd5ebf2652f52276be06f0bf066f0b42e7736d18fa",
+      "license": {
+        "name": "YouTube Audio Library license",
+        "url": "https://support.google.com/youtube/answer/3376882?hl=en",
+        "downloadedAt": "2026-07-15",
+        "checkedAt": "2026-07-15",
+        "contentIdStatus": "not-displayed",
+        "attributionRequired": true,
+        "attributionText": "Music: Morning Mandolin by Chris Haugen\nSource: YouTube Audio Library\nChanges: Audio was normalized, crossfaded, and mixed for this video.",
+        "modificationNotice": "Audio was normalized, crossfaded, and mixed for this video.",
+        "evidenceFiles": [
+          "evidence/source-page.txt",
+          "evidence/license.txt"
+        ]
+      },
+      "tags": [
+        "acoustic",
+        "bright",
+        "morning",
+        "city",
+        "youtube-audio-library"
+      ],
+      "recommendedSkills": [
+        "brush-video"
+      ],
+      "youtubeAllowed": true
+    },
+    {
+      "id": "youtube-aakash-gandhi-dreamland",
+      "title": "Dreamland",
+      "artist": "Aakash Gandhi",
+      "source": "youtube-audio-library",
+      "sourcePage": "https://www.youtube.com/audiolibrary",
+      "durationSec": 180.0,
+      "localPath": "local-assets/bgm/youtube-aakash-gandhi-dreamland/original.mp3",
+      "downloaded": true,
+      "sha256": "c38859047005762e9ae78417e819b2dd53fa4a8355d882922ad5150a08db9713",
+      "license": {
+        "name": "YouTube Audio Library license",
+        "url": "https://support.google.com/youtube/answer/3376882?hl=en",
+        "downloadedAt": "2026-07-15",
+        "checkedAt": "2026-07-15",
+        "contentIdStatus": "not-displayed",
+        "attributionRequired": true,
+        "attributionText": "Music: Dreamland by Aakash Gandhi\nSource: YouTube Audio Library\nChanges: Audio was normalized, crossfaded, and mixed for this video.",
+        "modificationNotice": "Audio was normalized, crossfaded, and mixed for this video.",
+        "evidenceFiles": [
+          "evidence/source-page.txt",
+          "evidence/license.txt"
+        ]
+      },
+      "tags": [
+        "piano",
+        "ambient",
+        "dreamy",
+        "calm",
+        "youtube-audio-library"
+      ],
+      "recommendedSkills": [
+        "brush-video"
+      ],
+      "youtubeAllowed": true
+    },
+    {
+      "id": "youtube-wayne-jones-a-quiet-thought",
+      "title": "A Quiet Thought",
+      "artist": "Wayne Jones",
+      "source": "youtube-audio-library",
+      "sourcePage": "https://www.youtube.com/audiolibrary",
+      "durationSec": 116.923,
+      "localPath": "local-assets/bgm/youtube-wayne-jones-a-quiet-thought/original.mp3",
+      "downloaded": true,
+      "sha256": "9c9fab20c674d497ac86ada564f45900ec1c7f0e50ea54a18886b154730d4264",
+      "license": {
+        "name": "YouTube Audio Library license",
+        "url": "https://support.google.com/youtube/answer/3376882?hl=en",
+        "downloadedAt": "2026-07-15",
+        "checkedAt": "2026-07-15",
+        "contentIdStatus": "not-displayed",
+        "attributionRequired": true,
+        "attributionText": "Music: A Quiet Thought by Wayne Jones\nSource: YouTube Audio Library\nChanges: Audio was normalized, crossfaded, and mixed for this video.",
+        "modificationNotice": "Audio was normalized, crossfaded, and mixed for this video.",
+        "evidenceFiles": [
+          "evidence/source-page.txt",
+          "evidence/license.txt"
+        ]
+      },
+      "tags": [
+        "piano",
+        "strings",
+        "quiet",
+        "reflective",
+        "youtube-audio-library"
+      ],
+      "recommendedSkills": [
+        "brush-video"
+      ],
+      "youtubeAllowed": true
     }
   ]
 }

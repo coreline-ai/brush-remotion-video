@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { AbsoluteFill, continueRender, delayRender, interpolate, staticFile } from "remotion";
+import { AbsoluteFill, continueRender, delayRender, Img, interpolate, staticFile } from "remotion";
 import { clamp } from "../lib/easing";
 import { RoutesDataSchema, type Brush, type DrawingPhase, type RoutesData } from "../schema";
 import { CursorLayer } from "./CursorLayer";
@@ -33,12 +33,14 @@ type Props = {
   outroFadeFrames?: number;
   outroWashOpacity?: number;
   outroBlur?: number;
+  thumbnailPoster?: boolean;
 };
 
 /** outline과 paint route/image를 한 번에 로드·decode한 뒤 독립 커서로 재생한다. */
 export const DrawingPhaseLayer: React.FC<Props> = ({
   sceneId, phases, frame, W, H, fallbackBrush,
   outroFadeFrames = 0, outroWashOpacity = 0.88, outroBlur = 0,
+  thumbnailPoster = false,
 }) => {
   const [data, setData] = useState<RoutesData[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -80,8 +82,25 @@ export const DrawingPhaseLayer: React.FC<Props> = ({
     outroFadeFrames,
     outroWashOpacity,
   );
+  const thumbnailImage = data[1]?.meta.image ?? data[0]?.meta.image;
+  // 파일 표지는 첫 씬에서만 쓴다. 12f(0.40초) 동안 종이 배경으로 선형 페이드해
+  // 카드 썸네일과 무하드컷 재생을 함께 만족한다.
+  const thumbnailOpacity = thumbnailPoster
+    ? 1 - interpolate(frame, [0, 12], [0, 1], clamp)
+    : 0;
 
   return <>
+    {/* Codex/브라우저 영상 카드는 MP4 표지가 아니라 재생 v:0의 0프레임을 썸네일로 쓴다.
+        첫 씬의 완성 장면만 f0에 두고 0.40초 안에 지운다. */}
+    {thumbnailImage && thumbnailOpacity > 0.001 && (
+      <Img
+        src={staticFile(thumbnailImage)}
+        style={{
+          position: "absolute", inset: 0, zIndex: 5, width: W, height: H,
+          objectFit: "fill", opacity: thumbnailOpacity, pointerEvents: "none",
+        }}
+      />
+    )}
     {phases.map((phase, index) => {
       const routes = data[index];
       const opacity = phaseOpacity(frame, phase);

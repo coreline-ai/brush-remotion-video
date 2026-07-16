@@ -46,10 +46,14 @@ export const BrushScene: React.FC<{ scene: Scene; paper: string; brush?: Brush }
         // SVG <image>는 HTML <img>와 달리 Remotion의 delayRender를 자동으로 잡지 않는다.
         // 고해상도 RGBA가 decode/paint 되기 전에 병렬 Chromium이 캡처하면 종이 배경만
         // 1~수 프레임 찍히므로, routes handle을 풀기 전에 명시적으로 decode를 완료한다.
-        const decoded = new Image();
-        decoded.decoding = "sync";
-        decoded.src = staticFile(parsed.meta.image);
-        await decoded.decode();
+        const sources = [parsed.meta.image, scene.prewashImage]
+          .filter((src): src is string => Boolean(src));
+        await Promise.all(sources.map(async (src) => {
+          const decoded = new Image();
+          decoded.decoding = "sync";
+          decoded.src = staticFile(src);
+          await decoded.decode();
+        }));
 
         if (alive) {
           parsed.strokes.sort((a, b) => a.start - b.start);
@@ -64,7 +68,7 @@ export const BrushScene: React.FC<{ scene: Scene; paper: string; brush?: Brush }
     return () => {
       alive = false;
     };
-  }, [scene.routes, scene.id, handle]);
+  }, [scene.routes, scene.id, scene.prewashImage, handle]);
 
   // prewash 적용 중에는 붓 드로잉 타임라인을 지연 — 워시가 사라진 뒤 빈 종이에서 다시 그린다
   const introDelayFrames =
@@ -132,6 +136,7 @@ export const BrushScene: React.FC<{ scene: Scene; paper: string; brush?: Brush }
           outroFadeFrames={scene.outroFadeFrames}
           outroWashOpacity={scene.outroWashOpacity}
           outroBlur={scene.outroBlur}
+          thumbnailPoster={scene.id === "scene-01"}
         />
       )}
       {randomData && <CosmicRandomBrushLayer data={randomData} frame={frame} W={W} H={H} />}

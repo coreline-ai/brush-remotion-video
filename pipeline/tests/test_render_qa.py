@@ -10,7 +10,7 @@ from brushvid.qa import (capture_video_frames, completion_sample_frames,
                          completion_timing, contact_sheet,
                          public_roots_for_props, write_completion_report,
                          write_manifest)
-from brushvid.render import (concat, mux_audio, probe_duration,
+from brushvid.render import (attach_cover_art, concat, mux_audio, probe_duration,
                              probe_video_duration, render_segments)
 
 
@@ -69,6 +69,23 @@ def test_mux_audio_keeps_all_video_frames_despite_aac_encoder_delay(tmp_path):
     stream = json.loads(res.stdout)["streams"][0]
     assert int(stream["nb_read_packets"]) == 30
     assert float(stream["duration"]) == pytest.approx(1.0, abs=0.01)
+def test_attach_cover_art_preserves_timeline_and_marks_attached_picture(tmp_path, clips):
+    """표지는 보조 스트림이며 실제 v:0 타임라인이나 재생 시작을 바꾸지 않는다."""
+    cover = tmp_path / "cover.png"
+    Image.new("RGB", (320, 180), (250, 210, 80)).save(cover)
+    out = attach_cover_art(clips[0], cover, tmp_path / "with-cover.mp4")
+
+    assert probe_video_duration(out) == pytest.approx(probe_video_duration(clips[0]), abs=0.02)
+    res = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries",
+         "stream=index,codec_type:stream_disposition=attached_pic", "-of", "json", str(out)],
+        capture_output=True, text=True, check=True)
+    streams = json.loads(res.stdout)["streams"]
+    assert streams[0]["disposition"]["attached_pic"] == 0
+    assert any(
+        stream["codec_type"] == "video" and stream["disposition"]["attached_pic"] == 1
+        for stream in streams
+    )
 
 
 def test_probe_video_duration_ignores_longer_aac_padding(tmp_path, clips):

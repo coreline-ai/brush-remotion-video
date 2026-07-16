@@ -73,7 +73,9 @@ export const getCompletionVisualState = ({
 
 export const RevealLayer: React.FC<Props> = ({ scene, image, strokes, penInvisibleAfter, routesDuration, frame, drawFrame, W, H, preserveSourceColor = false }) => {
   const patId = `brushpat-${useId().replace(/[:]/g, "")}`;
+  const prewashPatId = `prewashpat-${useId().replace(/[:]/g, "")}`;
   const introDelayFrames = frame - drawFrame;
+  const prewashImage = scene.prewashImage ?? image;
 
   const explicitFadeOutFrames = Math.min(scene.prewashFadeOutFrames, introDelayFrames);
   const prewashAlpha = introDelayFrames > 0
@@ -165,6 +167,11 @@ export const RevealLayer: React.FC<Props> = ({ scene, image, strokes, penInvisib
           <pattern id={patId} patternUnits="userSpaceOnUse" x="0" y="0" width={W} height={H}>
             <image href={staticFile(image)} x="0" y="0" width={W} height={H} preserveAspectRatio="none" />
           </pattern>
+          {prewashAlpha > 0.001 && (
+            <pattern id={prewashPatId} patternUnits="userSpaceOnUse" x="0" y="0" width={W} height={H}>
+              <image href={staticFile(prewashImage)} x="0" y="0" width={W} height={H} preserveAspectRatio="none" />
+            </pattern>
+          )}
           {prewashAlpha > 0.001 && scene.prewashBlur > 0 && (
             <filter id={`pw-${patId}`} x="-8%" y="-8%" width="116%" height="116%">
               <feGaussianBlur stdDeviation={scene.prewashBlur} />
@@ -191,7 +198,7 @@ export const RevealLayer: React.FC<Props> = ({ scene, image, strokes, penInvisib
 
         {/* prewash: 씬 시작에만 흐린 전체 화면을 잠깐 보여준 뒤 사라짐 (첫 화면 공백 방지) */}
         {prewashAlpha > 0.001 && (
-          <rect x="0" y="0" width={W} height={H} fill={`url(#${patId})`} opacity={prewashAlpha}
+          <rect x="0" y="0" width={W} height={H} fill={`url(#${prewashPatId})`} opacity={prewashAlpha}
             filter={scene.prewashBlur > 0 ? `url(#pw-${patId})` : undefined} />
         )}
 

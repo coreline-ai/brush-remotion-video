@@ -95,3 +95,9 @@ def test_pen_route_params_draw_end():
     assert (p.analyze_scale, p.contour_width, p.rdp_eps) == (1.5, 18, 1.5)
     assert (p.max_len, p.min_route_len, p.seal_width, p.seal_step) == (300, 12, 24, 18)
     assert buildmod.pen_route_params(451, seed=1).draw_end == round(451 * 0.35)
+
+
+def test_pen_route_params_can_start_at_zero_after_an_opening_poster():
+    p = buildmod.pen_route_params(300, seed=7, draw_start=0)
+    assert p.draw_start == 0
+    assert p.draw_end == 105

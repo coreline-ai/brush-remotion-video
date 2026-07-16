@@ -236,6 +236,10 @@
             "minimum": 0,
             "maximum": 1
           },
+          "prewashImage": {
+            "type": "string",
+            "minLength": 1
+          },
           "prewashOpacity": {
             "default": 0,
             "type": "number",

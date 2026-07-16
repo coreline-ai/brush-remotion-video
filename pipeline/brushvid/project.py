@@ -91,6 +91,7 @@ class ProjectConfig:
     drawing_profile: str = "brush"  # public dark-random-brush normalizes to cosmic-random-brush
     drawing_sync: str = "auto"      # 내레이션 동기 드로잉 auto|off (pen+cue 있을 때만 동작)
     drawing_preserve_source: bool = False  # pen 완료 시 원본 전체 색면·그림자 복원
+    drawing_full_bleed: bool = False  # pen-brush 풀블리드 원본을 여백 없이 채색
     drawing_outline_ratio: float = 0.38
     drawing_handoff_frames: int = 8
     drawing_paint_end_ratio: float = 0.88
@@ -266,7 +267,15 @@ def load_project(yaml_path: str | Path) -> ProjectConfig:
     _require(isinstance(preserve_source, bool), "drawing.preserveSource 는 true/false")
     _require(not preserve_source or profile == "pen",
              "drawing.preserveSource 는 drawing.profile: pen 에서만 지원")
-    allowed_drawing = {"profile", "sync", "seed", "preserveSource", "outlineRatio", "handoffFrames", "paintEndRatio"}
+    full_bleed = drawing.get("fullBleed", False)
+    _require(isinstance(full_bleed, bool), "drawing.fullBleed 는 true/false")
+    _require(not full_bleed or profile == "pen-brush",
+             "drawing.fullBleed 는 drawing.profile: pen-brush 에서만 지원")
+    # contain is intentionally inset by a paper border.  It is incompatible
+    # with an animation promised as full-bleed.
+    _require(not full_bleed or bg_fit == "cover",
+             "drawing.fullBleed 는 background.fit: cover 필수 (contain은 외곽 종이 여백을 만듦)")
+    allowed_drawing = {"profile", "sync", "seed", "preserveSource", "fullBleed", "outlineRatio", "handoffFrames", "paintEndRatio"}
     unknown_drawing = sorted(set(drawing) - allowed_drawing)
     _require(not unknown_drawing, f"drawing 지원하지 않는 옵션: {', '.join(unknown_drawing)}")
     outline_ratio = float(drawing.get("outlineRatio", 0.38))
@@ -392,6 +401,7 @@ def load_project(yaml_path: str | Path) -> ProjectConfig:
         drawing_profile=profile,
         drawing_sync=sync,
         drawing_preserve_source=preserve_source,
+        drawing_full_bleed=full_bleed,
         drawing_outline_ratio=outline_ratio,
         drawing_handoff_frames=handoff_frames,
         drawing_paint_end_ratio=paint_end_ratio,

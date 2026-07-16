@@ -246,4 +246,8 @@ def test_youtube_props_not_injected(tmp_path, monkeypatch):
     assert "subtitleStyle" not in sc
     assert sc["completionMode"] == "integrated-develop"
     assert sc["outroFadeFrames"] == 24 and sc["outroWashOpacity"] == 1.0
-    assert sc["prewashOpacity"] == 0
+    assert sc["prewashImage"] == "yt-unit/bg/scene-01.png"
+    assert sc["prewashOpacity"] == 0.5
+    assert sc["prewashFrames"] == 12
+    assert sc["prewashFadeOutFrames"] == 12
+    assert sc["prewashBlur"] == 12

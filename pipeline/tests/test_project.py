@@ -107,13 +107,17 @@ widgets:
 def test_pen_brush_profile_and_timing_options(tmp_path):
     cfg = load_project(_write_yaml(tmp_path, """
 projectId: demo
+background:
+  fit: cover
 drawing:
   profile: pen-brush
+  fullBleed: true
   outlineRatio: 0.4
   handoffFrames: 10
   paintEndRatio: 0.9
 """))
     assert cfg.drawing_profile == "pen-brush"
+    assert cfg.drawing_full_bleed is True
     assert cfg.drawing_outline_ratio == 0.4
     assert cfg.drawing_handoff_frames == 10
     assert cfg.drawing_paint_end_ratio == 0.9
@@ -164,6 +168,19 @@ projectId: uhd-shorts
 format: shorts
 render:
   resolution: uhd
+"""))
+
+
+def test_full_bleed_rejects_contain_fit(tmp_path):
+    """풀블리드인데 contain을 선택하면 4면 종이 여백이 생기므로 즉시 거부한다."""
+    with pytest.raises(ValueError, match="background.fit: cover"):
+        load_project(_write_yaml(tmp_path, """
+projectId: demo
+background:
+  fit: contain
+drawing:
+  profile: pen-brush
+  fullBleed: true
 """))
 
 

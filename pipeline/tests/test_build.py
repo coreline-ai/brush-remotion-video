@@ -137,7 +137,11 @@ def test_standard_youtube_brush_props_use_fitted_no_pulse_preset(tmp_path, monke
     payload = pipe.stage_props()
     scene = json.loads(pipe.props_json.read_text(encoding="utf-8"))["scenes"][0]
     assert scene["completionMode"] == "integrated-develop"
-    assert scene["prewashOpacity"] == 0
+    assert scene["prewashImage"] == "brush-no-pulse/bg/scene-01.png"
+    assert scene["prewashOpacity"] == 0.5
+    assert scene["prewashFrames"] == 12
+    assert scene["prewashFadeOutFrames"] == 12
+    assert scene["prewashBlur"] == 12
     assert scene["outroWashOpacity"] == 1.0
     assert scene["developFrames"] == 30
     assert scene["colorSettleFrames"] == 15
@@ -202,6 +206,58 @@ def test_full_bleed_profile_skips_route_generation(tmp_path, monkeypatch):
     cfg = buildmod.ProjectConfig(project_id="full-bleed-demo", drawing_profile="storybook-full-bleed")
     pipe = buildmod.Pipeline(cfg)
     assert pipe.stage_routes()["skippedReason"] == "storybook-full-bleed"
+def test_pen_first_scene_props_use_a_blurred_source_poster(tmp_path, monkeypatch):
+    monkeypatch.setattr(buildmod, "REPO_ROOT", tmp_path)
+    cfg = buildmod.ProjectConfig(project_id="pen-opening", drawing_profile="pen",
+                                 fmt="youtube", ambient_scenes=1)
+    pipe = buildmod.Pipeline(cfg)
+    pipe._write_scenes([{"durationInFrames": 300, "cues": []}])
+    pipe.stage_props()
+    scene = json.loads(pipe.props_json.read_text(encoding="utf-8"))["scenes"][0]
+    assert scene["prewashImage"] == "pen-opening/bg/scene-01.png"
+    assert scene["prewashOpacity"] == 0.35
+    assert scene["prewashFrames"] == 12
+    assert scene["prewashFadeOutFrames"] == 12
+    assert scene["prewashBlur"] == 10
+
+
+def test_blurred_opening_poster_scope_excludes_shorts_hook_and_preserve_source(tmp_path, monkeypatch):
+    monkeypatch.setattr(buildmod, "REPO_ROOT", tmp_path)
+    brush = buildmod.Pipeline(buildmod.ProjectConfig(project_id="brush", drawing_profile="brush"))
+    assert brush._uses_first_scene_blurred_poster(0) is True
+    assert brush._uses_first_scene_blurred_poster(1) is False
+
+    shorts = buildmod.Pipeline(buildmod.ProjectConfig(
+        project_id="shorts", drawing_profile="brush", fmt="shorts", ambient_scenes=3,
+    ))
+    assert shorts._uses_first_scene_blurred_poster(0) is False
+
+    preserve = buildmod.Pipeline(buildmod.ProjectConfig(
+        project_id="pen-preserve", drawing_profile="pen", drawing_preserve_source=True,
+    ))
+    assert preserve._uses_first_scene_blurred_poster(0) is False
+
+
+def test_first_scene_brush_route_starts_when_the_blurred_poster_ends(tmp_path, monkeypatch):
+    monkeypatch.setattr(buildmod, "REPO_ROOT", tmp_path)
+    cfg = buildmod.ProjectConfig(project_id="brush-opening", drawing_profile="brush",
+                                 fmt="youtube", ambient_scenes=1)
+    pipe = buildmod.Pipeline(cfg)
+    pipe._write_scenes([{"durationInFrames": 300, "cues": []}])
+    captured = {}
+
+    def fake_routes(_image, params, *, image_rel):
+        captured["drawStart"] = params.draw_start
+        captured["image"] = image_rel
+        return {"meta": {"coverage": 1.0}}
+
+    monkeypatch.setattr(buildmod, "generate_routes", fake_routes)
+    monkeypatch.setattr(buildmod, "write_routes", lambda *_args, **_kwargs: None)
+    pipe.stage_routes()
+    assert captured == {
+        "drawStart": 0,
+        "image": "brush-opening/bg/scene-01-content.png",
+    }
 
 
 def _stub_pipeline(tmp_path, monkeypatch, calls):

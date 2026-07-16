@@ -118,6 +118,25 @@ def mux_audio(video_path: str | Path, audio_path: str | Path, out_path: str | Pa
     return out
 
 
+def attach_cover_art(video_path: str | Path, image_path: str | Path, out_path: str | Path) -> Path:
+    """MP4 재생 타임라인은 그대로 두고, Finder/Quick Look용 표지 이미지를 첨부한다.
+
+    첫 번째 비디오 스트림과 오디오는 stream copy 한다. 표지는 attached_pic 보조 영상
+    스트림이므로 재생 시점이나 첫 프레임에는 관여하지 않는다.
+    """
+    out = Path(out_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    _run([
+        "ffmpeg", "-y", "-i", video_path, "-i", image_path,
+        "-map", "0:v:0", "-map", "0:a?", "-map", "1:v:0",
+        "-c:v:0", "copy", "-c:a", "copy", "-c:v:1", "mjpeg",
+        "-disposition:v:1", "attached_pic",
+        "-metadata:s:v:1", "title=Cover Art",
+        "-movflags", "+faststart", out,
+    ])
+    return out
+
+
 def probe_duration(media_path: str | Path) -> float:
     """ffprobe 로 미디어 길이(초)."""
     res = subprocess.run(

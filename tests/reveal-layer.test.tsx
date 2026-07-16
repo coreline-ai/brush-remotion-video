@@ -157,6 +157,35 @@ describe("RevealLayer develop", () => {
     expect(renderAt(121)).not.toMatch(/opacity="0.32"/);
   });
 
+  it("첫 씬 흐린 포스터는 routes 이미지와 별도 원본을 prewash로 사용한다", () => {
+    const scene = SceneSchema.parse({
+      id: "blurred-opening-poster",
+      durationInFrames: 300,
+      prewashImage: "opening-source.png",
+      prewashOpacity: 0.5,
+      prewashFrames: 12,
+      prewashFadeOutFrames: 12,
+      prewashBlur: 12,
+    });
+    const markup = renderToStaticMarkup(
+      <RevealLayer
+        scene={scene}
+        image="routes-ink.png"
+        strokes={[]}
+        penInvisibleAfter={113}
+        routesDuration={300}
+        frame={0}
+        drawFrame={-12}
+        W={1920}
+        H={1080}
+      />,
+    );
+
+    expect(markup).toContain("opening-source.png");
+    expect(markup).toContain('stdDeviation="12"');
+    expect(markup).toMatch(/<rect[^>]+fill="url\(#prewashpat-[^"]+\)"[^>]+opacity="0.5"/);
+  });
+
   it("integrated 완료 상태는 밝기·opacity 역전 없이 채도만 단조 증가한다", () => {
     const scene = SceneSchema.parse({
       id: "brush-monotonic-settle",
