@@ -6,7 +6,9 @@ from __future__ import annotations
 
 import json
 import logging
+import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageStat
@@ -15,6 +17,7 @@ from .public_assets import public_roots_for_props, scoped_public_dir
 from .render import ENTRY, REPO_ROOT
 
 log = logging.getLogger(__name__)
+QA_MAX_WIDTH = 960
 
 
 def completion_timing(scene: dict, routes: dict) -> dict:
@@ -159,6 +162,7 @@ def write_cosmic_random_brush_report(out_path: str | Path, *, project_id: str,
     for scene in scenes:
         meta = scene["meta"]
         widths = meta.get("brushWidthRange") or [0, 9999]
+        coordinate_scale = float(meta.get("width", 1920)) / 1920.0
         timing_ok = (
             36 <= float(meta.get("drawStart", -1)) <= 40
             and float(meta.get("drawEnd", 999)) <= 210
@@ -186,10 +190,11 @@ def write_cosmic_random_brush_report(out_path: str | Path, *, project_id: str,
             and item["baseStrokeCount"] == 36
             and 1 <= int(item["coverageStrokeCount"] or 0) <= 20
             and int(item["strokeCount"] or 0) == 36 + int(item["coverageStrokeCount"] or 0)
-            and float(widths[0]) >= 230 and float(widths[1]) <= 365
+            and float(widths[0]) >= 230 * coordinate_scale
+            and float(widths[1]) <= 365 * coordinate_scale
             and float(item["maskCoverage"] or 0) >= 0.991
-            and float(item["meanCenterJump"] or 0) >= 650
-            and float(item["maxCenterJump"] or 0) >= 1200
+            and float(item["meanCenterJump"] or 0) >= 650 * coordinate_scale
+            and float(item["maxCenterJump"] or 0) >= 1200 * coordinate_scale
             and (not require_content_coverage
                  or (0.001 <= float(item["visibleContentFraction"] or 0) <= 1
                      and float(item["visibleContentCoverage"] or 0) >= 0.985))
@@ -198,6 +203,59 @@ def write_cosmic_random_brush_report(out_path: str | Path, *, project_id: str,
         checks.append(item)
     result = {"projectId": project_id, "profile": "cosmic-random-brush",
               "pass": all(c["pass"] for c in checks), "scenes": checks}
+    out = Path(out_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    return result
+
+
+def write_full_bleed_report(out_path: str | Path, *, project_id: str, profile: str,
+                            scenes: list[dict], expected_scene_count: int) -> dict:
+    """누적 프레임/풀블리드 서사 프로필의 순서·전환·중복 오버레이 계약을 검증한다."""
+    transition_frames = 30 if profile == "progressive-frame-sequence" else 24
+    checks = []
+    seen_images: set[str] = set()
+    for index, scene in enumerate(scenes):
+        image = scene.get("image")
+        expected_previous = None if index == 0 else scenes[index - 1].get("image")
+        uses_no_routes = not scene.get("routes") and not scene.get("drawingPhases")
+        source_overlay_free = (scene.get("captionsVisible") is False
+                               and not scene.get("topTitle")
+                               and not scene.get("widgets"))
+        duplicate_image = not isinstance(image, str) or image in seen_images
+        if isinstance(image, str):
+            seen_images.add(image)
+        item = {
+            "sceneId": scene.get("id", f"scene-{index + 1:02d}"),
+            "presentation": scene.get("presentation"),
+            "image": image,
+            "previousImage": scene.get("previousImage"),
+            "expectedPreviousImage": expected_previous,
+            "transitionFrames": transition_frames,
+            "orderValid": scene.get("id") == f"scene-{index + 1:02d}",
+            "previousFrameLinked": scene.get("previousImage") == expected_previous,
+            "routeOrPenOverlayAbsent": uses_no_routes,
+            "sourceFrameOverlayFree": source_overlay_free,
+            "duplicateSourceFrame": duplicate_image,
+        }
+        item["pass"] = bool(
+            scene.get("presentation") == profile
+            and isinstance(image, str) and bool(image)
+            and item["orderValid"]
+            and item["previousFrameLinked"]
+            and item["routeOrPenOverlayAbsent"]
+            and item["sourceFrameOverlayFree"]
+            and not item["duplicateSourceFrame"]
+        )
+        checks.append(item)
+    result = {
+        "projectId": project_id,
+        "profile": profile,
+        "expectedSceneCount": expected_scene_count,
+        "transitionFrames": transition_frames,
+        "pass": bool(len(checks) == expected_scene_count and checks and all(c["pass"] for c in checks)),
+        "scenes": checks,
+    }
     out = Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -230,23 +288,56 @@ def capture_frames(props_path: str | Path, frames: list[int], out_dir: str | Pat
 
 
 def capture_video_frames(video_path: str | Path, frames: list[int], out_dir: str | Path, *,
-                         labels: dict[int, str] | None = None, fps: float = 30.0) -> list[dict]:
-    """완성 MP4에서 프레임을 추출한다. 60씬 QA에서 Remotion still 360회를 피한다."""
+                         labels: dict[int, str] | None = None, fps: float = 30.0,
+                         workers: int = 4) -> list[dict]:
+    """완성 MP4에서 프레임을 추출한다. 60씬 QA에서 Remotion still 360회를 피한다.
+
+    전 구간을 한 번만 디코드하고 ``select`` 필터로 필요한 프레임만 PNG로 기록한다.
+    이전의 프레임별 seek는 360개 QA 지점에서 같은 GOP를 반복 디코드해 UHD 검사에
+    큰 I/O 비용을 만들었다. 반환 manifest는 반드시 요청한 ``frames`` 순서를 유지한다.
+    QA PNG는 contact sheet와 색·완료도 판정 전용의 최대 960px 프록시다. 최종본의
+    UHD 규격은 별도 ffprobe/audit 검사로 검증한다. 임시 디렉터리에서 전부 성공한
+    뒤에만 기존 QA 프레임을 교체한다.
+    """
     video = Path(video_path).resolve()
     if not video.is_file():
         raise FileNotFoundError(video)
+    if workers < 1:
+        raise ValueError("workers must be at least 1")
     out_dir = Path(out_dir).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
-    entries: list[dict] = []
-    for frame in frames:
-        png = out_dir / f"frame-{frame:05d}.png"
-        cmd = ["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{frame / fps:.6f}",
-               "-i", str(video), "-frames:v", "1", "-vsync", "0", str(png)]
+
+    if not frames:
+        return []
+    unique_frames = sorted(set(frames))
+    if unique_frames[0] < 0:
+        raise ValueError("frame numbers must be non-negative")
+    # 이전 프로세스가 강제 중단되어 남긴 임시 캡처는 납품 QA에 포함되면 안 된다.
+    for stale in out_dir.glob(".qa-select-*"):
+        shutil.rmtree(stale, ignore_errors=True)
+    # 쉘을 통과하지 않는 subprocess 인수지만 ffmpeg filter parser의 쉼표는 이스케이프한다.
+    select_expr = "select=" + "+".join(f"eq(n\\,{frame})" for frame in unique_frames)
+    video_filter = f"{select_expr},scale=w='min({QA_MAX_WIDTH}\\,iw)':h=-2"
+    with tempfile.TemporaryDirectory(prefix=".qa-select-", dir=out_dir) as temp_name:
+        temp_dir = Path(temp_name)
+        pattern = temp_dir / "capture-%04d.png"
+        cmd = ["ffmpeg", "-y", "-loglevel", "error", "-threads", str(workers),
+               "-i", str(video), "-vf", video_filter, "-vsync", "0", str(pattern)]
         log.info("$ %s", " ".join(cmd))
         subprocess.run(cmd, check=True)
-        entries.append({"frame": frame, "file": png.name,
-                        "label": (labels or {}).get(frame, "")})
-    return entries
+        captured = sorted(temp_dir.glob("capture-*.png"))
+        if len(captured) != len(unique_frames):
+            raise RuntimeError(
+                f"QA frame extraction mismatch: requested {len(unique_frames)}, got {len(captured)}")
+        for frame, source in zip(unique_frames, captured):
+            destination = out_dir / f"frame-{frame:05d}.png"
+            if destination.exists():
+                destination.unlink()
+            shutil.move(str(source), destination)
+
+    return [{"frame": frame, "file": f"frame-{frame:05d}.png",
+             "label": (labels or {}).get(frame, "")}
+            for frame in frames]
 
 
 def write_manifest(entries: list[dict], out_dir: str | Path, *, project_id: str = "",

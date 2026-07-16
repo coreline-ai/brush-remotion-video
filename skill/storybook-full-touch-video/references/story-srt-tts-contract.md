@@ -50,7 +50,9 @@ scene tail: 최소 0.6s
 
 수동 SRT는 검토 기준이다. 최종 렌더에는 합성된 실제 음성 길이로 다시 계산한 SRT를 사용한다.
 
-## 4. Supertonic
+## 4. TTS 엔진
+
+기본 Supertonic voice catalog를 유지하면서 `melo-ko`와 `qwen3-base`도 선택할 수 있다. 엔진·설치·reference·manifest 계약은 [공통 TTS 엔진 카탈로그](../../_shared/references/tts-engine-catalog.md)를 따른다.
 
 - 새 프로젝트 기본 음성: `female-08` (F3 50% + F5 50%, 동화 추천)
 - 기존 검증 예제의 `F1`은 하위 호환 별칭으로 유지한다.

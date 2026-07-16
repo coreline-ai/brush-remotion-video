@@ -53,7 +53,7 @@ description: >-
 - **Pixabay 배포 금지** — `format: youtube|shorts`에는 Pixabay 음원을 제안하거나 YAML에 넣지 않는다. 로컬 청취·내부 데모만 허용한다.
 - 구 시스템 용어(scene-XX.routes.json, build-shorts-*.py 등)가 와도 glossary 하단 표로 v1로 번역
 - TTS 요청 + 미설치 환경이면 brush-video의 "TTS 첫 사용 설치" 안내를 함께 전달
-- TTS 음성은 [10종 공통 카탈로그](../_shared/references/supertonic-voice-catalog.md)에서 의도에 맞게 고르고
+- TTS 엔진은 [공통 TTS 엔진 카탈로그](../_shared/references/tts-engine-catalog.md)에서 고르고, Supertonic voice는 [10종 카탈로그](../_shared/references/supertonic-voice-catalog.md)에서 의도에 맞게 고르고
   결과 YAML에 명시적 `female-*` ID를 쓴다. 사용자가 지정한 음성은 덮어쓰지 않고 `voice:auto`는 쓰지 않는다.
 
 ## 변환 예시 1 — "겨울밤 느낌으로 잔잔하게, 별 반짝이는 쇼츠 하나 만들어줘"

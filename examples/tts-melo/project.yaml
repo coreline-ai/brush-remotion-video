@@ -1,0 +1,20 @@
+# MeloTTS-Korean 선택 예제. 모델·사전은 tts-doctor로 명시적으로 준비한다.
+projectId: tts-melo-demo
+format: youtube
+title: Melo 한국어 내레이션
+input:
+  script: narration.txt
+  tts:
+    engine: melo-ko
+    voice: kr-default
+    language: ko
+    speed: 1.00
+    pauseMs: 300
+    timing: tts
+background:
+  strategy: preset
+  subject: a quiet Korean writing desk by a window
+bgm:
+  mode: "off"
+widgets: none
+seed: 17

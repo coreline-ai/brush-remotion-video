@@ -32,6 +32,8 @@ except ImportError:  # pragma: no cover
         os.execv(str(VENV_PY), [str(VENV_PY), *sys.argv])
     raise SystemExit("brushvid 미설치 — pipeline/README.md 의 부트스트랩 절차를 먼저 실행하세요")
 
+from PIL import Image
+
 from brushvid import audio as bv_audio
 from brushvid import background as bv_bg
 from brushvid import bgm as bv_bgm
@@ -41,6 +43,8 @@ from brushvid import render as bv_render
 from brushvid import stt as bv_stt
 from brushvid import tts as bv_tts
 from brushvid import voice_presets as bv_voice
+from brushvid.tts_contract import tts_cache_signature
+from brushvid.tts_manifest import build_engine_manifest, write_manifest_atomic
 from brushvid.cues import FPS, group_scenes, srt_to_cues, title_color
 from brushvid.cosmic_random_routes import (
     CosmicRandomRouteParams,
@@ -48,11 +52,11 @@ from brushvid.cosmic_random_routes import (
     write_cosmic_random_routes,
 )
 from brushvid.layout import validate_layout
-from brushvid.layers import estimate_line_thickness, prepare_pen_brush_layers
+from brushvid.layers import alpha_line_thickness, estimate_line_thickness, prepare_pen_brush_layers
 from brushvid.fill_routes import generate_fill_routes, write_fill_routes
 from brushvid.project import ProjectConfig, load_project
 from brushvid.props import (BRUSH_NO_PULSE_PRESET, build_props, build_scene,
-                            fit_brush_completion_timing, load_schema,
+                            default_brush, fit_brush_completion_timing, load_schema,
                             validate_brush_completion_timing, write_props)
 from brushvid.routes import RouteParams, generate_routes, write_routes
 from brushvid.sync import apply_sync, retime_range, snap_pen_brush_boundary
@@ -91,6 +95,177 @@ def pen_route_params(duration: int, seed: int) -> RouteParams:
 
 # 캔버스 치수 (format → width, height)
 CANVAS = {"youtube": (1920, 1080), "shorts": (1080, 1920)}
+UHD_CANVAS = (3840, 2160)
+FULL_BLEED_PROFILES = {"progressive-frame-sequence", "storybook-full-bleed"}
+# 한 프로젝트만 렌더 큐에 넣는 전제에서, UHD 청크 내부 병렬 인코더 수.
+# 10-core / 24 GB 워크스테이션에서 100초 청크 6개를 안정적으로 처리하는 값이다.
+UHD_RENDER_CONCURRENCY = 4
+
+
+def resolve_canvas(fmt: str, resolution: str) -> tuple[int, int]:
+    if fmt == "youtube" and resolution == "uhd":
+        return UHD_CANVAS
+    return CANVAS[fmt]
+
+
+def resolve_composition(cfg: ProjectConfig) -> str:
+    if cfg.fmt == "shorts":
+        return "BrushPortrait"
+    return "BrushLandscape4K" if cfg.render_resolution == "uhd" else "BrushLandscape"
+
+
+def scale_brush(brush: dict, scale: float) -> dict:
+    """캔버스 좌표계가 UHD가 되어도 커서의 상대 크기를 유지한다."""
+    if abs(scale - 1.0) < 1e-9:
+        return dict(brush)
+    out = dict(brush)
+    for key in ("w", "h", "tipx", "tipy"):
+        if key in out:
+            out[key] = round(float(out[key]) * scale, 3)
+    return out
+
+
+def _sha256_file(path: Path) -> str:
+    hasher = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            hasher.update(block)
+    return hasher.hexdigest()
+
+
+def preflight_project(cfg: ProjectConfig, *, final: bool = False,
+                      verify_sources: bool = False) -> dict:
+    """렌더 전에 런타임·4K 원본·BGM 계약을 확인한다.
+
+    ``final``은 실제 납품 큐 전용이다. synth BGM과 FHD, 누락된 source manifest를
+    허용하지 않는다. 명시적 ``bgm.mode: off``는 BGM 없는 AAC 무음 트랙 납품으로
+    인정하므로, 무거운 600초 렌더를 시작하기 전에 실패 원인을 확정할 수 있다.
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+    executables = {name: shutil.which(name) for name in ("ffmpeg", "ffprobe", "npx", "node")}
+    missing_executables = [name for name, path in executables.items() if path is None]
+    if missing_executables:
+        errors.append("실행 파일 없음: " + ", ".join(missing_executables))
+    if not (REPO_ROOT / "node_modules").is_dir():
+        errors.append(f"node_modules 없음: {REPO_ROOT / 'node_modules'}")
+    if not VENV_PY.is_file():
+        errors.append(f"pipeline venv 없음: {VENV_PY}")
+
+    if final:
+        if cfg.fmt != "youtube" or cfg.render_resolution != "uhd":
+            errors.append("최종 납품은 format: youtube + render.resolution: uhd 여야 함")
+        if cfg.mode != "ambient" or cfg.ambient_scenes != 60 or len(cfg.ambient_cues) != 60:
+            errors.append("최종 납품은 ambient 60 scenes + 60 cues 여야 함")
+        if cfg.bg_strategy != "user-images" or cfg.bg_fit != "cover" or len(cfg.bg_images) != 60:
+            errors.append("최종 납품은 user-images 60장 + fit: cover 여야 함")
+        if cfg.bgm is None or cfg.bgm.mode not in {"off", "asset", "playlist"}:
+            errors.append("최종 납품 BGM은 명시적 off 또는 strict policy의 asset/playlist 여야 함 (synth 불가)")
+        elif cfg.bgm.mode in {"asset", "playlist"} and cfg.bgm.license_policy != "strict":
+            errors.append("최종 납품의 asset/playlist BGM은 strict license policy가 필요함")
+        elif cfg.bgm.mode == "off":
+            warnings.append("BGM off — AAC 무음 트랙으로 납품, BGM 라이선스 매니페스트는 생성하지 않음")
+    elif cfg.bgm and cfg.bgm.mode == "synth":
+        warnings.append("synth BGM — 파일럿 전용, 최종 납품에는 사용할 수 없음")
+
+    if cfg.bgm and cfg.bgm.mode in {"asset", "playlist"}:
+        try:
+            assets = bv_bgm.preflight_assets(cfg.bgm, distribution=cfg.fmt, repo_root=REPO_ROOT)
+        except bv_bgm.BgmAssetError as exc:
+            errors.append(str(exc))
+        else:
+            warnings.append("BGM preflight 통과: " + ", ".join(asset["id"] for asset in assets))
+
+    image_checks = []
+    for image in cfg.bg_images:
+        try:
+            with Image.open(image) as source:
+                width, height = source.size
+        except (OSError, ValueError) as exc:
+            errors.append(f"원본 이미지 열기 실패: {image} ({exc})")
+            continue
+        kind = "final_4k" if "final_4k" in image.parts else ("4k" if "4k" in image.parts else None)
+        image_checks.append({"path": str(image), "width": width, "height": height, "sourceKind": kind})
+        if final and (kind is None or (width, height) != UHD_CANVAS):
+            errors.append(f"최종 원본은 4k/final_4k의 3840×2160 PNG여야 함: {image} ({width}×{height})")
+
+    manifest_path = cfg.base_dir / "source-manifest.json"
+    manifest_verified = False
+    if final:
+        if not manifest_path.is_file():
+            errors.append(f"source manifest 없음: {manifest_path}")
+        else:
+            try:
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                scenes = manifest.get("scenes") or []
+                expected_paths = [str(p) for p in cfg.bg_images]
+                manifest_paths = [str(s.get("sourceAbsPath", "")) for s in scenes]
+                render_meta = manifest.get("render") or {}
+                resolution_meta = manifest.get("resolution") or {}
+                manifest_width = render_meta.get("width", resolution_meta.get("width"))
+                manifest_height = render_meta.get("height", resolution_meta.get("height"))
+                # 초기 병렬 워커가 작성한 manifest는 `fps/frameCount/durationSeconds/
+                # resolution` 이름을 쓸 수 있다. scene별 필수 원본 계약은 동일하므로
+                # 두 스키마를 모두 읽고 납품 전 불필요한 재생성을 막는다.
+                manifest_fps = manifest.get("frameRate", manifest.get("fps", render_meta.get("fps")))
+                scene_duration = manifest.get("sceneDurationSeconds", 10)
+                manifest_frames = manifest.get("totalFrames", manifest.get(
+                    "frameCount", manifest.get("sceneCount", 0) * scene_duration * (manifest_fps or 0)))
+                manifest_duration = manifest.get("totalDurationSec", manifest.get(
+                    "durationSeconds", manifest.get("sceneCount", 0) * scene_duration))
+                valid_header = (
+                    manifest.get("projectId") == cfg.project_id
+                    and manifest.get("sceneCount") == 60
+                    and manifest_fps == 30
+                    and manifest_frames == 18_000
+                    and manifest_duration == 600
+                    and manifest_width == 3840
+                    and manifest_height == 2160
+                )
+                if not valid_header or manifest_paths != expected_paths or len(scenes) != 60:
+                    errors.append(f"source manifest 계약 불일치: {manifest_path}")
+                for i, scene in enumerate(scenes, start=1):
+                    profile_ok = scene.get("profile") in {cfg.drawing_profile, "dark-random-brush"}
+                    scene_ok = (
+                        scene.get("sceneNo") == i
+                        and scene.get("width") == 3840 and scene.get("height") == 2160
+                        and scene.get("fit") == "cover"
+                        and scene.get("seed") in {cfg.seed, cfg.seed + (i - 1) * 37}
+                        and scene.get("durationFrames", 300) == 300
+                        and scene.get("durationSec", 10) == 10
+                        and profile_ok
+                        and isinstance(scene.get("cue"), str) and bool(scene["cue"].strip())
+                    )
+                    if not scene_ok:
+                        errors.append(f"source manifest scene {i} 계약 불일치")
+                        break
+                if verify_sources and not errors:
+                    for record, image in zip(scenes, cfg.bg_images):
+                        recorded_sha = record.get("sha256", record.get("sourceSha256"))
+                        if _sha256_file(image) != recorded_sha:
+                            errors.append(f"source manifest SHA-256 불일치: {image}")
+                            break
+                manifest_verified = not errors
+            except (OSError, ValueError, json.JSONDecodeError, KeyError) as exc:
+                errors.append(f"source manifest 파싱 실패: {manifest_path} ({exc})")
+
+    report = {
+        "projectId": cfg.project_id,
+        "final": final,
+        "verifySources": verify_sources,
+        "canvas": {"width": resolve_canvas(cfg.fmt, cfg.render_resolution)[0],
+                   "height": resolve_canvas(cfg.fmt, cfg.render_resolution)[1], "fps": FPS},
+        "executables": executables,
+        "images": image_checks,
+        "sourceManifest": str(manifest_path) if manifest_path.is_file() else None,
+        "sourceManifestVerified": manifest_verified,
+        "warnings": warnings,
+        "errors": errors,
+        "pass": not errors,
+    }
+    if errors:
+        raise SystemExit("preflight 실패:\n- " + "\n- ".join(errors))
+    return report
 
 # 쇼츠(세로) 연출 프리셋 — shorts + 앰비언트에서 props 스테이지가 주입
 SHORTS_SUBTITLE_STYLE = {"bottom": 290, "maxWidth": 900, "fontSize": 36}  # 하단 세이프존 기본
@@ -148,7 +323,7 @@ class Pipeline:
 
     def __init__(self, cfg: ProjectConfig):
         self.cfg = cfg
-        self.canvas = CANVAS[cfg.fmt]  # (width, height) — shorts 는 1080×1920
+        self.canvas = resolve_canvas(cfg.fmt, cfg.render_resolution)
         pid = cfg.project_id
         self.data_dir = REPO_ROOT / "data" / pid
         self.public_dir = REPO_ROOT / "public" / pid
@@ -249,7 +424,9 @@ class Pipeline:
         """대본과 해석된 preset 계약의 결정적 서명."""
         if self.cfg.mode != "tts" or self.cfg.tts is None:
             return ""
-        return bv_voice.tts_signature(self.cfg.tts_text(), self.cfg.tts)
+        if self.cfg.tts.get("engine", "supertonic") == "supertonic":
+            return bv_voice.tts_signature(self.cfg.tts_text(), self.cfg.tts)
+        return tts_cache_signature(self.cfg.tts_text(), self.cfg.tts)
 
     def _background_signature(self) -> str:
         """배경 설정과 user-images 파일 내용의 결정적 서명."""
@@ -264,6 +441,7 @@ class Pipeline:
             "fit": self.cfg.bg_fit,
             "subject": self.cfg.bg_subject,
             "canvas": self.canvas,
+            "renderResolution": self.cfg.render_resolution,
             "seed": self.cfg.seed,
             "images": images,
         }
@@ -292,22 +470,35 @@ class Pipeline:
                 self.data_dir / "tts" / "narration.srt",
                 engine=self.cfg.tts["engine"], voice=self.cfg.tts["voice"],
                 speed=self.cfg.tts.get("speed", 1.05), pause_ms=self.cfg.tts["pauseMs"],
+                lang=self.cfg.tts.get("language", "ko"),
+                reference=self.cfg.tts.get("reference"),
+                work_root=self.data_dir / "tts" / ".work",
             )
-            manifest = {
-                "schemaVersion": 1,
-                "generatedAt": time.strftime("%Y-%m-%d %H:%M:%S %Z"),
-                "projectId": self.cfg.project_id,
-                **res["voice"],
-                "pauseMs": self.cfg.tts["pauseMs"],
-                "timing": self.cfg.tts.get("timing", "tts"),
-                "durationSec": res["durationSec"],
-                "sentenceCount": len(res["entries"]),
-            }
             manifest_path = self.data_dir / "tts" / "voice-manifest.json"
-            manifest_path.parent.mkdir(parents=True, exist_ok=True)
-            tmp = manifest_path.with_suffix(".json.tmp")
-            tmp.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-            tmp.replace(manifest_path)
+            if self.cfg.tts.get("engine", "supertonic") == "supertonic":
+                manifest = {
+                    "schemaVersion": 1,
+                    "generatedAt": time.strftime("%Y-%m-%d %H:%M:%S %Z"),
+                    "projectId": self.cfg.project_id,
+                    **res["voice"],
+                    "pauseMs": self.cfg.tts["pauseMs"],
+                    "timing": self.cfg.tts.get("timing", "tts"),
+                    "requestedTiming": self.cfg.tts.get("timing", "tts"),
+                    "appliedTiming": "tts",
+                    "durationSec": res["durationSec"],
+                    "sentenceCount": len(res["entries"]),
+                }
+                manifest_path.parent.mkdir(parents=True, exist_ok=True)
+                tmp = manifest_path.with_suffix(".json.tmp")
+                tmp.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+                tmp.replace(manifest_path)
+            else:
+                manifest = build_engine_manifest(
+                    project_id=self.cfg.project_id,
+                    config=self.cfg.tts,
+                    result=res,
+                )
+                write_manifest_atomic(manifest, manifest_path)
             return {
                 "srt": res["srt"], "wav": res["wav"], "durationSec": res["durationSec"],
                 "sentences": len(res["entries"]), "signature": self._tts_signature(),
@@ -364,6 +555,14 @@ class Pipeline:
         return {"strategies": results, "signature": self._background_signature()}
 
     def stage_clean(self) -> dict:
+        if self.cfg.drawing_profile in FULL_BLEED_PROFILES:
+            # 원본 프레임의 시간적 진행/캐릭터 일관성이 연출의 핵심이므로 종이 clean을 적용하지 않는다.
+            for i in range(len(self._scenes())):
+                src = self.public_dir / "bg" / f"scene-{i + 1:02d}.png"
+                dst = self.public_dir / "bg" / f"scene-{i + 1:02d}-content.png"
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(src, dst)
+            return {"profile": self.cfg.drawing_profile, "preservedFullBleedSource": True}
         if self.cfg.drawing_profile == "cosmic-random-brush":
             # 다크 원본을 종이색 clean으로 변형하지 않고 그대로 리빌 대상으로 사용한다.
             for i in range(len(self._scenes())):
@@ -405,6 +604,9 @@ class Pipeline:
         pen = self.cfg.drawing_profile == "pen"
         pen_brush = self.cfg.drawing_profile == "pen-brush"
         cosmic = self.cfg.drawing_profile == "cosmic-random-brush"
+        if self.cfg.drawing_profile in FULL_BLEED_PROFILES:
+            log.info("routes: profile=%s — 원본 frame sequence/full-bleed presentation 사용", self.cfg.drawing_profile)
+            return {"skippedReason": self.cfg.drawing_profile}
         coverages = []
         for i, scene in enumerate(self._scenes()):
             content = self.public_dir / "bg" / f"scene-{i + 1:02d}-content.png"
@@ -412,8 +614,12 @@ class Pipeline:
             seed = self.cfg.seed + i * 37
             if cosmic:
                 image_rel = f"{self.cfg.project_id}/bg/scene-{i + 1:02d}-content.png"
+                coordinate_scale = self.canvas[0] / 1920
                 params = CosmicRandomRouteParams(
-                    width=self.canvas[0], height=self.canvas[1], duration=d, seed=seed)
+                    width=self.canvas[0], height=self.canvas[1], duration=d, seed=seed,
+                    brush_min=230 * coordinate_scale, brush_max=365 * coordinate_scale,
+                    length_min=320 * coordinate_scale, length_max=610 * coordinate_scale,
+                )
                 data = generate_cosmic_random_routes(content, image_rel=image_rel, params=params)
                 write_cosmic_random_routes(
                     data, self.public_dir / "routes" / f"scene-{i + 1:02d}.routes.json")
@@ -600,10 +806,23 @@ class Pipeline:
         scenes_meta = self._scenes()
         scene_props = []
         completion_timings = []
-        schema_scene_props = load_schema()["definitions"]["RenderProps"]["properties"]["scenes"]["items"]["properties"]
+        schema_scene_props = load_schema()["properties"]["scenes"]["items"]["properties"]
         shorts_ambient = self.cfg.fmt == "shorts" and self.cfg.mode == "ambient"
+        full_bleed = self.cfg.drawing_profile in FULL_BLEED_PROFILES
+        coordinate_scale = self.canvas[0] / 1920
         for i, sm in enumerate(scenes_meta):
             kwargs: dict = {}
+            if self.cfg.overlays == "none":
+                # 프롬프트 기반 아트 필름은 cue를 타이밍/QA 데이터로만 사용한다.
+                # 원본 인물·사물·서사를 가리는 제목/자막/카드 오버레이를 렌더하지 않는다.
+                kwargs["captionsVisible"] = False
+            if not full_bleed and self.cfg.drawing_profile in {"brush", "cosmic-random-brush"}:
+                # 10초 장면 내내 1.2% 범위의 느린 카메라 이동만 적용한다. opacity=0 이므로
+                # 효과 파티클은 추가하지 않고 마스크·원본 프레임만 함께 움직인다.
+                kwargs["naturalEffects"] = {
+                    "kind": "mist", "opacity": 0, "parallaxScale": 1.012,
+                    "seed": self.cfg.seed + i,
+                }
             if shorts_ambient:
                 # 세로 연출 프리셋: 자막 세이프존 + 씬 배경 동조 강조색 (사용자 명시 값 우선)
                 style = {**SHORTS_SUBTITLE_STYLE, **self.cfg.subtitle_style}
@@ -616,7 +835,7 @@ class Pipeline:
                     kwargs.update(SHORTS_FIRST_PREWASH)  # 훅: 첫 씬 짧은 프리워시
                 if i == len(scenes_meta) - 1:
                     kwargs["outroWashOpacity"] = SHORTS_LOOP_WASH_OPACITY  # 루프: 순백 수렴
-            if i == 0 and self.cfg.title:
+            if i == 0 and self.cfg.title and self.cfg.overlays != "none":
                 accent = title_color(self.public_dir / "bg" / "scene-01-content.png")
                 kwargs["top_title"] = {"lines": [self.cfg.title], "enterAt": 12, "accent": accent}
                 if self.cfg.fmt == "shorts":
@@ -626,6 +845,29 @@ class Pipeline:
                     kwargs["widgets"] = self.cfg.authored_widgets
                 else:  # 위젯 워크스트림 통합 전 — 스키마에 없으면 제외
                     log.warning("스키마에 scenes[].widgets 없음 — authored 위젯은 props 에서 제외(통합 대기)")
+            if full_bleed:
+                # 원본 프레임의 구도와 캐릭터를 가리지 않는다. cue는 매니페스트/QA용으로만 유지한다.
+                kwargs.pop("top_title", None)
+                image = f"{self.cfg.project_id}/bg/scene-{i + 1:02d}-content.png"
+                presentation_kwargs = {
+                    "presentation": self.cfg.drawing_profile,
+                    "image": image,
+                    "captionsVisible": False,
+                }
+                if i > 0:
+                    presentation_kwargs["previousImage"] = (
+                        f"{self.cfg.project_id}/bg/scene-{i:02d}-content.png")
+                built_scene = build_scene(
+                    f"scene-{i + 1:02d}", None, sm["durationInFrames"],
+                    cues=sm.get("cues") or None,
+                    brush_dynamics={"drawSpeedScale": 1.0, "touchScale": 1.0,
+                                    "touchJitter": 0, "randomizeOrder": False,
+                                    "randomReverse": False, "seed": self.cfg.seed + i},
+                    **presentation_kwargs,
+                    **kwargs,
+                )
+                scene_props.append(built_scene)
+                continue
             pen = self.cfg.drawing_profile == "pen"
             pen_brush = self.cfg.drawing_profile == "pen-brush"
             cosmic = self.cfg.drawing_profile == "cosmic-random-brush"
@@ -641,10 +883,10 @@ class Pipeline:
                 kwargs.update(PEN_SCENE_PRESET)
                 kwargs["drawingPhases"] = [
                     {"kind": "outline", "routes": f"{self.cfg.project_id}/routes/scene-{i + 1:02d}-outline.routes.json",
-                     "cursor": dict(PEN_BRUSH), "zIndex": 20, "edgeFeather": 0,
+                     "cursor": scale_brush(PEN_BRUSH, coordinate_scale), "zIndex": 20, "edgeFeather": 0,
                      "fadeOutFrom": fade_from, "fadeOutTo": fade_to},
                     {"kind": "paint", "routes": f"{self.cfg.project_id}/routes/scene-{i + 1:02d}-paint.routes.json",
-                     "cursor": dict(PAINT_BRUSH), "zIndex": 10, "edgeFeather": 2},
+                     "cursor": scale_brush(PAINT_BRUSH, coordinate_scale), "zIndex": 10, "edgeFeather": 2},
                 ]
             if pen:
                 kwargs.update(PEN_SCENE_PRESET)  # 즉시 또렷 + 선화 feather + prewash 없음
@@ -670,7 +912,7 @@ class Pipeline:
                 })
                 cue_title = (sm.get("cues") or [{}])[0].get("text")
                 scene_title = self.cfg.title if i == 0 and self.cfg.title else cue_title
-                if scene_title:
+                if scene_title and self.cfg.overlays != "none":
                     kwargs["top_title"] = {
                         "kicker": "FREE BRUSH STUDY",
                         "lines": [scene_title],
@@ -711,14 +953,16 @@ class Pipeline:
         cosmic = self.cfg.drawing_profile == "cosmic-random-brush"
         props = build_props(self.cfg.project_id, scene_props, title=self.cfg.title,
                             fmt=self.cfg.fmt, audio=None,  # 오디오는 렌더 후 ffmpeg mux
-                            paper="#01020d" if cosmic else (PEN_PAPER_HEX if (pen or pen_brush) else "#fbfaf6"),
-                            brush=dict(PEN_BRUSH) if pen else None)
+                            paper="#090b10" if full_bleed else ("#01020d" if cosmic else
+                                  (PEN_PAPER_HEX if (pen or pen_brush) else "#fbfaf6")),
+                            brush=scale_brush(PEN_BRUSH, coordinate_scale) if pen
+                            else scale_brush(default_brush(), coordinate_scale))
         write_props(props, self.props_json)
         return {"props": str(self.props_json.relative_to(REPO_ROOT)), "profile": self.cfg.drawing_profile,
                 "completionTimings": completion_timings}
 
     def stage_render(self) -> dict:
-        composition = "BrushPortrait" if self.cfg.fmt == "shorts" else "BrushLandscape"
+        composition = resolve_composition(self.cfg)
         total_frames = sum(s["durationInFrames"] for s in self._scenes())
         if total_frames >= 18_000:
             chunk_frames = 3_000
@@ -729,12 +973,14 @@ class Pipeline:
             work_dir = self.data_dir / "render-chunks" / self._render_input_signature()
             bv_render.render_segments(
                 self.props_json, self.video_only, segments,
-                composition=composition, concurrency=2, work_dir=work_dir,
+                composition=composition, concurrency=UHD_RENDER_CONCURRENCY, work_dir=work_dir,
             )
             return {"video": str(self.video_only.relative_to(REPO_ROOT)),
                     "composition": composition, "segmented": True,
                     "segmentCount": len(segments), "segmentFrames": chunk_frames}
-        bv_render.render(self.props_json, self.video_only, composition=composition)
+        # 장편과 동일한 내부 워커 수를 사용하되, 프로젝트 렌더 자체는 큐에서 하나만 실행한다.
+        bv_render.render(self.props_json, self.video_only, composition=composition,
+                         concurrency=UHD_RENDER_CONCURRENCY if self.cfg.render_resolution == "uhd" else 4)
         return {"video": str(self.video_only.relative_to(REPO_ROOT)),
                 "composition": composition, "segmented": False}
 
@@ -774,7 +1020,20 @@ class Pipeline:
 
         if bgm_cfg.mode == "off":
             if voice is None:
-                return {"audio": None, "mode": "off", "signature": signature}
+                # H.264/AAC MP4 납품 계약은 유지하되 BGM을 삽입하지 않는다. 영상만
+                # 복사하면 오디오 스트림 자체가 사라지므로, 명시적으로 무음 AAC로 mux한다.
+                master = bv_audio.create_silent_audio(audio_dir / "silent.wav", total_sec)
+                report = {
+                    "projectId": self.cfg.project_id,
+                    "durationSec": total_sec,
+                    "mode": "off",
+                    "bgm": None,
+                    "voice": None,
+                    "settings": {"bgmEnabled": False, "silentAudioTrack": True},
+                }
+                mix_report = bv_mix.write_mix_report(audio_dir / "mix-report.json", report)
+                return {"audio": str(master), "mode": "off", "report": str(mix_report),
+                        "silentAudioTrack": True, "signature": signature}
             # BGM을 끈 영상도 원본 음성을 그대로 mux하지 않고 전달 규격(-16 LUFS,
             # 48kHz stereo, 목표 길이 고정)으로 정규화한다.
             master, voice_input = bv_mix.normalize_voice(
@@ -895,13 +1154,14 @@ class Pipeline:
                 frames.append(f)
                 labels[f] = f"scene-{i + 1:02d} {tag}"
             offset += d
-        composition = "BrushPortrait" if self.cfg.fmt == "shorts" else "BrushLandscape"
+        composition = resolve_composition(self.cfg)
         qa_dir = self.data_dir / "qa"
         # 완성 MP4가 이미 존재하므로 장편 pen-brush도 최종 인코딩 결과에서 직접
         # 샘플링한다. Remotion still을 프레임마다 재번들링하면 60씬 기준 수십 분이
         # 들고, 실제 전달 파일과 다른 렌더 경로를 검증하게 된다.
         if self.cfg.drawing_profile == "pen-brush" \
                 or (self.cfg.drawing_profile == "cosmic-random-brush" and self.cfg.ambient_scenes == 60) \
+                or self.cfg.drawing_profile in FULL_BLEED_PROFILES \
                 or completion_timings:
             entries = bv_qa.capture_video_frames(self.output, frames, qa_dir,
                                                  labels=labels, fps=30.0)
@@ -930,7 +1190,10 @@ class Pipeline:
                 outline = json.loads((self.public_dir / "routes" / f"scene-{i + 1:02d}-outline.routes.json").read_text())["meta"]
                 paint = json.loads((self.public_dir / "routes" / f"scene-{i + 1:02d}-paint.routes.json").read_text())["meta"]
                 source_thickness = estimate_line_thickness(self.public_dir / "bg" / f"scene-{i + 1:02d}.png")
-                final_thickness = estimate_line_thickness(self.public_dir / "bg" / f"scene-{i + 1:02d}-color.png")
+                # 최종 프레임의 선은 color RGBA가 아니라 그 위에 놓이는 neutral outline RGBA가
+                # 보존한다. 투명 color의 종이 재합성으로 선 굵기를 재측정하면 한지 질감에 의해
+                # 오차가 생기므로, 실제 최상단 outline 레이어를 계측한다.
+                final_thickness = alpha_line_thickness(self.public_dir / "bg" / f"scene-{i + 1:02d}-outline.png")
                 delta_pct = (final_thickness - source_thickness) / max(1e-9, source_thickness) * 100
                 report_scenes.append({"sceneId": f"scene-{i + 1:02d}", "outline": outline, "paint": paint,
                                       "lineThickness": source_thickness,
@@ -953,6 +1216,17 @@ class Pipeline:
                 raise SystemExit("cosmic-random-brush QA 수치 게이트 실패 — qa/cosmic-random-brush-report.json 확인")
             payload["cosmicRandomBrushReport"] = str(
                 (qa_dir / "cosmic-random-brush-report.json").relative_to(REPO_ROOT))
+        if self.cfg.drawing_profile in FULL_BLEED_PROFILES:
+            report = bv_qa.write_full_bleed_report(
+                qa_dir / "full-bleed-report.json",
+                project_id=self.cfg.project_id,
+                profile=self.cfg.drawing_profile,
+                scenes=props_scenes,
+                expected_scene_count=len(self._scenes()),
+            )
+            if not report["pass"]:
+                raise SystemExit("full-bleed QA 수치 게이트 실패 — qa/full-bleed-report.json 확인")
+            payload["fullBleedReport"] = str((qa_dir / "full-bleed-report.json").relative_to(REPO_ROOT))
         return payload
 
 
@@ -974,10 +1248,21 @@ def main() -> None:
                     help=f"이 스테이지부터 다시 실행 {STAGES}")
     ap.add_argument("--audit", action="store_true",
                     help="빌드 완료 후 video-auditor 자동 검수 (FAIL이면 exit 1)")
+    ap.add_argument("--preflight", action="store_true",
+                    help="렌더 전에 의존성·4K 원본·BGM 계약만 검사하고 종료")
+    ap.add_argument("--final", action="store_true",
+                    help="최종 납품 계약(600초 UHD/strict licensed BGM)을 강제")
+    ap.add_argument("--verify-sources", action="store_true",
+                    help="source manifest의 모든 PNG SHA-256을 재계산 (최종 큐 직전 권장)")
     a = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname).1s %(name)s: %(message)s")
     cfg = load_project(a.project_yaml)
     log.info("project=%s mode=%s format=%s", cfg.project_id, cfg.mode, cfg.fmt)
+    if a.preflight or a.final:
+        report = preflight_project(cfg, final=a.final, verify_sources=a.verify_sources)
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        if a.preflight:
+            return
     pipe = Pipeline(cfg)
     pipe.run(a.from_stage)
     if a.audit:

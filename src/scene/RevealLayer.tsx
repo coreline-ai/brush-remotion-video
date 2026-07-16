@@ -111,16 +111,15 @@ export const RevealLayer: React.FC<Props> = ({ scene, image, strokes, penInvisib
 
   const outroFrames = Math.max(0, Math.round(scene.outroFadeFrames));
 
-  // develop 후 미세 parallax (naturalEffects.parallaxScale > 1일 때만).
-  // 종이 워시가 시작되기 전에는 완전히 멈춰 전환 중 확대·초점 변화가 겹치지 않게 한다.
+  // 자연 카메라 모션(naturalEffects.parallaxScale > 1일 때만).
+  // 마스크·완성 이미지에 같은 변환을 적용해 리빌 중에도 붓 획과 원본이 어긋나지 않는다.
+  // 마지막 outro 직전에서 멈추므로 씬 경계의 종이 dissolve와 줌이 겹치지 않는다.
   const parallaxScale = scene.naturalEffects?.parallaxScale ?? 1;
   let parallaxCssTransform = "none";
   if (parallaxScale > 1) {
-    const pStart = colorSettleEnd + 8;
-    const motionEnd = Math.max(pStart, scene.durationInFrames - outroFrames - 8);
-    const pEnd = Math.max(pStart + 1, Math.min(routesDuration - 12, motionEnd));
+    const motionEnd = Math.max(1, scene.durationInFrames - outroFrames - 8);
     const motionFrame = Math.min(drawFrame, motionEnd);
-    const p = interpolate(motionFrame, [pStart, pEnd], [0, 1], easeTravel);
+    const p = interpolate(motionFrame, [0, motionEnd], [0, 1], easeTravel);
     const scale = 1 + (Math.min(1.03, parallaxScale) - 1) * p;
     const seed = scene.naturalEffects?.seed ?? 1;
     const dx = Math.sin((motionFrame + seed * 11) * 0.012) * 5.5 * p;
@@ -157,7 +156,11 @@ export const RevealLayer: React.FC<Props> = ({ scene, image, strokes, penInvisib
   return (
     <>
       {/* 단일 SVG: 이미지 패턴을 한 번만 디코드해 prewash·faint 리빌·develop이 공유 */}
-      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ position: "absolute", inset: 0, zIndex: 10, pointerEvents: "none" }}>
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{
+        position: "absolute", inset: 0, zIndex: 10, pointerEvents: "none",
+        transform: parallaxScale > 1 ? parallaxCssTransform : "none",
+        transformOrigin: "center center",
+      }}>
         <defs>
           <pattern id={patId} patternUnits="userSpaceOnUse" x="0" y="0" width={W} height={H}>
             <image href={staticFile(image)} x="0" y="0" width={W} height={H} preserveAspectRatio="none" />

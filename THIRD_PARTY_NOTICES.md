@@ -23,6 +23,31 @@
 
 생성자와 배포자는 OpenRAIL-M의 사용 제한과 생성 결과에 대한 책임을 직접 확인해야 한다.
 
+## MeloTTS-Korean
+
+- 모델: `myshell-ai/MeloTTS-Korean`
+- pinned revision: `0207e5adfc90129a51b6b03d89be6d84360ed323`
+- 모델 라이선스: [MIT 모델 카드](https://huggingface.co/myshell-ai/MeloTTS-Korean)
+- 패키지: `melotts` upstream commit `209145371cff8fc3bd60d7be902ea69cbdb7965a` (metadata `0.1.2`)
+
+대상 adapter는 한국어 `KR` speaker가 없으면 중단하며 다른 speaker로 대체하지 않는다. 배포자는
+MeloTTS와 모델 카드의 최신 조건을 다시 확인하고 다음 AI 고지를 유지한다.
+
+> 이 콘텐츠의 내레이션은 MeloTTS-Korean AI 합성 음성으로 제작되었습니다.
+
+## Qwen3-TTS Base
+
+- 모델: `Qwen/Qwen3-TTS-12Hz-1.7B-Base`
+- pinned revision: `fd4b254389122332181a7c3db7f27e918eec64e3`
+- 모델 라이선스: [Apache-2.0 모델 카드](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-Base)
+- 패키지: `qwen-tts==0.1.1`
+
+Qwen reference cloning은 사용자가 권리를 확인한 audio/transcript pair만 사용한다. x-vector-only와
+bundled reference fallback은 이 프로젝트에서 허용하지 않는다. reference 원본은 저장소에 넣지 않고,
+manifest에는 voice ID와 audio/transcript SHA-256만 기록한다.
+
+> 이 콘텐츠의 내레이션은 Qwen3-TTS Base AI 합성 음성으로 제작되었습니다.
+
 ## 합성 테스트 오디오
 
 `examples/narration-bgm/voice-60s.mp3`, `examples/whisper/voice.mp3`,

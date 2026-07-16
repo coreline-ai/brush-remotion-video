@@ -59,7 +59,7 @@ def pressure(t: float) -> float:
 
 
 def make_points(cx: float, cy: float, angle: float, length: float, curve: float,
-                *, count: int = 14) -> list[list[float]]:
+                *, count: int = 14, hand_scale: float = 1.0) -> list[list[float]]:
     dx, dy = math.cos(angle), math.sin(angle)
     nx, ny = -dy, dx
     points: list[list[float]] = []
@@ -67,7 +67,7 @@ def make_points(cx: float, cy: float, angle: float, length: float, curve: float,
         t = i / (count - 1)
         along = (t - 0.5) * length
         bend = math.sin((t - 0.5) * math.pi) * curve
-        hand = math.sin(t * math.pi * 2.0 + cx * 0.007) * 5.0
+        hand = math.sin(t * math.pi * 2.0 + cx * 0.007) * 5.0 * hand_scale
         x = cx + dx * along + nx * (bend + hand)
         y = cy + dy * along + ny * (bend + hand)
         points.append([round(x, 1), round(y, 1), round(pressure(t), 4)])
@@ -121,6 +121,7 @@ def _stroke(rng: random.Random, index: int, cx: float, cy: float, cursor: float,
     width = rng.uniform(params.brush_min, params.brush_max)
     duration = rng.uniform(2.2, 2.9) if supplement else rng.uniform(2.8, 3.8)
     gap = rng.uniform(0.25, 0.55) if supplement else rng.uniform(0.35, 0.9)
+    coordinate_scale = params.width / 1920
     stroke = {
         "id": f"touch-{index:02d}",
         "kind": "random-touch",
@@ -129,7 +130,8 @@ def _stroke(rng: random.Random, index: int, cx: float, cy: float, cursor: float,
         "end": round(cursor + duration, 2),
         "opacity": round(rng.uniform(0.78, 0.98), 3),
         "dryness": round(rng.uniform(0.16, 0.34), 3),
-        "points": make_points(cx, cy, angle, length, rng.uniform(-42, 42)),
+        "points": make_points(cx, cy, angle, length, rng.uniform(-42, 42) * coordinate_scale,
+                              hand_scale=coordinate_scale),
     }
     return stroke, cursor + duration + gap, angle
 

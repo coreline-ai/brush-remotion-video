@@ -51,6 +51,26 @@ def test_mux_audio(tmp_path, clips):
     assert res.stdout.strip() == "audio"
 
 
+def test_mux_audio_keeps_all_video_frames_despite_aac_encoder_delay(tmp_path):
+    """-shortest가 AAC 종단 지연으로 마지막 비디오 프레임을 자르면 안 된다."""
+    video = tmp_path / "video.mp4"
+    _mk_clip(video, seconds=1.0)
+    audio = tmp_path / "silent.wav"
+    subprocess.run(
+        ["ffmpeg", "-y", "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
+         "-t", "1", "-c:a", "pcm_s16le", str(audio)],
+        check=True, capture_output=True)
+
+    out = mux_audio(video, audio, tmp_path / "muxed-exact.mp4")
+    res = subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "v:0", "-count_packets",
+         "-show_entries", "stream=nb_read_packets,duration", "-of", "json", str(out)],
+        capture_output=True, text=True, check=True)
+    stream = json.loads(res.stdout)["streams"][0]
+    assert int(stream["nb_read_packets"]) == 30
+    assert float(stream["duration"]) == pytest.approx(1.0, abs=0.01)
+
+
 def test_probe_video_duration_ignores_longer_aac_padding(tmp_path, clips):
     """컨테이너/오디오가 더 길어도 영상 프레임 duration을 반환한다."""
     audio = tmp_path / "longer.m4a"
@@ -139,7 +159,7 @@ def test_manifest_and_contact_sheet(tmp_path):
 def test_capture_video_frames_uses_global_frame_numbers(tmp_path, clips):
     qa_dir = tmp_path / "qa-video"
     entries = capture_video_frames(clips[0], [0, 3], qa_dir,
-                                   labels={3: "scene-01 touch"}, fps=30)
+                                   labels={3: "scene-01 touch"}, fps=30, workers=2)
     assert [entry["frame"] for entry in entries] == [0, 3]
     assert entries[1]["label"] == "scene-01 touch"
     assert all((qa_dir / entry["file"]).is_file() for entry in entries)

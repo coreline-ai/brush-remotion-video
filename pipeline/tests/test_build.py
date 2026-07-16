@@ -102,6 +102,26 @@ def test_bgm_off_normalizes_voice_and_writes_voice_only_report(tmp_path, monkeyp
     assert report["voice"]["ducking"] == {"enabled": False, "reason": "bgm-off"}
 
 
+def test_bgm_off_without_voice_creates_intentional_silent_audio_report(tmp_path, monkeypatch):
+    monkeypatch.setattr(buildmod, "REPO_ROOT", tmp_path)
+    cfg = buildmod.ProjectConfig(project_id="silent", bgm=BgmConfig(mode="off"))
+    pipe = buildmod.Pipeline(cfg)
+    pipe._write_scenes([{"durationInFrames": 300}])
+
+    def create_silence(out, duration_sec):
+        Path(out).parent.mkdir(parents=True, exist_ok=True)
+        Path(out).write_bytes(b"silent")
+        assert duration_sec == 10.0
+        return Path(out)
+
+    monkeypatch.setattr(buildmod.bv_audio, "create_silent_audio", create_silence)
+    result = pipe.stage_mix()
+    report = json.loads(Path(result["report"]).read_text(encoding="utf-8"))
+    assert result["mode"] == "off" and result["silentAudioTrack"] is True
+    assert Path(result["audio"]).read_bytes() == b"silent"
+    assert report["settings"] == {"bgmEnabled": False, "silentAudioTrack": True}
+
+
 def test_standard_youtube_brush_props_use_fitted_no_pulse_preset(tmp_path, monkeypatch):
     monkeypatch.setattr(buildmod, "REPO_ROOT", tmp_path)
     cfg = buildmod.ProjectConfig(project_id="brush-no-pulse", drawing_profile="brush",
@@ -121,7 +141,67 @@ def test_standard_youtube_brush_props_use_fitted_no_pulse_preset(tmp_path, monke
     assert scene["outroWashOpacity"] == 1.0
     assert scene["developFrames"] == 30
     assert scene["colorSettleFrames"] == 15
+    assert scene["naturalEffects"] == {
+        "kind": "mist", "opacity": 0, "parallaxScale": 1.012, "seed": 1,
+    }
     assert payload["completionTimings"][0]["colorSettleEnd"] + 12 <= 276
+
+
+def test_overlay_free_prompt_film_suppresses_title_and_captions(tmp_path, monkeypatch):
+    monkeypatch.setattr(buildmod, "REPO_ROOT", tmp_path)
+    cfg = buildmod.ProjectConfig(project_id="overlay-free", drawing_profile="brush",
+                                 fmt="youtube", ambient_scenes=1,
+                                 title="원본을 가리면 안 되는 제목", overlays="none")
+    pipe = buildmod.Pipeline(cfg)
+    pipe.data_dir.mkdir(parents=True, exist_ok=True)
+    (pipe.public_dir / "routes").mkdir(parents=True)
+    pipe.scenes_json.write_text(json.dumps([{
+        "durationInFrames": 300,
+        "cues": [{"from": 0, "to": 10, "text": "QA cue only"}],
+    }]), encoding="utf-8")
+    (pipe.public_dir / "routes" / "scene-01.routes.json").write_text(json.dumps({
+        "meta": {"drawStart": 8, "drawEnd": 219, "penInvisibleAfter": 228},
+        "strokes": [{"end": 219}],
+    }), encoding="utf-8")
+    pipe.stage_props()
+    scene = json.loads(pipe.props_json.read_text(encoding="utf-8"))["scenes"][0]
+    assert scene["captionsVisible"] is False
+    assert "topTitle" not in scene
+
+
+def test_uhd_canvas_and_composition_are_selected_for_youtube(tmp_path, monkeypatch):
+    monkeypatch.setattr(buildmod, "REPO_ROOT", tmp_path)
+    cfg = buildmod.ProjectConfig(project_id="uhd-demo", fmt="youtube", render_resolution="uhd")
+    pipe = buildmod.Pipeline(cfg)
+    assert pipe.canvas == (3840, 2160)
+    assert buildmod.resolve_composition(cfg) == "BrushLandscape4K"
+
+
+def test_uhd_long_render_uses_internal_four_worker_limit(tmp_path, monkeypatch):
+    """프로젝트 간 병렬 렌더 없이 UHD 100초 청크를 4개 워커로 처리한다."""
+    monkeypatch.setattr(buildmod, "REPO_ROOT", tmp_path)
+    cfg = buildmod.ProjectConfig(project_id="uhd-workers", fmt="youtube", render_resolution="uhd")
+    pipe = buildmod.Pipeline(cfg)
+    pipe.data_dir.mkdir(parents=True, exist_ok=True)
+    pipe._write_scenes([{"durationInFrames": 300, "cues": []} for _ in range(60)])
+    pipe.props_json.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(pipe, "_render_input_signature", lambda: "unit-signature")
+    captured = {}
+
+    def fake_render_segments(*_args, **kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setattr(buildmod.bv_render, "render_segments", fake_render_segments)
+    result = pipe.stage_render()
+    assert captured["concurrency"] == 4
+    assert result["segmentCount"] == 6
+
+
+def test_full_bleed_profile_skips_route_generation(tmp_path, monkeypatch):
+    monkeypatch.setattr(buildmod, "REPO_ROOT", tmp_path)
+    cfg = buildmod.ProjectConfig(project_id="full-bleed-demo", drawing_profile="storybook-full-bleed")
+    pipe = buildmod.Pipeline(cfg)
+    assert pipe.stage_routes()["skippedReason"] == "storybook-full-bleed"
 
 
 def _stub_pipeline(tmp_path, monkeypatch, calls):
@@ -333,7 +413,7 @@ def test_select_auto_bgm_policy_is_deterministic():
         == "pixabay-gentle-piano-meditation"
 
 
-def _tts_project(tmp_path, *, voice="female-09", speed=1.10):
+def _tts_project(tmp_path, *, voice="female-09", speed=1.10, timing="tts"):
     script = tmp_path / "narration.txt"
     script.write_text("전문 해설입니다.", encoding="utf-8")
     return buildmod.ProjectConfig(
@@ -341,7 +421,7 @@ def _tts_project(tmp_path, *, voice="female-09", speed=1.10):
         script=script,
         tts={
             "engine": "supertonic", "voice": voice, "speed": speed,
-            "pauseMs": 350, "timing": "tts",
+            "pauseMs": 350, "timing": timing,
         },
     )
 
@@ -416,6 +496,65 @@ def test_stage_stt_writes_resolved_voice_manifest(tmp_path, monkeypatch):
     assert manifest["components"] == {"F4": 0.65, "F1": 0.35}
     assert manifest["pauseMs"] == 350
     assert manifest["sentenceCount"] == 1
+
+
+def test_stage_stt_writes_schema_valid_melo_manifest(tmp_path, monkeypatch):
+    monkeypatch.setattr(buildmod, "REPO_ROOT", tmp_path)
+    script = tmp_path / "narration.txt"
+    script.write_text("한국어 문장입니다.", encoding="utf-8")
+    cfg = buildmod.ProjectConfig(
+        project_id="melo-manifest", script=script,
+        tts={"engine": "melo-ko", "voice": "kr-default", "language": "ko",
+             "speed": 1.0, "pauseMs": 300, "timing": "tts"},
+    )
+    pipe = buildmod.Pipeline(cfg)
+
+    def fake_synthesize(_text, out_wav, out_srt, **_kwargs):
+        Path(out_wav).parent.mkdir(parents=True, exist_ok=True)
+        Path(out_wav).write_bytes(b"synthetic-melo-wav")
+        Path(out_srt).write_text("1\n00:00:00,000 --> 00:00:01,000\n문장\n", encoding="utf-8")
+        return {
+            "wav": str(out_wav), "srt": str(out_srt), "durationSec": 1.0,
+            "entries": [{"text": "문장"}],
+            "voice": {
+                "engine": "melo-ko", "model": "myshell-ai/MeloTTS-Korean",
+                "modelRevision": "0207e5adfc90129a51b6b03d89be6d84360ed323",
+                "packageVersion": "0.1.2", "language": "ko", "speaker": "KR",
+                "nativeSampleRate": 44100, "speed": 1.0,
+                "speedAppliedBy": "melo-native-length-scale",
+                "license": {"model": "MIT", "url": "https://example.com", "aiDisclosureRequired": True},
+            },
+        }
+
+    monkeypatch.setattr(buildmod.bv_tts, "synthesize_narration", fake_synthesize)
+    payload = pipe.stage_stt()
+    manifest = json.loads(Path(payload["voiceManifest"]).read_text(encoding="utf-8"))
+    assert manifest["schemaVersion"] == 2
+    assert manifest["speaker"] == "KR"
+    assert manifest["speedAppliedBy"] == "melo-native-length-scale"
+    assert not Path(payload["voiceManifest"]).with_name(".voice-manifest.json.tmp").exists()
+
+
+def test_legacy_supertonic_srt_timing_manifest_records_reapplied_tts(tmp_path, monkeypatch):
+    monkeypatch.setattr(buildmod, "REPO_ROOT", tmp_path)
+    cfg = _tts_project(tmp_path, timing="srt")
+    pipe = buildmod.Pipeline(cfg)
+
+    def fake_synthesize(_text, out_wav, out_srt, **_kwargs):
+        Path(out_wav).parent.mkdir(parents=True, exist_ok=True)
+        Path(out_wav).write_bytes(b"wav")
+        Path(out_srt).write_text("1\n00:00:00,000 --> 00:00:01,000\n문장\n", encoding="utf-8")
+        return {
+            "wav": str(out_wav), "srt": str(out_srt), "durationSec": 1.0,
+            "entries": [{"text": "문장"}],
+            "voice": {"engine": "supertonic", "voicePresetId": "female-09"},
+        }
+
+    monkeypatch.setattr(buildmod.bv_tts, "synthesize_narration", fake_synthesize)
+    payload = pipe.stage_stt()
+    manifest = json.loads(Path(payload["voiceManifest"]).read_text(encoding="utf-8"))
+    assert manifest["requestedTiming"] == "srt"
+    assert manifest["appliedTiming"] == "tts"
 
 
 def test_auto_bgm_attaches_local_music_when_no_voice(tmp_path, monkeypatch):

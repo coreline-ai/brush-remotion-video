@@ -23,7 +23,7 @@
 ## 모드
 
 - **내레이션**: input.srt 제공 — SRT가 씬/자막의 시계
-- **TTS**: input.script 또는 input.srt + input.tts — `female-01`~`female-10`과 호환 F1~F5/M1~M5, 실제 합성 길이가 시계. 설정은 `tts/voice-manifest.json`에 기록
+- **TTS**: input.script 또는 input.srt + input.tts — `supertonic`, `melo-ko`, `qwen3-base` 중 선택. 모든 출력은 44.1kHz mono로 정규화되고 실제 합성 길이가 시계가 되며 `tts/voice-manifest.json`에 엔진·revision·hash·고지를 기록
 - **whisper**: input.audio만 제공 — STT로 SRT 생성 후 내레이션과 동일
 - **앰비언트**: 입력 없음 — 300f×N 고정 씬 + 합성 또는 로컬 BGM + 시적 cue
 
@@ -46,6 +46,8 @@
 python3 bin/build.py examples/narration/project.yaml   # SRT 94항목 → 31씬 427s
 python3 bin/build.py examples/whisper/project.yaml     # 음성 → 전사 → 10s
 python3 bin/build.py examples/ambient/project.yaml     # 무입력 → 30s + BGM
+pipeline/.venv/bin/python scripts/tts-doctor.py --check melo-ko
+pipeline/.venv/bin/python bin/build.py examples/tts-melo/project.yaml --audit
 python3 bin/bgm-assets.py status                       # 로컬 BGM 10개 상태
 python3 bin/bgm-assets.py scan --attach                # ~/Downloads의 공식 파일명 자동 연결
 python3 bin/bgm-assets.py dashboard                    # 브라우저형 진행도·청취 화면 생성

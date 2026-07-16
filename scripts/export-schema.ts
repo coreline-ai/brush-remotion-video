@@ -3,11 +3,12 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { zodToJsonSchema } from "zod-to-json-schema";
+import { toJSONSchema } from "zod";
 import { RenderPropsSchema } from "../src/schema";
 
 const outFile = join(dirname(fileURLToPath(import.meta.url)), "..", "schema", "render-props.schema.json");
-const jsonSchema = zodToJsonSchema(RenderPropsSchema, "RenderProps");
+// 파이프라인은 Zod.parse() 이전의 props를 기록하므로 default 필드는 required가 아닌 input 계약으로 내보낸다.
+const jsonSchema = toJSONSchema(RenderPropsSchema, { io: "input" });
 
 mkdirSync(dirname(outFile), { recursive: true });
 writeFileSync(outFile, JSON.stringify(jsonSchema, null, 2) + "\n");

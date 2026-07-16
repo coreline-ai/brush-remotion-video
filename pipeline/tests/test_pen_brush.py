@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 from PIL import Image, ImageDraw
 
+import brushvid.fill_routes as fill_routes
 from brushvid.fill_routes import generate_fill_routes
 from brushvid.layers import prepare_pen_brush_layers
 
@@ -32,6 +33,27 @@ def test_prepare_layers_keeps_outline_thin_and_color_separate(tmp_path: Path):
     # outline RGB는 원본 채색을 들고 있지 않고 중성 charcoal만 가진다.
     visible_rgb = outline[..., :3][outline[..., 3] > 0]
     assert np.unique(visible_rgb.reshape(-1, 3), axis=0).shape[0] == 1
+
+
+def test_prepare_layers_supports_saturated_dark_ink_outlines(tmp_path: Path):
+    """짙은 적갈색 잉크선도 채색 경계가 아닌 선화로 분리한다."""
+    src = tmp_path / "saturated-ink.png"
+    im = Image.new("RGB", (240, 140), "white")
+    d = ImageDraw.Draw(im)
+    # RGB(96, 5, 0)는 저채도 neutral-ink 기준을 의도적으로 벗어난다.
+    d.ellipse((30, 28, 105, 110), fill="#df7b35", outline="#600500", width=3)
+    d.rectangle((128, 38, 210, 104), fill="#d8a437", outline="#600500", width=3)
+    im.save(src)
+
+    result = prepare_pen_brush_layers(
+        src, tmp_path / "outline.png", tmp_path / "outline-flat.png", tmp_path / "color.png",
+        size=(240, 140),
+    )
+
+    outline = np.asarray(Image.open(result["outline"]).convert("RGBA"))
+    assert result["outlineFraction"] >= 0.00005
+    assert 0 < result["lineThickness"] < 4.0
+    assert outline[..., 3].max() > 0
 
 
 def test_prepare_layers_rejects_blank(tmp_path: Path):
@@ -113,3 +135,28 @@ def test_fill_routes_are_seeded_freehand_swooshes_but_reproducible(tmp_path: Pat
     for data in (same_a, other):
         assert data["meta"]["coverage"] >= 0.9999
         assert data["meta"]["missingPixels"] == 0
+
+
+def test_fill_routes_seal_sparse_residual_components(tmp_path: Path, monkeypatch):
+    """자유 붓길이 모두 빗나가도 작은 alpha 섬은 route로 정확히 마감한다."""
+    src = tmp_path / "sparse.png"
+    rgba = Image.new("RGBA", (120, 80), (0, 0, 0, 0))
+    for x, y in ((12, 15), (58, 37), (101, 61)):
+        rgba.putpixel((x, y), (210, 110, 55, 255))
+    rgba.save(src)
+
+    monkeypatch.setattr(
+        fill_routes,
+        "_freehand_swoosh",
+        lambda *_args, **_kwargs: [[-1000.0, -1000.0], [-999.0, -999.0]],
+    )
+    result = fill_routes.generate_fill_routes(
+        src, image_rel="demo/sparse.png", duration=300, draw_start=100, draw_end=270, seed=7,
+    )
+
+    seals = [stroke for stroke in result["strokes"] if stroke["kind"] == "fill-touchup-seal"]
+    assert result["meta"]["missingPixels"] == 0
+    assert result["meta"]["componentSealCount"] == 3
+    assert len(seals) == 3
+    assert all(len(stroke["points"]) == 2 and stroke["points"][0] != stroke["points"][1]
+               for stroke in seals)

@@ -19,11 +19,15 @@ import json
 import re
 import subprocess
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
 import numpy as np
+from jsonschema import Draft202012Validator, FormatChecker
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # ── 임계값 (단위: 인접 프레임 mean abs diff %, 그레이 0~255 기준) ──
 BOUNDARY_WARN = 6.0      # 씬 경계 diff (수정 후 실측 2.7~5.3 / 수정 전 12~23)
@@ -47,6 +51,7 @@ LOUDNESS_HIGH_LUFS = -13.0
 FULL_SILENCE_FRAC = 0.98  # 무음 합산이 전체의 이 비율 이상이면 전체 무음
 SHORTS_MAX_SEC = 180.0
 SCAN_WIDTH = 192         # 1-패스 분석 폭
+SCAN_THREADS = 4         # 저해상도 전체 스캔의 decoder/filter worker 수
 WHITE_LUM = 238.0        # 씬 경계 추정용 순백 근접 밝기 (0~255)
 WHITE_MIN_RUN = 5        # 순백 유지 최소 프레임 (1~2프레임 화이트 플래시는 경계가 아님)
 ROLL_WIN = 61            # 롤링 중앙값 창 (약 2초)
@@ -55,8 +60,9 @@ WASH_CORR = 0.90         # 구도 유지(워시) 판정 Pearson 상관 임계
 REVERT_FRAC = 0.5        # transient(번쩍 후 복귀) 판정: 복귀 잔차 < 피크 × 이 비율
 OUTRO_WINDOW = 36        # 씬 끝 직전(경계 앞 프레임 수) — 워시 온셋 연출 허용 창
 MAX_REMEASURE = 240      # 2-패스 재측정 상한
+REMEASURE_WORKERS = 4    # 독립적인 ffmpeg seek 재측정의 상한 (본편 렌더와 동시 실행하지 않음)
 EVIDENCE_MAX = 8         # 증거 스틸 저장 이슈 상한
-CANON_SIZES = ((1920, 1080), (1080, 1920))
+CANON_SIZES = ((1920, 1080), (3840, 2160), (1080, 1920))
 # city 무펄스 정상본의 콘텐츠 채움 변동 최대 1.30, 기존 체감 펄스는 luma +6.
 # 정상 공간 채움은 허용하고 실제 역방향 혹만 검토/실패시킨다.
 COMPLETION_REVERSAL_WARN = 2.0   # luma 0~255, 완료 구간 반대 방향 이동
@@ -114,7 +120,7 @@ def check_spec(s: dict) -> list[Issue]:
     issues: list[Issue] = []
     size = (s["width"], s["height"])
     if size not in CANON_SIZES:
-        issues.append(Issue("WARN", "spec", f"비표준 해상도 {size[0]}×{size[1]} (표준: 1920×1080 | 1080×1920)"))
+        issues.append(Issue("WARN", "spec", f"비표준 해상도 {size[0]}×{size[1]} (표준: 1920×1080 | 3840×2160 | 1080×1920)"))
     if abs(s["fps"] - 30.0) > 0.05:
         issues.append(Issue("WARN", "spec", f"비표준 fps {s['fps']:.3f} (표준: 30)"))
     if s["vcodec"] != "h264":
@@ -126,6 +132,13 @@ def check_spec(s: dict) -> list[Issue]:
     if s["height"] > s["width"] and s["duration"] > SHORTS_MAX_SEC:
         issues.append(Issue("FAIL", "spec",
                             f"쇼츠(세로) 길이 {s['duration']:.1f}s > 한도 {SHORTS_MAX_SEC:.0f}s"))
+    # UHD 장편 납품은 컨테이너 duration만 600초이고 AAC mux가 마지막 영상 패킷을
+    # 잘라내는 경우를 별도로 막는다. nbFrames는 ffprobe 스트림 메타데이터의 실제
+    # 비디오 패킷 수이며, 600초 × 30fps = 정확히 18,000이어야 한다.
+    if size == (3840, 2160) and abs(float(s.get("duration", 0)) - 600.0) <= 0.05 \
+            and s.get("nbFrames") is not None and int(s["nbFrames"]) != 18000:
+        issues.append(Issue("FAIL", "spec",
+                            f"UHD 장편 프레임 수 {s['nbFrames']} (필수: 18000)"))
     return issues
 
 
@@ -145,7 +158,8 @@ def scan_lowres(video: str | Path, width: int, height: int) -> dict:
     """전 프레임 저해상 그레이 스캔 → diffs(%), lums(밝기), meanFrame(레터박스용)."""
     sw = SCAN_WIDTH
     sh = max(2, int(round(height * sw / width / 2)) * 2)
-    cmd = ["ffmpeg", "-v", "error", "-i", str(video),
+    cmd = ["ffmpeg", "-v", "error", "-threads", str(SCAN_THREADS),
+           "-filter_threads", str(SCAN_THREADS), "-i", str(video),
            "-vf", f"scale={sw}:{sh},format=gray", "-f", "rawvideo", "pipe:1"]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     fsz = sw * sh
@@ -383,6 +397,25 @@ def spike_candidates(diffs: np.ndarray, roll: np.ndarray, exclude: set[int],
     return peaks
 
 
+def prioritize_spike_candidates(candidates: list[int], diffs: np.ndarray,
+                                roll: np.ndarray) -> list[int]:
+    """원본 해상도 재측정 순서를 위험도 기준으로 정한다.
+
+    전체 후보가 ``MAX_REMEASURE``보다 많으면 시간순 선두만 재측정하는 방식은
+    뒤쪽의 큰 변화에 ``corr=0/transient=True`` 기본값을 부여해 거짓 FAIL을 만들 수
+    있다. 절대 변화량을 우선하고, 동률이면 정상 변화 대비 배수를 사용한다. 반환값은
+    측정용 순서일 뿐, 최종 보고서는 원래 시간순 ``candidates``를 유지한다.
+    """
+    return sorted(
+        candidates,
+        key=lambda frame: (
+            -float(diffs[frame]),
+            -float(diffs[frame]) / max(float(roll[frame]), ROLL_FLOOR),
+            int(frame),
+        ),
+    )
+
+
 def find_freeze_runs(diffs: np.ndarray, fps: float,
                      eps: float = FREEZE_EPS, min_sec: float = FREEZE_MIN_SEC) -> list[tuple[int, int]]:
     """diff≈0 이 min_sec 이상 지속되는 [시작, 끝] 프레임 구간."""
@@ -455,16 +488,22 @@ def parse_audio_stderr(text: str, duration: float) -> dict:
             "maxVolume": float(max_m.group(1)) if max_m else None}
 
 
-def audio_issues(parsed: dict, duration: float) -> list[Issue]:
-    """무음>2s WARN / 전체 무음 FAIL / 클리핑 > -0.5dB WARN (순수 함수)."""
+def audio_issues(parsed: dict, duration: float, *, allow_full_silence: bool = False) -> list[Issue]:
+    """무음>2s WARN / 전체 무음 FAIL / 클리핑 > -0.5dB WARN (순수 함수).
+
+    ``allow_full_silence``는 mix report가 BGM/내레이션 없음과 AAC 무음 트랙을
+    명시한 전달 건에만 사용한다. 해당 경우에도 감사 로그에는 INFO로 남긴다.
+    """
     issues: list[Issue] = []
     silences = parsed["silences"]
     total_sil = sum(e - s for s, e in silences)
     fully_silent = (duration > 0 and total_sil >= FULL_SILENCE_FRAC * duration) or \
                    (parsed["meanVolume"] is not None and parsed["meanVolume"] < -70.0)
     if fully_silent:
-        issues.append(Issue("FAIL", "audio-silence",
-                            f"전체 무음 (무음 합산 {total_sil:.1f}s / {duration:.1f}s, "
+        severity = "INFO" if allow_full_silence else "FAIL"
+        label = "명시적 BGM 없음 AAC 무음 트랙" if allow_full_silence else "전체 무음"
+        issues.append(Issue(severity, "audio-silence",
+                            f"{label} (무음 합산 {total_sil:.1f}s / {duration:.1f}s, "
                             f"mean {parsed['meanVolume']} dB)"))
         return issues
     for s, e in silences[:5]:
@@ -516,20 +555,23 @@ def loudness_issues(metrics: dict) -> list[Issue]:
     return issues
 
 
-def analyze_audio(video: str | Path, duration: float) -> tuple[list[Issue], dict]:
+def analyze_audio(video: str | Path, duration: float, *, allow_full_silence: bool = False) -> tuple[list[Issue], dict]:
     res = subprocess.run(
         ["ffmpeg", "-v", "info", "-i", str(video),
+         "-vn",
          "-af", f"silencedetect=noise={SILENCE_NOISE_DB}dB:d={SILENCE_MIN_SEC},volumedetect",
          "-f", "null", "-"],
         capture_output=True, text=True)
     volume = parse_audio_stderr(res.stderr, duration)
     loud = subprocess.run(
         ["ffmpeg", "-hide_banner", "-nostats", "-i", str(video),
+         "-vn",
          "-af", "loudnorm=I=-23:LRA=11:TP=-1.0:print_format=json", "-f", "null", "-"],
         capture_output=True, text=True)
     loudness = parse_loudnorm_stderr(loud.stderr)
     metrics = {**volume, **loudness}
-    return [*audio_issues(volume, duration), *loudness_issues(loudness)], metrics
+    return [*audio_issues(volume, duration, allow_full_silence=allow_full_silence),
+            *loudness_issues(loudness)], metrics
 
 
 def run_audio_checks(video: str | Path, duration: float) -> list[Issue]:
@@ -631,6 +673,9 @@ def check_voice_manifest(path: str | Path | None) -> tuple[list[Issue], dict | N
     except (OSError, json.JSONDecodeError) as exc:
         return [Issue("FAIL", "tts-voice-manifest", f"TTS voice manifest 파싱 실패: {exc}")], None
 
+    if data.get("schemaVersion") == 2:
+        return _check_engine_voice_manifest_v2(manifest_path, data)
+
     issues: list[Issue] = []
     required = (
         "schemaVersion", "projectId", "requestedVoice", "voicePresetId", "voicePackVersion",
@@ -697,6 +742,46 @@ def check_voice_manifest(path: str | Path | None) -> tuple[list[Issue], dict | N
         "model": data.get("model"),
         "components": data.get("components"),
         "speed": data.get("speed"),
+        "aiDisclosure": data.get("aiDisclosure"),
+    }
+    return issues, summary
+
+
+def _check_engine_voice_manifest_v2(manifest_path: Path, data: dict) -> tuple[list[Issue], dict | None]:
+    """신규 engine manifest는 저장소 단일 JSON Schema와 엔진별 의미 규칙으로 감사한다."""
+    schema_path = REPO_ROOT / "schema" / "tts-voice-manifest.schema.json"
+    issues: list[Issue] = []
+    try:
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        errors = sorted(
+            Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(data),
+            key=lambda error: list(error.absolute_path),
+        )
+    except (OSError, json.JSONDecodeError) as exc:
+        return [Issue("FAIL", "tts-voice-manifest", f"v2 schema 읽기 실패: {exc}")], None
+    for error in errors[:8]:
+        where = ".".join(str(part) for part in error.absolute_path) or "<root>"
+        issues.append(Issue("FAIL", "tts-voice-manifest", f"v2 schema {where}: {error.message}"))
+    license_info = data.get("license") or {}
+    if not license_info.get("url") or license_info.get("aiDisclosureRequired") is not True:
+        issues.append(Issue("FAIL", "tts-voice-manifest", "v2 모델 라이선스 URL/AI 고지 의무 누락"))
+    if not str(data.get("aiDisclosure") or "").strip():
+        issues.append(Issue("FAIL", "tts-ai-disclosure", "v2 AI 합성 음성 고지 문구 누락"))
+    if data.get("engine") == "qwen3-base" and data.get("xVectorOnlyMode") is not False:
+        issues.append(Issue("FAIL", "tts-voice-manifest", "Qwen x-vector-only 모드는 허용하지 않음"))
+    summary = {
+        "path": str(manifest_path), "engine": data.get("engine"), "voice": data.get("voice"),
+        "requestedVoice": data.get("voice"), "voicePresetId": data.get("voice"),
+        "voicePackVersion": None, "components": None,
+        "model": data.get("model"), "modelRevision": data.get("modelRevision"),
+        "packageVersion": data.get("packageVersion"), "durationSec": data.get("durationSec"),
+        "sentenceCount": data.get("sentenceCount"), "speed": data.get("appliedSpeed"),
+        "requestedSpeed": data.get("requestedSpeed"), "appliedSpeed": data.get("appliedSpeed"),
+        "speedAppliedBy": data.get("speedAppliedBy"),
+        "nativeSampleRate": data.get("nativeSampleRate"), "outputSampleRate": data.get("outputSampleRate"),
+        "referenceVoiceId": data.get("referenceVoiceId"),
+        "referenceAudioSha256": data.get("referenceAudioSha256"),
+        "referenceTranscriptSha256": data.get("referenceTranscriptSha256"),
         "aiDisclosure": data.get("aiDisclosure"),
     }
     return issues, summary
@@ -792,6 +877,8 @@ def audio_shape_issues(video: str | Path, mix_report: str | Path | None) -> tupl
     if mix_report is None or not Path(mix_report).is_file():
         return [], None
     data = json.loads(Path(mix_report).read_text(encoding="utf-8"))
+    if data.get("mode") == "off" and (data.get("settings") or {}).get("silentAudioTrack"):
+        return [], {"silentAudioTrack": True}
     # 음성이 있으면 master envelope로 BGM fade만 분리할 수 없으므로 playlist gap만 검사한다.
     has_voice = bool(data.get("voice"))
     duration = float(data.get("durationSec") or 0)
@@ -898,6 +985,74 @@ def fullres_pair_diff(video: str | Path, frame: int, fps: float,
     return res["peak"] if res else None
 
 
+def remeasure_boundaries(video: str | Path, boundaries: list[int], diffs: np.ndarray,
+                         *, fps: float, width: int, height: int,
+                         workers: int = REMEASURE_WORKERS) -> dict[int, float | None]:
+    """고위험 씬 경계만 원본 해상도로 재측정한다.
+
+    각 경계의 ffmpeg seek는 독립적이다. ``executor.map``으로 결과를 원래 경계 순서에
+    다시 연결해 report 순서와 판정 수치를 그대로 보존한다. 59개 경계는 MAX_REMEASURE
+    상한보다 작으므로 기존 순차 경로와 같은 후보 집합을 검사한다.
+    """
+    if workers < 1:
+        raise ValueError("workers must be at least 1")
+    jobs = [int(frame) for frame in boundaries if float(diffs[frame]) > BOUNDARY_REMEASURE]
+    if not jobs:
+        return {}
+    jobs = jobs[:MAX_REMEASURE]
+
+    def measure(frame: int) -> float | None:
+        return fullres_pair_diff(video, frame, fps, width, height)
+
+    worker_count = min(workers, len(jobs))
+    if worker_count == 1:
+        values = [measure(frame) for frame in jobs]
+    else:
+        with ThreadPoolExecutor(max_workers=worker_count,
+                                thread_name_prefix="audit-boundary") as executor:
+            values = list(executor.map(measure, jobs))
+    return dict(zip(jobs, values))
+
+
+def remeasure_spike_candidates(video: str | Path, candidates: list[int], *, limit: int,
+                               fps: float, width: int, height: int,
+                               workers: int = REMEASURE_WORKERS) -> tuple[dict[int, dict | None], int]:
+    """스파이크 후보의 원본 해상도 재측정을 제한 병렬화한다.
+
+    순차 경로는 ``analyze_window()``이 결과를 못 낸 후보를 재측정 상한에 포함하지
+    않는다. 같은 동작을 유지하려고 남은 성공 한도만큼 작은 배치로 실행하고, None인
+    후보가 있으면 다음 후보를 이어서 처리한다. 반환 dict는 후보 순서와 무관하게
+    프레임 키로 조회하지만 호출·판정 대상은 순차 경로와 동일하다.
+    """
+    if workers < 1:
+        raise ValueError("workers must be at least 1")
+    if limit <= 0 or not candidates:
+        return {}, 0
+
+    results: dict[int, dict | None] = {}
+    successful = 0
+    offset = 0
+
+    def measure(frame: int) -> dict | None:
+        return analyze_window(video, frame, fps, width, height)
+
+    while offset < len(candidates) and successful < limit:
+        batch_size = min(workers, limit - successful, len(candidates) - offset)
+        batch = candidates[offset:offset + batch_size]
+        offset += len(batch)
+        if len(batch) == 1:
+            values = [measure(batch[0])]
+        else:
+            with ThreadPoolExecutor(max_workers=len(batch),
+                                    thread_name_prefix="audit-spike") as executor:
+                values = list(executor.map(measure, batch))
+        for frame, value in zip(batch, values):
+            results[frame] = value
+            if value is not None:
+                successful += 1
+    return results, successful
+
+
 def save_evidence_pair(video: str | Path, frame: int, fps: float, width: int, height: int,
                        out_prev: str | Path, out_at: str | Path) -> bool:
     """문제 지점 전후 프레임 PNG — 윈도우에서 diff 최대 쌍을 골라 저장 (정렬 불요)."""
@@ -955,16 +1110,17 @@ def run_audit(video: str | Path, props: str | Path | None = None,
         boundary_source = "estimated" if boundaries else "none"
 
     roll = rolling_median(diffs)
-    remeasured = 0
+    # 경계 재측정은 서로 독립적인 원본 해상도 seek이므로 제한적으로 병렬화한다.
+    # props 기반 59개 경계는 240회 상한보다 작아 순차 판정과 같은 대상을 검사한다.
+    boundary_fullres = remeasure_boundaries(
+        video, boundaries, diffs, fps=fps, width=spec["width"], height=spec["height"])
+    remeasured = len(boundary_fullres)
 
     # 경계 하드컷
     boundary_stats: list[dict] = []
     for b in boundaries:
         low = float(diffs[b])
-        full = None
-        if low > BOUNDARY_REMEASURE and remeasured < MAX_REMEASURE:
-            full = fullres_pair_diff(video, b, fps, spec["width"], spec["height"])
-            remeasured += 1
+        full = boundary_fullres.get(b)
         d = full if full is not None else low
         boundary_stats.append({"frame": b, "lowres": round(low, 3),
                                "fullres": round(full, 3) if full is not None else None})
@@ -983,12 +1139,16 @@ def run_audit(video: str | Path, props: str | Path | None = None,
     labels = {"spike": "씬 중간 번쩍 스파이크", "outro-wash": "씬 끝 워시 온셋(연출)",
               "wash-jump": "씬 중간 급격한 워시 점프", "hardcut": "씬 중간 하드컷"}
     exclude = {b + o for b in boundaries for o in (-1, 0, 1)}
-    for f in spike_candidates(diffs, roll, exclude):
+    candidates = spike_candidates(diffs, roll, exclude)
+    measurement_order = prioritize_spike_candidates(candidates, diffs, roll)
+    spike_results, spike_remeasured = remeasure_spike_candidates(
+        video, measurement_order, limit=max(0, MAX_REMEASURE - remeasured), fps=fps,
+        width=spec["width"], height=spec["height"])
+    remeasured += spike_remeasured
+    for f in candidates:
         low = float(diffs[f])
-        res = analyze_window(video, f, fps, spec["width"], spec["height"]) \
-            if remeasured < MAX_REMEASURE else None
+        res = spike_results.get(f)
         if res is not None:
-            remeasured += 1
             peak, corr, transient = res["peak"], res["corr"], res["transient"]
         else:  # 재측정 상한 초과 — 저해상 값으로 보수 판정 (transient 가정)
             peak, corr, transient = low, 0.0, True
@@ -1024,10 +1184,24 @@ def run_audit(video: str | Path, props: str | Path | None = None,
     # 레터박스
     issues.extend(detect_letterbox(scan["meanFrame"]))
 
-    # 오디오
+    # 오디오 — BGM 없는 전달본은 mix report의 명시적 무음 AAC 선언이 있어야만
+    # 전체 무음을 INFO로 처리한다. 임의의 무음/오디오 누락은 기존 FAIL 규칙을 유지한다.
+    intentional_silent_audio = False
+    if mix_report is not None and Path(mix_report).is_file():
+        try:
+            mix_data = json.loads(Path(mix_report).read_text(encoding="utf-8"))
+            intentional_silent_audio = (
+                mix_data.get("mode") == "off"
+                and mix_data.get("bgm") is None
+                and mix_data.get("voice") is None
+                and bool((mix_data.get("settings") or {}).get("silentAudioTrack"))
+            )
+        except (OSError, ValueError, json.JSONDecodeError):
+            pass
     audio_metrics = None
     if spec["hasAudio"]:
-        audio_issues_found, audio_metrics = analyze_audio(video, spec["duration"])
+        audio_issues_found, audio_metrics = analyze_audio(
+            video, spec["duration"], allow_full_silence=intentional_silent_audio)
         issues.extend(audio_issues_found)
     license_issues, license_summary = check_license_manifest(license_manifest)
     issues.extend(license_issues)
@@ -1127,11 +1301,24 @@ def write_reports(result: dict, out_dir: Path, video: Path, fps: float,
                f"- report: `{mix.get('path')}`", ""]
     if result.get("ttsVoice"):
         voice = result["ttsVoice"]
-        md += ["## TTS 음성 재현성",
-               f"- voice: {voice.get('voicePresetId')} (요청 {voice.get('requestedVoice')}) · "
-               f"pack {voice.get('voicePackVersion')} · Supertonic {voice.get('packageVersion')} / {voice.get('model')}",
-               f"- components: {voice.get('components')} · speed: {voice.get('speed')}",
-               f"- AI 고지: {voice.get('aiDisclosure')} · manifest: `{voice.get('path')}`", ""]
+        if voice.get("engine") == "supertonic" or voice.get("voicePackVersion") is not None:
+            md += ["## TTS 음성 재현성",
+                   f"- voice: {voice.get('voicePresetId')} (요청 {voice.get('requestedVoice')}) · "
+                   f"pack {voice.get('voicePackVersion')} · Supertonic {voice.get('packageVersion')} / {voice.get('model')}",
+                   f"- components: {voice.get('components')} · speed: {voice.get('speed')}",
+                   f"- AI 고지: {voice.get('aiDisclosure')} · manifest: `{voice.get('path')}`", ""]
+        else:
+            md += ["## TTS 음성 재현성",
+                   f"- engine: {voice.get('engine')} · voice: {voice.get('voice')} · "
+                   f"package {voice.get('packageVersion')} · model {voice.get('model')} @ {voice.get('modelRevision')}",
+                   f"- sample rate: {voice.get('nativeSampleRate')}Hz → {voice.get('outputSampleRate')}Hz · "
+                   f"speed: {voice.get('requestedSpeed')} → {voice.get('appliedSpeed')} ({voice.get('speedAppliedBy')})"]
+            if voice.get("engine") == "qwen3-base":
+                md.append(
+                    f"- reference voice: {voice.get('referenceVoiceId')} · audio hash: {voice.get('referenceAudioSha256')} · "
+                    f"transcript hash: {voice.get('referenceTranscriptSha256')}"
+                )
+            md += [f"- AI 고지: {voice.get('aiDisclosure')} · manifest: `{voice.get('path')}`", ""]
 
     md += ["## 검출 이슈", ""]
     if result["issues"]:

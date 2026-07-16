@@ -71,7 +71,7 @@
 | --- | --- | --- |
 | `TTS-001` | 신규 YAML은 `voice:auto` 대신 `female-01`~`female-10` 중 명시적 ID와 speed를 기록한다. | [Supertonic 음성 카탈로그](../skill/_shared/references/supertonic-voice-catalog.md) |
 | `TTS-002` | F1~F5 alias와 M1~M5 native 경로를 유지하되 알 수 없는 ID를 F1로 조용히 대체하지 않는다. | [Supertonic 음성 카탈로그](../skill/_shared/references/supertonic-voice-catalog.md) |
-| `TTS-003` | voice manifest에 pack/package/model, 구성, speed, catalog/style hash, AI 합성 고지를 남긴다. | [pipeline 문서](pipeline.md) |
+| `TTS-003` | voice manifest에 엔진별 package/model revision, speed, output hash, license, AI 합성 고지를 남긴다. Supertonic v1과 신규 engine v2는 단일 schema를 사용한다. | [TTS 엔진 카탈로그](../skill/_shared/references/tts-engine-catalog.md) |
 | `TTS-004` | 실제 WAV 샘플 길이를 SRT와 씬 타이밍의 시계로 사용한다. | [project.yaml 가이드](../skill/_shared/references/project-yaml-guide.md) |
 
 ## 자연어 카메라 프롬프트

@@ -115,6 +115,13 @@ def test_spike_candidates_cluster_and_exclude():
     assert peaks == [102]
 
 
+def test_prioritize_spike_candidates_measures_late_high_risk_frames_first():
+    """재측정 상한이 있어도 시간상 뒤쪽의 큰 후보를 먼저 측정한다."""
+    diffs = np.asarray([0.0, 1.2, 6.4, 3.1, 5.8])
+    roll = np.asarray([0.3, 0.2, 0.8, 0.4, 0.6])
+    assert A.prioritize_spike_candidates([1, 2, 3, 4], diffs, roll) == [2, 4, 3, 1]
+
+
 def test_find_freeze_runs_and_severity():
     d = np.full(400, 1.0)
     d[50:145] = 0.0    # 95프레임(3.2s) 정지
@@ -144,6 +151,30 @@ def test_check_spec_rules():
                for i in A.check_spec({**base, "hasAudio": False, "acodec": None}))
     warns = A.check_spec({**base, "width": 320, "height": 180, "fps": 25.0, "vcodec": "vp9"})
     assert {i.severity for i in warns} == {"WARN"} and len(warns) == 3
+    uhd = {**base, "width": 3840, "height": 2160, "nbFrames": 18000}
+    assert A.check_spec(uhd) == []
+    assert any(i.severity == "FAIL" and "18000" in i.message
+               for i in A.check_spec({**uhd, "nbFrames": 17998}))
+
+
+def test_full_bleed_qa_contract_checks_sequence_and_overlay_absence(tmp_path):
+    from brushvid.qa import write_full_bleed_report
+
+    scenes = [
+        {"id": "scene-01", "presentation": "progressive-frame-sequence",
+         "image": "demo/bg/scene-01-content.png", "captionsVisible": False, "widgets": []},
+        {"id": "scene-02", "presentation": "progressive-frame-sequence",
+         "image": "demo/bg/scene-02-content.png", "previousImage": "demo/bg/scene-01-content.png",
+         "captionsVisible": False, "widgets": []},
+    ]
+    report = write_full_bleed_report(tmp_path / "full-bleed-report.json", project_id="demo",
+                                     profile="progressive-frame-sequence", scenes=scenes,
+                                     expected_scene_count=2)
+    assert report["pass"]
+    scenes[1]["previousImage"] = "wrong.png"
+    assert not write_full_bleed_report(tmp_path / "bad-report.json", project_id="demo",
+                                       profile="progressive-frame-sequence", scenes=scenes,
+                                       expected_scene_count=2)["pass"]
 
 
 def test_audio_issue_rules():
@@ -156,6 +187,8 @@ def test_audio_issue_rules():
     parsed = {"silences": [(0.0, 30.0)], "meanVolume": -80.0, "maxVolume": -60.0}
     issues = A.audio_issues(parsed, dur)
     assert [(i.severity, i.kind) for i in issues] == [("FAIL", "audio-silence")]
+    issues = A.audio_issues(parsed, dur, allow_full_silence=True)
+    assert [(i.severity, i.kind) for i in issues] == [("INFO", "audio-silence")]
     # 클리핑 > -0.5dB → WARN
     parsed = {"silences": [], "meanVolume": -12.0, "maxVolume": -0.1}
     issues = A.audio_issues(parsed, dur)
@@ -189,6 +222,29 @@ def test_parse_loudness_and_issue_ranges():
     assert kinds == {"audio-loudness", "audio-true-peak"}
     high = A.loudness_issues({"integratedLufs": -10.0, "truePeakDbtp": -2.0})
     assert [(i.severity, i.kind) for i in high] == [("WARN", "audio-loudness")]
+
+
+def test_analyze_audio_skips_video_decode(monkeypatch):
+    """오디오 감사는 UHD 비디오 프레임을 디코드하지 않아야 한다."""
+    calls = []
+
+    def fake_run(argv, **_kwargs):
+        calls.append(argv)
+        if len(calls) == 1:
+            return type("Result", (), {"stderr": (
+                "silence_start: 0\\n"
+                "silence_end: 10 | silence_duration: 10\\n"
+                "mean_volume: -91.0 dB\\n"
+                "max_volume: -91.0 dB\\n"
+            )})()
+        return type("Result", (), {"stderr": (
+            '{"input_i":"-99.0","input_tp":"-99.0","input_lra":"0.0"}'
+        )})()
+
+    monkeypatch.setattr(A.subprocess, "run", fake_run)
+    A.analyze_audio("fixture.mp4", 10.0, allow_full_silence=True)
+    assert len(calls) == 2
+    assert all("-vn" in argv for argv in calls)
 
 
 def test_license_manifest_rules(tmp_path):
@@ -302,6 +358,30 @@ def test_voice_manifest_version_drift_warns_without_hiding_contract_errors(tmp_p
     path.write_text(json.dumps(data), encoding="utf-8")
     issues, _ = A.check_voice_manifest(path)
     assert [(issue.severity, issue.kind) for issue in issues] == [("WARN", "tts-version-drift")]
+
+
+def test_engine_v2_voice_manifest_uses_shared_schema_and_semantic_rules(tmp_path):
+    data = {
+        "schemaVersion": 2, "projectId": "melo", "engine": "melo-ko", "voice": "kr-default",
+        "model": "myshell-ai/MeloTTS-Korean", "modelRevision": "a" * 40,
+        "packageVersion": "0.1.2", "language": "ko", "nativeSampleRate": 44100,
+        "outputSampleRate": 44100, "requestedSpeed": 1.0, "appliedSpeed": 1.0,
+        "speedAppliedBy": "melo-native-length-scale",
+        "requestedTiming": "tts", "appliedTiming": "tts", "pauseMs": 300,
+        "durationSec": 1.0, "sentenceCount": 1, "audioSha256": "b" * 64,
+        "license": {"model": "MIT", "url": "https://example.com", "aiDisclosureRequired": True},
+        "aiDisclosure": "AI 합성 음성", "speaker": "KR",
+    }
+    path = tmp_path / "voice-manifest.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    issues, summary = A.check_voice_manifest(path)
+    assert issues == []
+    assert summary["engine"] == "melo-ko"
+    assert summary["speedAppliedBy"] == "melo-native-length-scale"
+    data["speaker"] = "fallback"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    issues, _ = A.check_voice_manifest(path)
+    assert any(issue.severity == "FAIL" for issue in issues)
 
 
 def test_mix_report_contract(tmp_path):
@@ -476,3 +556,37 @@ def test_synthetic_clean_clip_passes(tmp_path):
     r = A.run_audit(clip, out_dir=None)
     assert r["verdict"] == "PASS"
     assert r["summary"]["FAIL"] == 0
+
+
+def test_remeasure_boundaries_keeps_input_order_and_only_high_risk_frames(monkeypatch):
+    """경계 재측정 병렬화가 임계 초과 프레임만 원래 순서대로 연결한다."""
+    calls = []
+
+    def fake_pair(_video, frame, _fps, _width, _height):
+        calls.append(frame)
+        return frame / 10
+
+    monkeypatch.setattr(A, "fullres_pair_diff", fake_pair)
+    diffs = np.asarray([0.0, 3.5, 3.6, 2.1, 4.2])
+    result = A.remeasure_boundaries("demo.mp4", [1, 2, 3, 4], diffs,
+                                    fps=30, width=3840, height=2160, workers=2)
+    assert list(result) == [2, 4]
+    assert result == {2: 0.2, 4: 0.4}
+    assert sorted(calls) == [2, 4]
+
+
+def test_remeasure_spike_candidates_retries_none_without_changing_candidate_order(monkeypatch):
+    """None 후보는 한도를 소비하지 않아 다음 후보가 같은 순서로 재측정된다."""
+    calls = []
+
+    def fake_analyze(_video, frame, _fps, _width, _height):
+        calls.append(frame)
+        return None if frame == 10 else {"peak": frame / 10, "corr": 1.0, "transient": False}
+
+    monkeypatch.setattr(A, "analyze_window", fake_analyze)
+    results, measured = A.remeasure_spike_candidates(
+        "demo.mp4", [10, 20, 30], limit=2, fps=30, width=3840, height=2160, workers=2)
+    assert list(results) == [10, 20, 30]
+    assert results[10] is None and results[20]["peak"] == 2.0 and results[30]["peak"] == 3.0
+    assert measured == 2
+    assert sorted(calls) == [10, 20, 30]

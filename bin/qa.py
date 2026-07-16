@@ -53,7 +53,7 @@ def main() -> None:
     qa_dir = pipe.data_dir / "qa"
     if a.frames:
         frames = [int(f) for f in a.frames.split(",")]
-        composition = "BrushPortrait" if cfg.fmt == "shorts" else "BrushLandscape"
+        composition = buildmod.resolve_composition(cfg)
         entries = bv_qa.capture_frames(pipe.props_json, frames, qa_dir, composition=composition)
         bv_qa.write_manifest(entries, qa_dir, project_id=cfg.project_id, props=str(pipe.props_json))
         sheet = bv_qa.contact_sheet(qa_dir, cols=3)

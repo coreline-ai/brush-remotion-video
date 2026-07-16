@@ -39,17 +39,40 @@ def _border_paper(arr: np.ndarray) -> np.ndarray:
     return np.median(candidates, axis=0)
 
 
+def _border_noise_floors(arr: np.ndarray, paper: np.ndarray) -> tuple[float, float, float]:
+    """종이 질감 자체가 콘텐츠로 오인되지 않도록 외곽의 실제 변동폭을 계측한다."""
+    h, w, _ = arr.shape
+    band = max(2, round(min(w, h) * 0.025))
+    border = np.concatenate([
+        arr[:band].reshape(-1, 3), arr[-band:].reshape(-1, 3),
+        arr[:, :band].reshape(-1, 3), arr[:, -band:].reshape(-1, 3),
+    ]) / 255.0
+    paper01 = paper / 255.0
+    distance = np.sqrt(np.mean((border - paper01) ** 2, axis=1))
+    saturation = border.max(1) - border.min(1)
+    luma = 0.299 * border[:, 0] + 0.587 * border[:, 1] + 0.114 * border[:, 2]
+    return (float(np.quantile(distance, 0.95)),
+            float(np.quantile(saturation, 0.90)),
+            float(np.quantile(luma, 0.10)))
+
+
 def _content_alpha(arr: np.ndarray, paper: np.ndarray) -> np.ndarray:
-    """종이와의 색 거리 + 채도 + 어두움을 합친 부드러운 콘텐츠 알파."""
+    """종이 질감 노이즈를 제외한 색 거리 + 채도 + 어두움 기반 콘텐츠 알파."""
     rgb = arr / 255.0
     paper01 = paper / 255.0
     dist = np.sqrt(np.mean((rgb - paper01) ** 2, axis=2))
     sat = rgb.max(2) - rgb.min(2)
     lum = 0.299 * rgb[..., 0] + 0.587 * rgb[..., 1] + 0.114 * rgb[..., 2]
     paper_lum = float(0.299 * paper01[0] + 0.587 * paper01[1] + 0.114 * paper01[2])
-    a_dist = np.clip((dist - 0.018) / 0.085, 0.0, 1.0)
-    a_sat = np.clip((sat - 0.025) / 0.12, 0.0, 1.0)
-    a_dark = np.clip((paper_lum - lum - 0.025) / 0.19, 0.0, 1.0)
+    border_dist, border_sat, border_low_lum = _border_noise_floors(arr, paper)
+    # 매끈한 흰 종이에는 기존 수준을 유지하고, 한지·수채 질감이 있는 종이에는
+    # 외곽 90~95% 변동보다 확실히 큰 신호만 색칠 레이어로 남긴다.
+    dist_floor = max(0.018, border_dist + 0.015)
+    sat_floor = max(0.025, border_sat + 0.025)
+    dark_cutoff = min(paper_lum - 0.025, border_low_lum - 0.025)
+    a_dist = np.clip((dist - dist_floor) / 0.13, 0.0, 1.0)
+    a_sat = np.clip((sat - sat_floor) / 0.14, 0.0, 1.0)
+    a_dark = np.clip((dark_cutoff - lum) / 0.19, 0.0, 1.0)
     alpha = np.maximum.reduce([a_dist, a_sat, a_dark])
     alpha[alpha < 0.045] = 0.0
     return alpha
@@ -66,6 +89,14 @@ def _outline_alpha(arr: np.ndarray, content_alpha: np.ndarray) -> np.ndarray:
     dark_core = np.clip((0.24 - lum) / 0.13, 0.0, 1.0) * neutral_ink
     alpha = np.maximum(edge, dark_core) * np.clip(content_alpha * 1.35, 0.0, 1.0)
     alpha[alpha < 0.05] = 0.0
+    # 음식 일러스트에는 검정 대신 짙은 적갈색처럼 채도가 높은 잉크선을 쓰는
+    # 경우가 있다. 일반 경로에서 이를 넓게 허용하면 채색 경계까지 선으로
+    # 오인할 수 있으므로, 중성 잉크 검출이 완전히 비었을 때만 국소 대비선을
+    # 보조 경로로 사용한다. 넓은 어두운 색면은 local contrast가 낮아 제외된다.
+    if float((alpha >= 0.20).mean()) < 0.00005:
+        alpha = np.clip((local - 0.025) / 0.10, 0.0, 1.0)
+        alpha *= np.clip(content_alpha * 1.35, 0.0, 1.0)
+        alpha[alpha < 0.05] = 0.0
     return alpha
 
 
@@ -76,6 +107,12 @@ def line_thickness(alpha: np.ndarray) -> float:
         return 0.0
     skeleton_px = int(skeletonize(mask).sum())
     return float(mask.sum() / max(1, skeleton_px))
+
+
+def alpha_line_thickness(image_path: str | Path) -> float:
+    """최종 합성에서 맨 위에 놓이는 outline RGBA의 실제 선 굵기를 계측한다."""
+    alpha = np.asarray(Image.open(image_path).convert("RGBA"))[..., 3].astype(np.float32) / 255.0
+    return line_thickness(alpha)
 
 
 def estimate_line_thickness(image_path: str | Path, *, paper: tuple[int, int, int] = PEN_PAPER) -> float:
@@ -113,6 +150,13 @@ def prepare_pen_brush_layers(
     """
     src = contain_fit(Image.open(image_path), size=size, paper=paper)
     arr = np.asarray(src).astype(np.float32)
+    # 단색 블루/사진처럼 종이색과 전혀 다른 전체 화면은 적응형 border floor가
+    # 배경으로 오인할 수 있다. 무늬가 거의 없고 pen paper와도 먼 경우는 full-bleed로 거부한다.
+    channel_std = float(arr.std(axis=(0, 1)).max())
+    source_mean = arr.mean(axis=(0, 1)) / 255.0
+    paper01 = np.asarray(paper, dtype=np.float32) / 255.0
+    if channel_std < 1.5 and float(np.sqrt(np.mean((source_mean - paper01) ** 2))) > 0.12:
+        raise ValueError("pen-brush 레이어 분리 실패: 종이 배경을 식별할 수 없는 full-bleed 이미지")
     estimated_paper = _border_paper(arr)
     color_alpha = _content_alpha(arr, estimated_paper)
     content_fraction = float((color_alpha >= 0.10).mean())
@@ -125,6 +169,10 @@ def prepare_pen_brush_layers(
     outline_fraction = float((outline_alpha >= 0.20).mean())
     if outline_fraction < 0.00005:
         raise ValueError("pen-brush 레이어 분리 실패: 외곽선을 검출하지 못함")
+    # 색칠 레이어가 반투명 종이 질감 마스크에 의해 실제 선의 가장자리를 깎지 않도록
+    # 검출된 outline 영역은 원본 RGB를 반드시 유지한다. outline → paint 후에도
+    # 선 굵기와 외곽선이 사라지지 않는 pen-brush 계약의 핵심이다.
+    color_alpha = np.maximum(color_alpha, outline_alpha)
 
     outline_path = Path(outline_path)
     outline_flat_path = Path(outline_flat_path)

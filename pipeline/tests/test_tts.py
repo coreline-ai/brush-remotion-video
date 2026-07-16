@@ -6,6 +6,7 @@ import pytest
 
 import brushvid.tts as tts_mod
 from brushvid.cues import parse_srt
+from brushvid.tts_engines.base import AudioResult
 from brushvid.tts import SR, split_sentences, synthesize_narration
 
 
@@ -121,3 +122,32 @@ def test_make_synthesizer_forwards_speed_and_resolved_style(monkeypatch):
     assert calls == {"text": "테스트", "voice_style": style, "lang": "ko", "speed": 1.10}
     assert resolved["voicePresetId"] == "female-09"
     assert resolved["packageVersion"] == "1.3.1"
+
+
+def test_qwen_speed_uses_common_atempo_postprocess(tmp_path, monkeypatch):
+    class FakeQwen:
+        def __init__(self, **kwargs):
+            assert kwargs["reference"] == {"audio": tmp_path / "ref.wav", "transcript": tmp_path / "ref.txt"}
+
+        def synthesize_batch(self, sentences, **kwargs):
+            assert sentences == ["한 문장."]
+            assert kwargs["speed"] == pytest.approx(2.0)
+            return [AudioResult(
+                np.zeros(24000, dtype=np.float32), 24000,
+                {"engine": "qwen3-base", "model": "qwen", "speed": 2.0},
+            )]
+
+        def close(self):
+            pass
+
+    reference = {"audio": tmp_path / "ref.wav", "transcript": tmp_path / "ref.txt"}
+    monkeypatch.setattr(tts_mod, "QwenAdapter", FakeQwen)
+    result = synthesize_narration(
+        "한 문장.", tmp_path / "q.wav", tmp_path / "q.srt",
+        engine="qwen3-base", voice="f1-reference", speed=2.0,
+        reference=reference,
+    )
+    with wave.open(str(tmp_path / "q.wav"), "rb") as wav_file:
+        assert wav_file.getframerate() == SR
+        assert wav_file.getnframes() == pytest.approx(SR / 2, abs=SR * 0.03)
+    assert result["voice"]["speedAppliedBy"] == "ffmpeg-atempo"

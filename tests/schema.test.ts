@@ -80,6 +80,17 @@ describe("RenderPropsSchema", () => {
     ];
     expect(RenderPropsSchema.safeParse(props).success).toBe(false);
   });
+
+  it("full-bleed presentation은 image를 요구하고 route 없이 허용한다", () => {
+    const props = structuredClone(validProps) as Record<string, unknown> & typeof validProps;
+    const scene = props.scenes[0] as Record<string, unknown>;
+    delete scene.routes;
+    scene.presentation = "progressive-frame-sequence";
+    expect(RenderPropsSchema.safeParse(props).success).toBe(false);
+    scene.image = "demo/bg/scene-01-content.png";
+    scene.captionsVisible = false;
+    expect(RenderPropsSchema.safeParse(props).success).toBe(true);
+  });
 });
 
 describe("RoutesDataSchema (기존 포맷 호환)", () => {

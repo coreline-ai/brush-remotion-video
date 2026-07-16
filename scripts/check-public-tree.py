@@ -20,6 +20,7 @@ LOCAL_ASSET_PROJECTS = {
     "examples/cosmic-random-brush-v03/project.yaml",
     "examples/cosmic-random-brush-v05-ink/project.yaml",
     "examples/deepsea-light-v01/project.yaml",
+    "examples/tts-qwen/project.yaml",
 }
 MARKDOWN_LINK = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
 
@@ -50,6 +51,13 @@ def project_inputs(project_path: Path) -> list[str]:
     background = payload.get("background") or {}
     images = background.get("images") or []
     refs.extend(value for value in images if isinstance(value, str) and value)
+    tts = input_block.get("tts") or {}
+    reference = tts.get("reference") if isinstance(tts, dict) else None
+    if isinstance(reference, dict):
+        refs.extend(
+            value for value in (reference.get("audio"), reference.get("transcript"))
+            if isinstance(value, str) and value
+        )
     return refs
 
 

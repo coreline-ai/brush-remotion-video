@@ -102,12 +102,19 @@ def concat(parts: list[Path], out_path: str | Path) -> Path:
 
 def mux_audio(video_path: str | Path, audio_path: str | Path, out_path: str | Path,
               *, audio_bitrate: str = "192k") -> Path:
-    """영상 스트림은 copy, 오디오는 AAC 인코딩으로 mux. 짧은 쪽에 맞춰 종료(-shortest)."""
+    """영상 스트림은 copy, 오디오는 AAC 인코딩으로 mux한다.
+
+    출력 종료점은 비디오 스트림의 정확한 프레임 길이로 고정한다. ``-shortest``는
+    AAC encoder delay 때문에 600초 WAV가 599.93초로 보이는 경우 마지막 비디오
+    프레임을 잘라 18,000프레임 납품 계약을 깨므로 사용하지 않는다.
+    """
     out = Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
+    video_duration = probe_video_duration(video_path)
     _run(["ffmpeg", "-y", "-i", video_path, "-i", audio_path,
           "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy",
-          "-c:a", "aac", "-b:a", audio_bitrate, "-shortest", out])
+          "-c:a", "aac", "-b:a", audio_bitrate,
+          "-t", f"{video_duration:.6f}", out])
     return out
 
 

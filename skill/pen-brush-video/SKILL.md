@@ -45,7 +45,7 @@ YouTube 기본 BGM은 `Satya Yuga`다. Pixabay 음원은 YouTube/Shorts 제작·
 라이선스 증빙을 내려받아 `bin/bgm-assets.py import`로 등록한다. 내레이션이 있으면
 `gainDb: 3.0`과 ducking을 사용한다.
 
-설명 내레이션을 넣을 때 기본 권장은 `input.tts{voice: female-09, speed: 1.10}`이다.
+설명 내레이션을 넣을 때 기본 Supertonic 권장은 `input.tts{engine: supertonic, voice: female-09, speed: 1.10}`이다. Melo/Qwen 선택은 [공통 TTS 엔진 카탈로그](../_shared/references/tts-engine-catalog.md)를 따른다.
 10종 특징·미리듣기·AI 고지는
 [공통 Supertonic 음성 카탈로그](../_shared/references/supertonic-voice-catalog.md)를 따른다.
 

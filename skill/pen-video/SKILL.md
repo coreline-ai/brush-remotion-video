@@ -42,7 +42,7 @@ YouTube 선화 기본 BGM은 `Chance, Luck, Errors in Nature, Fate, Destruction 
 Pixabay 음원은 YouTube/Shorts 제작·교체·배포에 사용하지 않는다. 공식 다운로드·증빙·로컬 등록은
 [공통 BGM 정책](../_shared/references/bgm-policy.md)을 따른다.
 전문 설명형 기본 음성은 `female-09`이며 10종 특징·청취 방법은
-[공통 Supertonic 음성 카탈로그](../_shared/references/supertonic-voice-catalog.md)를 따른다.
+[공통 TTS 엔진 카탈로그](../_shared/references/tts-engine-catalog.md)와 [Supertonic 음성 카탈로그](../_shared/references/supertonic-voice-catalog.md)를 따른다.
 
 ```bash
 cd /Users/hwanchoi/project_202606/brush_remotion_video

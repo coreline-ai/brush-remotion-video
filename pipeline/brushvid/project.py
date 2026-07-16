@@ -16,17 +16,28 @@ from pathlib import Path
 import yaml
 
 from .voice_presets import SPEED_MAX, SPEED_MIN, VoicePresetError, validate_voice_id
+from .tts_contract import (
+    ENGINE_FIELDS,
+    ENGINE_IDS,
+    NEW_ENGINE_IDS,
+    normalize_language,
+    validate_pause_ms,
+    validate_reference,
+    validate_speed,
+)
 
 log = logging.getLogger(__name__)
 
 FORMATS = ("youtube", "shorts")
+RENDER_RESOLUTIONS = ("fhd", "uhd")
 BG_STRATEGIES = ("imagegen", "preset", "user-images")
 BG_FITS = ("contain", "cover")
 WIDGET_MODES = ("auto", "none", "authored")
-TTS_ENGINES = ("supertonic",)
+TTS_ENGINES = ENGINE_IDS
 TTS_TIMINGS = ("tts", "srt")
 DRAWING_PROFILES = (
     "brush", "pen", "pen-brush", "dark-random-brush", "cosmic-random-brush",
+    "progressive-frame-sequence", "storybook-full-bleed",
 )
 # public name is content-agnostic; keep the historical runtime key for golden/build compatibility.
 DRAWING_PROFILE_ALIASES = {"dark-random-brush": "cosmic-random-brush"}
@@ -65,6 +76,7 @@ class ProjectConfig:
 
     project_id: str
     fmt: str = "youtube"
+    render_resolution: str = "fhd"
     title: str | None = None
     srt: Path | None = None
     audio: Path | None = None
@@ -86,14 +98,15 @@ class ProjectConfig:
     ambient_scenes: int = 3
     ambient_cues: list[str] = field(default_factory=list)
     subtitle_style: dict = field(default_factory=dict)  # 사용자 명시 subtitleStyle (기본 프리셋에 병합)
+    overlays: str = "default"  # default | none — title/cue 자막/위젯 외부 오버레이 정책
     seed: int = 1
     base_dir: Path = Path(".")
 
     @property
     def mode(self) -> str:
         """narration | tts | whisper | ambient."""
-        if self.srt is not None and self.audio is not None:
-            return "narration"  # 실더빙 우선
+        if self.audio is not None:
+            return "narration" if self.srt is not None else "whisper"  # 실더빙 우선
         if self.tts is not None and (self.srt is not None or self.script is not None):
             return "tts"
         if self.srt is not None:
@@ -129,6 +142,16 @@ def load_project(yaml_path: str | Path) -> ProjectConfig:
     fmt = raw.get("format", "youtube")
     _require(fmt in FORMATS, f"format 은 {FORMATS} 중 하나여야 함 (입력: {fmt!r})")
 
+    render_raw = raw.get("render") or {}
+    _require(isinstance(render_raw, dict), "render 는 매핑이어야 함")
+    unknown_render = sorted(set(render_raw) - {"resolution"})
+    _require(not unknown_render, f"render 지원하지 않는 옵션: {', '.join(unknown_render)}")
+    render_resolution = render_raw.get("resolution", "fhd")
+    _require(render_resolution in RENDER_RESOLUTIONS,
+             f"render.resolution 은 {RENDER_RESOLUTIONS} 중 하나여야 함 (입력: {render_resolution!r})")
+    _require(not (fmt == "shorts" and render_resolution == "uhd"),
+             "render.resolution=uhd 는 현재 format: youtube 에서만 지원")
+
     inp = raw.get("input") or {}
     _require(isinstance(inp, dict), "input 은 매핑이어야 함")
     srt = inp.get("srt")
@@ -144,35 +167,61 @@ def load_project(yaml_path: str | Path) -> ProjectConfig:
     if script_p is not None:
         _require(script_p.is_file(), f"input.script 파일 없음: {script_p}")
 
-    # input.tts — {engine, voice, speed, pauseMs, timing}. timing: srt 는 후속 여지(옵션 자리만).
+    # input.tts — 엔진별 허용 필드와 입력 source를 먼저 고정한다.
     tts_raw = inp.get("tts")
     tts_cfg: dict | None = None
     if tts_raw is not None:
         _require(isinstance(tts_raw, dict), "input.tts 는 매핑이어야 함")
         engine = tts_raw.get("engine", "supertonic")
         _require(engine in TTS_ENGINES, f"input.tts.engine 은 {TTS_ENGINES} 중 하나여야 함 (입력: {engine!r})")
+        unknown_tts = sorted(set(tts_raw) - ENGINE_FIELDS[engine])
+        _require(not unknown_tts, f"input.tts 지원하지 않는 옵션: {', '.join(unknown_tts)}")
         timing = tts_raw.get("timing", "tts")
         _require(timing in TTS_TIMINGS, f"input.tts.timing 은 {TTS_TIMINGS} 중 하나여야 함 (입력: {timing!r})")
-        pause_ms = int(tts_raw.get("pauseMs", 300))
-        _require(pause_ms >= 0, "input.tts.pauseMs 는 0 이상")
-        voice_raw = tts_raw.get("voice", "F1")
+        if engine in NEW_ENGINE_IDS:
+            _require(timing == "tts", f"{engine}은 input.tts.timing=tts만 지원함")
+        pause_ms = tts_raw.get("pauseMs", 300)
+        try:
+            pause_ms = validate_pause_ms(pause_ms)
+        except ValueError as exc:
+            raise ValueError(str(exc)) from exc
+        voice_default = "kr-default" if engine == "melo-ko" else (None if engine == "qwen3-base" else "F1")
+        voice_raw = tts_raw.get("voice", voice_default)
         _require(isinstance(voice_raw, str) and bool(voice_raw.strip()),
                  "input.tts.voice 는 비어 있지 않은 문자열이어야 함")
+        if engine == "supertonic":
+            try:
+                voice = validate_voice_id(voice_raw)
+            except VoicePresetError as exc:
+                raise ValueError(str(exc)) from exc
+        elif engine == "melo-ko":
+            _require(voice_raw == "kr-default", "melo-ko voice는 kr-default만 지원함")
+            voice = voice_raw
+        else:
+            voice = voice_raw
+        language_raw = tts_raw.get("language", "ko")
         try:
-            voice = validate_voice_id(voice_raw)
-        except VoicePresetError as exc:
+            language = normalize_language(engine, language_raw)
+        except ValueError as exc:
             raise ValueError(str(exc)) from exc
         speed_raw = tts_raw.get("speed", 1.05)
-        _require(isinstance(speed_raw, (int, float)) and not isinstance(speed_raw, bool),
-                 "input.tts.speed 는 숫자여야 함")
-        speed = float(speed_raw)
-        _require(math.isfinite(speed), "input.tts.speed 는 유한한 숫자여야 함")
-        _require(SPEED_MIN <= speed <= SPEED_MAX,
-                 f"input.tts.speed 는 {SPEED_MIN:.2f}~{SPEED_MAX:.2f} 범위여야 함 (입력: {speed!r})")
+        try:
+            speed = validate_speed(speed_raw, minimum=SPEED_MIN, maximum=SPEED_MAX)
+        except ValueError as exc:
+            raise ValueError(str(exc)) from exc
         tts_cfg = {"engine": engine, "voice": voice, "speed": speed,
                    "pauseMs": pause_ms, "timing": timing}
+        if "language" in tts_raw:
+            tts_cfg["language"] = language
+        if engine == "qwen3-base":
+            try:
+                tts_cfg["reference"] = validate_reference(tts_raw.get("reference"), base_dir=base)
+            except ValueError as exc:
+                raise ValueError(str(exc)) from exc
         if audio_p is not None:
             log.warning("input.audio(실더빙)와 tts 가 함께 설정됨 — 실더빙 우선, TTS 무시")
+    if audio_p is None and script_p is not None and srt_p is not None and tts_cfg is not None:
+        raise ValueError("input.script와 input.srt를 함께 사용할 수 없음: TTS 텍스트 source가 모호함")
     if script_p is not None:
         _require(tts_cfg is not None, "input.script 은 input.tts 와 함께 사용해야 함 (타이밍/더빙 소스 없음)")
 
@@ -322,9 +371,13 @@ def load_project(yaml_path: str | Path) -> ProjectConfig:
     subtitle_style = raw.get("subtitleStyle") or {}
     _require(isinstance(subtitle_style, dict), "subtitleStyle 은 매핑이어야 함")
 
+    overlays = raw.get("overlays", "default")
+    _require(overlays in {"default", "none"}, "overlays 는 default 또는 none 이어야 함")
+
     cfg = ProjectConfig(
         project_id=project_id.strip(),
         fmt=fmt,
+        render_resolution=render_resolution,
         title=raw.get("title"),
         srt=srt_p,
         audio=audio_p,
@@ -346,6 +399,7 @@ def load_project(yaml_path: str | Path) -> ProjectConfig:
         ambient_scenes=ambient_scenes,
         ambient_cues=list(ambient_cues),
         subtitle_style=subtitle_style,
+        overlays=overlays,
         seed=int(drawing.get("seed", raw.get("seed", 1))),
         base_dir=base,
     )

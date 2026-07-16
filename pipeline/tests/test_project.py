@@ -119,6 +119,54 @@ drawing:
     assert cfg.drawing_paint_end_ratio == 0.9
 
 
+def test_youtube_uhd_and_full_bleed_profiles_are_accepted(tmp_path):
+    image = tmp_path / "source.png"
+    image.write_bytes(b"png-placeholder")
+    cfg = load_project(_write_yaml(tmp_path, """
+projectId: progressive-demo
+format: youtube
+render:
+  resolution: uhd
+background:
+  strategy: user-images
+  images: [source.png]
+  fit: cover
+drawing:
+  profile: progressive-frame-sequence
+ambient:
+  scenes: 1
+  cues: ["frame one"]
+"""))
+    assert cfg.render_resolution == "uhd"
+    assert cfg.drawing_profile == "progressive-frame-sequence"
+
+
+def test_overlays_none_is_loaded_for_prompt_driven_art_film(tmp_path):
+    cfg = load_project(_write_yaml(tmp_path, """
+projectId: art-film
+overlays: none
+"""))
+    assert cfg.overlays == "none"
+
+
+def test_invalid_overlays_policy_is_rejected(tmp_path):
+    with pytest.raises(ValueError, match="overlays"):
+        load_project(_write_yaml(tmp_path, """
+projectId: art-film
+overlays: captions-only
+"""))
+
+
+def test_uhd_shorts_is_rejected(tmp_path):
+    with pytest.raises(ValueError, match="format: youtube"):
+        load_project(_write_yaml(tmp_path, """
+projectId: uhd-shorts
+format: shorts
+render:
+  resolution: uhd
+"""))
+
+
 def test_pen_brush_bad_advanced_option_rejected(tmp_path):
     with pytest.raises(ValueError, match="지원하지 않는 옵션"):
         load_project(_write_yaml(tmp_path, """
@@ -349,6 +397,21 @@ input:
     assert "안녕" in cfg.tts_text()
 
 
+def test_supertonic_legacy_srt_timing_is_accepted_for_text_source(tmp_path, media):
+    cfg = load_project(_write_yaml(tmp_path, """
+projectId: demo
+input:
+  srt: voice.srt
+  tts:
+    engine: supertonic
+    voice: F1
+    timing: srt
+"""))
+    assert cfg.mode == "tts"
+    assert cfg.tts["timing"] == "srt"
+    assert "안녕" in cfg.tts_text()
+
+
 def test_tts_mode_script_plus_tts(tmp_path):
     """script + tts → tts 모드."""
     (tmp_path / "script.txt").write_text("첫 문장. 둘째 문장.", encoding="utf-8")
@@ -372,6 +435,85 @@ input:
 """ + TTS_BLOCK))
     assert cfg.mode == "narration"
     assert any("실더빙 우선" in r.message for r in caplog.records)
+
+
+def test_audio_script_tts_is_whisper_and_keeps_tts_out_of_execution_branch(tmp_path):
+    (tmp_path / "voice.mp3").write_bytes(b"fake-mp3")
+    (tmp_path / "script.txt").write_text("실제 음성 우선.", encoding="utf-8")
+    cfg = load_project(_write_yaml(tmp_path, """
+projectId: demo
+input:
+  audio: voice.mp3
+  script: script.txt
+  tts:
+    engine: melo-ko
+"""))
+    assert cfg.mode == "whisper"
+    assert cfg.tts["engine"] == "melo-ko"
+
+
+def test_script_and_srt_tts_is_rejected_as_ambiguous_source(tmp_path, media):
+    (tmp_path / "script.txt").write_text("대본 source.", encoding="utf-8")
+    with pytest.raises(ValueError, match="source가 모호"):
+        load_project(_write_yaml(tmp_path, """
+projectId: demo
+input:
+  script: script.txt
+  srt: voice.srt
+  tts:
+    engine: supertonic
+"""))
+
+
+def test_melo_contract_defaults_to_kr_default_and_rejects_reference(tmp_path):
+    (tmp_path / "script.txt").write_text("한국어 문장.", encoding="utf-8")
+    cfg = load_project(_write_yaml(tmp_path, """
+projectId: demo
+input:
+  script: script.txt
+  tts:
+    engine: melo-ko
+    language: ko
+"""))
+    assert cfg.mode == "tts"
+    assert cfg.tts["voice"] == "kr-default"
+    with pytest.raises(ValueError, match="지원하지 않는 옵션"):
+        load_project(_write_yaml(tmp_path, """
+projectId: demo
+input:
+  script: script.txt
+  tts:
+    engine: melo-ko
+    reference: {}
+"""))
+
+
+def test_qwen_contract_requires_local_reference_pair(tmp_path):
+    (tmp_path / "script.txt").write_text("복제 음성 문장.", encoding="utf-8")
+    (tmp_path / "ref.wav").write_bytes(b"fake-wav")
+    (tmp_path / "ref.txt").write_text("참조 음성 문장.", encoding="utf-8")
+    cfg = load_project(_write_yaml(tmp_path, """
+projectId: demo
+input:
+  script: script.txt
+  tts:
+    engine: qwen3-base
+    voice: f1-reference
+    language: ko
+    reference:
+      audio: ref.wav
+      transcript: ref.txt
+"""))
+    assert cfg.tts["reference"]["audio"] == (tmp_path / "ref.wav").resolve()
+    with pytest.raises(ValueError, match="reference"):
+        load_project(_write_yaml(tmp_path, """
+projectId: demo
+input:
+  script: script.txt
+  tts:
+    engine: qwen3-base
+    voice: f1-reference
+"""))
 
 
 def test_script_without_tts_rejected(tmp_path):

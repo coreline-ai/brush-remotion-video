@@ -35,6 +35,17 @@ export const RemotionRoot: React.FC = () => {
         calculateMetadata={calculateMetadata}
       />
       <Composition
+        id="BrushLandscape4K"
+        component={SceneSequence}
+        width={3840}
+        height={2160}
+        fps={FPS}
+        durationInFrames={90}
+        schema={RenderPropsSchema}
+        defaultProps={defaultProps}
+        calculateMetadata={calculateMetadata}
+      />
+      <Composition
         id="BrushPortrait"
         component={SceneSequence}
         width={1080}

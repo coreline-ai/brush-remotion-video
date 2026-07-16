@@ -1,0 +1,23 @@
+# Qwen Base voice cloning 예제. 개인 reference 음성은 저장소에 넣지 않는다.
+projectId: tts-qwen-demo
+format: youtube
+title: Qwen reference voice 내레이션
+input:
+  script: narration.txt
+  tts:
+    engine: qwen3-base
+    voice: local-reference
+    language: ko
+    reference:
+      audio: local-assets/reference/local-reference.wav
+      transcript: local-assets/reference/local-reference.txt
+    speed: 1.00
+    pauseMs: 300
+    timing: tts
+background:
+  strategy: preset
+  subject: a calm studio desk with soft morning light
+bgm:
+  mode: "off"
+widgets: none
+seed: 19

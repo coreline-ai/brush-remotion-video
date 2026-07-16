@@ -131,6 +131,38 @@ def _freehand_angle(rng: np.random.Generator) -> float:
     return float(rng.uniform(math.radians(28), math.radians(152)))
 
 
+def _seal_remaining_components(mask: np.ndarray, raster: Image.Image,
+                               raster_draw: ImageDraw.ImageDraw, raw: list[dict]) -> int:
+    """자유 붓길 뒤 남은 미세 알파 섬을 작은 round-cap route로 정확히 마감한다.
+
+    첫 단계의 긴 대각/세로 붓길은 색상을 자연스럽게 드러내는 데 집중한다. 그 뒤
+    남는 것은 대개 anti-alias 가장자리의 몇 픽셀짜리 섬이므로, 이 단계는 각 연결
+    성분을 감싸는 매우 짧은 두 점 route만 추가한다. 완성 bitmap이나 수평 seal로
+    덮지 않아도 ``missingPixels == 0`` 계약을 유지할 수 있다.
+    """
+    missing = mask & ~np.asarray(raster, dtype=bool)
+    labels, count = ndimage.label(missing, structure=np.ones((3, 3), int))
+    for label in range(1, count + 1):
+        ys, xs = np.nonzero(labels == label)
+        if not len(xs):
+            continue
+        cx = float((xs.min() + xs.max()) / 2)
+        cy = float((ys.min() + ys.max()) / 2)
+        radius = float(np.hypot(xs - cx, ys - cy).max())
+        # 0 길이 SVG path는 dash reveal에서 브라우저별 차이가 있으므로, 짧지만
+        # 확실히 비영인 대각 segment를 쓴다. round cap 반경이 성분 전체를 덮는다.
+        delta = min(0.45, max(0.15, radius * 0.08))
+        route = {
+            "kind": "fill-touchup-seal",
+            "width": max(3.0, float(math.ceil(radius * 2 + 2))),
+            "points": [[cx - delta, cy - delta], [cx + delta, cy + delta]],
+            "zone": 0,
+        }
+        raw.append(route)
+        _draw_route(raster_draw, route)
+    return int(count)
+
+
 def generate_fill_routes(
     color_rgba_path: str | Path,
     *,
@@ -209,8 +241,16 @@ def generate_fill_routes(
                       max_length=brush_width * 3.3, width=brush_width * 1.06,
                       kind="fill-touchup")
 
-    if len(uncovered(mask)):
-        raise RuntimeError("자유 브러시 coverage 보강이 수렴하지 않았습니다")
+    # 긴 자유 붓길만으로 남는 anti-alias 가장자리 픽셀은 성분별 미세 round-cap으로
+    # 마감한다. 이 단계도 route reveal이며 최종 이미지를 강제로 덮는 우회가 아니다.
+    component_seal_count = _seal_remaining_components(mask, raster, raster_draw, raw)
+    remaining = len(uncovered(mask))
+    if remaining:
+        raise RuntimeError(
+            "자유 브러시 coverage 보강이 수렴하지 않았습니다 "
+            f"(targetPixels={target_pixels}, missingPixels={remaining}, "
+            f"componentSeals={component_seal_count}, seed={seed})"
+        )
 
     # 생성 순서대로 재생하면 한 존이 통째로 끝나 보인다. 전체 붓길을 seed로 섞어
     # 색이 화면 여러 곳에서 자유롭게 나타나도록 한다.
@@ -238,7 +278,8 @@ def generate_fill_routes(
                  "penInvisibleAfter": min(duration, draw_end + 6), "routeCount": len(strokes),
                  "coverage": coverage, "missingPixels": missing, "zoneCount": zone_count,
                  "profile": "pen-brush-paint", "seed": seed,
-                 "routeStyle": "seeded-freehand-swoosh"},
+                 "routeStyle": "seeded-freehand-swoosh",
+                 "componentSealCount": component_seal_count},
         "strokes": strokes,
     }
 

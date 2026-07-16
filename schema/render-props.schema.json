@@ -1,1213 +1,1710 @@
 {
-  "$ref": "#/definitions/RenderProps",
-  "definitions": {
-    "RenderProps": {
-      "type": "object",
-      "properties": {
-        "schemaVersion": {
-          "type": "number",
-          "const": 1
-        },
-        "projectId": {
-          "type": "string",
-          "minLength": 1
-        },
-        "title": {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "projectId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "title": {
+      "type": "string"
+    },
+    "format": {
+      "default": "youtube",
+      "type": "string",
+      "enum": [
+        "youtube",
+        "shorts"
+      ]
+    },
+    "audio": {
+      "default": null,
+      "anyOf": [
+        {
           "type": "string"
         },
-        "format": {
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "paper": {
+      "default": "#fbfaf6",
+      "type": "string"
+    },
+    "brush": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "default": "image",
           "type": "string",
           "enum": [
-            "youtube",
-            "shorts"
-          ],
-          "default": "youtube"
+            "image",
+            "pen"
+          ]
         },
-        "audio": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null
+        "src": {
+          "type": "string"
         },
-        "paper": {
-          "type": "string",
-          "default": "#fbfaf6"
+        "w": {
+          "type": "number",
+          "exclusiveMinimum": 0
         },
-        "brush": {
-          "type": "object",
-          "properties": {
-            "kind": {
-              "type": "string",
-              "enum": [
-                "image",
-                "pen"
-              ],
-              "default": "image"
-            },
-            "src": {
-              "type": "string"
-            },
-            "w": {
-              "type": "number",
-              "exclusiveMinimum": 0
-            },
-            "h": {
-              "type": "number",
-              "exclusiveMinimum": 0
-            },
-            "tipx": {
-              "type": "number"
-            },
-            "tipy": {
-              "type": "number"
-            },
-            "visible": {
-              "type": "boolean",
-              "default": true
-            },
-            "opacity": {
-              "type": "number",
-              "minimum": 0,
-              "maximum": 1,
-              "default": 1
-            }
+        "h": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "tipx": {
+          "type": "number"
+        },
+        "tipy": {
+          "type": "number"
+        },
+        "visible": {
+          "default": true,
+          "type": "boolean"
+        },
+        "opacity": {
+          "default": 1,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "scenes": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
           },
-          "additionalProperties": false
-        },
-        "scenes": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string",
-                "minLength": 1
-              },
-              "routes": {
-                "type": "string"
-              },
-              "drawingPhases": {
-                "type": "array",
-                "items": {
+          "routes": {
+            "type": "string"
+          },
+          "drawingPhases": {
+            "minItems": 2,
+            "maxItems": 2,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "outline",
+                    "paint"
+                  ]
+                },
+                "routes": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "cursor": {
                   "type": "object",
                   "properties": {
                     "kind": {
+                      "default": "image",
                       "type": "string",
                       "enum": [
-                        "outline",
-                        "paint"
+                        "image",
+                        "pen"
                       ]
                     },
-                    "routes": {
-                      "type": "string",
-                      "minLength": 1
+                    "src": {
+                      "type": "string"
                     },
-                    "cursor": {
-                      "$ref": "#/definitions/RenderProps/properties/brush"
+                    "w": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
                     },
-                    "zIndex": {
-                      "type": "integer",
-                      "default": 10
+                    "h": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
                     },
-                    "edgeFeather": {
+                    "tipx": {
+                      "type": "number"
+                    },
+                    "tipy": {
+                      "type": "number"
+                    },
+                    "visible": {
+                      "default": true,
+                      "type": "boolean"
+                    },
+                    "opacity": {
+                      "default": 1,
                       "type": "number",
                       "minimum": 0,
-                      "default": 0
-                    },
-                    "fadeOutFrom": {
-                      "type": "integer",
-                      "minimum": 0
-                    },
-                    "fadeOutTo": {
-                      "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/drawingPhases/items/properties/fadeOutFrom"
+                      "maximum": 1
                     }
-                  },
-                  "required": [
-                    "kind",
-                    "routes"
-                  ],
-                  "additionalProperties": false
+                  }
                 },
-                "minItems": 2,
-                "maxItems": 2
+                "zIndex": {
+                  "default": 10,
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "edgeFeather": {
+                  "default": 0,
+                  "type": "number",
+                  "minimum": 0
+                },
+                "fadeOutFrom": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "fadeOutTo": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
               },
-              "durationInFrames": {
-                "type": "integer",
+              "required": [
+                "kind",
+                "routes"
+              ]
+            }
+          },
+          "presentation": {
+            "type": "string",
+            "enum": [
+              "progressive-frame-sequence",
+              "storybook-full-bleed"
+            ]
+          },
+          "image": {
+            "type": "string",
+            "minLength": 1
+          },
+          "previousImage": {
+            "type": "string",
+            "minLength": 1
+          },
+          "durationInFrames": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "faint": {
+            "default": 0.6,
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "edgeFeather": {
+            "default": 0,
+            "type": "number",
+            "minimum": 0
+          },
+          "linearDraw": {
+            "default": false,
+            "type": "boolean"
+          },
+          "developFrames": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "completionMode": {
+            "default": "develop",
+            "type": "string",
+            "enum": [
+              "develop",
+              "masked-hold",
+              "integrated-develop"
+            ]
+          },
+          "colorSettleFrames": {
+            "default": 36,
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "previewOpacity": {
+            "default": 0,
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "prewashOpacity": {
+            "default": 0,
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "prewashFrames": {
+            "default": 0,
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "prewashHoldFrames": {
+            "default": 6,
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "prewashFadeOutFrames": {
+            "default": 0,
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "prewashBlur": {
+            "default": 12,
+            "type": "number",
+            "minimum": 0
+          },
+          "outroFadeFrames": {
+            "default": 0,
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "outroWashOpacity": {
+            "default": 0.88,
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "outroBlur": {
+            "default": 0,
+            "type": "number",
+            "minimum": 0
+          },
+          "brushDynamics": {
+            "type": "object",
+            "properties": {
+              "drawSpeedScale": {
+                "default": 1,
+                "type": "number",
                 "exclusiveMinimum": 0
               },
-              "faint": {
+              "touchScale": {
+                "default": 1,
                 "type": "number",
-                "minimum": 0,
-                "maximum": 1,
-                "default": 0.6
+                "exclusiveMinimum": 0
               },
-              "edgeFeather": {
+              "touchJitter": {
+                "default": 0,
                 "type": "number",
-                "minimum": 0,
-                "default": 0
+                "minimum": 0
               },
-              "linearDraw": {
-                "type": "boolean",
-                "default": false
+              "pathJitter": {
+                "default": 0,
+                "type": "number",
+                "minimum": 0
               },
-              "developFrames": {
-                "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/drawingPhases/items/properties/fadeOutFrom"
+              "randomizeOrder": {
+                "default": false,
+                "type": "boolean"
               },
-              "completionMode": {
+              "randomReverse": {
+                "default": false,
+                "type": "boolean"
+              },
+              "seed": {
+                "default": 1,
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            }
+          },
+          "cues": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "from": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "to": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "text",
+                "from",
+                "to"
+              ]
+            }
+          },
+          "captionsVisible": {
+            "default": true,
+            "type": "boolean"
+          },
+          "topTitle": {
+            "type": "object",
+            "properties": {
+              "kicker": {
+                "type": "string"
+              },
+              "lines": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "width": {
+                "type": "number"
+              },
+              "align": {
+                "default": "left",
                 "type": "string",
                 "enum": [
-                  "develop",
-                  "masked-hold",
-                  "integrated-develop"
-                ],
-                "default": "develop"
+                  "left",
+                  "center",
+                  "right"
+                ]
               },
-              "colorSettleFrames": {
-                "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/drawingPhases/items/properties/fadeOutFrom",
-                "default": 36
-              },
-              "previewOpacity": {
-                "type": "number",
+              "enterAt": {
+                "default": 0,
+                "type": "integer",
                 "minimum": 0,
-                "maximum": 1,
-                "default": 0
+                "maximum": 9007199254740991
               },
-              "prewashOpacity": {
-                "type": "number",
-                "minimum": 0,
-                "maximum": 1,
-                "default": 0
+              "accent": {
+                "type": "string"
               },
-              "prewashFrames": {
-                "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/drawingPhases/items/properties/fadeOutFrom",
-                "default": 0
+              "firstWordColor": {
+                "type": "string"
               },
-              "prewashHoldFrames": {
-                "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/drawingPhases/items/properties/fadeOutFrom",
-                "default": 6
+              "color": {
+                "type": "string"
               },
-              "prewashFadeOutFrames": {
-                "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/drawingPhases/items/properties/fadeOutFrom",
-                "default": 0
+              "fontSize": {
+                "type": "number"
               },
-              "prewashBlur": {
-                "type": "number",
-                "minimum": 0,
-                "default": 12
+              "kickerFontSize": {
+                "type": "number"
               },
-              "outroFadeFrames": {
-                "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/drawingPhases/items/properties/fadeOutFrom",
-                "default": 0
-              },
-              "outroWashOpacity": {
-                "type": "number",
-                "minimum": 0,
-                "maximum": 1,
-                "default": 0.88
-              },
-              "outroBlur": {
-                "type": "number",
-                "minimum": 0,
-                "default": 0
-              },
-              "brushDynamics": {
-                "type": "object",
-                "properties": {
-                  "drawSpeedScale": {
-                    "type": "number",
-                    "exclusiveMinimum": 0,
-                    "default": 1
-                  },
-                  "touchScale": {
-                    "type": "number",
-                    "exclusiveMinimum": 0,
-                    "default": 1
-                  },
-                  "touchJitter": {
-                    "type": "number",
-                    "minimum": 0,
-                    "default": 0
-                  },
-                  "pathJitter": {
-                    "type": "number",
-                    "minimum": 0,
-                    "default": 0
-                  },
-                  "randomizeOrder": {
-                    "type": "boolean",
-                    "default": false
-                  },
-                  "randomReverse": {
-                    "type": "boolean",
-                    "default": false
-                  },
-                  "seed": {
-                    "type": "integer",
-                    "default": 1
-                  }
-                },
-                "additionalProperties": false
-              },
-              "cues": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "text": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "from": {
-                      "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/drawingPhases/items/properties/fadeOutFrom"
-                    },
-                    "to": {
-                      "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/drawingPhases/items/properties/fadeOutFrom"
-                    }
-                  },
-                  "required": [
-                    "text",
-                    "from",
-                    "to"
-                  ],
-                  "additionalProperties": false
-                },
-                "default": []
-              },
-              "topTitle": {
-                "type": "object",
-                "properties": {
-                  "kicker": {
-                    "type": "string"
-                  },
-                  "lines": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "minItems": 1
-                  },
-                  "x": {
-                    "type": "number"
-                  },
-                  "y": {
-                    "type": "number"
-                  },
-                  "width": {
-                    "type": "number"
-                  },
-                  "align": {
-                    "type": "string",
-                    "enum": [
-                      "left",
-                      "center",
-                      "right"
-                    ],
-                    "default": "left"
-                  },
-                  "enterAt": {
-                    "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/drawingPhases/items/properties/fadeOutFrom",
-                    "default": 0
-                  },
-                  "accent": {
-                    "type": "string"
-                  },
-                  "firstWordColor": {
-                    "type": "string"
-                  },
-                  "color": {
-                    "type": "string"
-                  },
-                  "fontSize": {
-                    "type": "number"
-                  },
-                  "kickerFontSize": {
-                    "type": "number"
-                  },
-                  "wash": {
-                    "type": "boolean",
-                    "default": false
-                  }
-                },
-                "required": [
-                  "lines"
-                ],
-                "additionalProperties": false
-              },
-              "subtitleStyle": {
-                "type": "object",
-                "properties": {
-                  "bottom": {
-                    "type": "number"
-                  },
-                  "fontSize": {
-                    "type": "number"
-                  },
-                  "maxWidth": {
-                    "type": "number"
-                  },
-                  "paddingX": {
-                    "type": "number"
-                  },
-                  "paddingY": {
-                    "type": "number"
-                  },
-                  "color": {
-                    "type": "string"
-                  },
-                  "highlightColor": {
-                    "type": "string"
-                  },
-                  "background": {
-                    "type": "string"
-                  },
-                  "border": {
-                    "type": "string"
-                  }
-                },
-                "additionalProperties": false
-              },
-              "naturalEffects": {
-                "type": "object",
-                "properties": {
-                  "kind": {
-                    "type": "string",
-                    "enum": [
-                      "mist",
-                      "forestDust",
-                      "streamSparkle",
-                      "meadowWind",
-                      "sunsetGlow",
-                      "starTwinkle"
-                    ]
-                  },
-                  "opacity": {
-                    "type": "number",
-                    "minimum": 0,
-                    "maximum": 1,
-                    "default": 0.05
-                  },
-                  "parallaxScale": {
-                    "type": "number",
-                    "default": 1
-                  },
-                  "seed": {
-                    "type": "integer",
-                    "default": 1
-                  },
-                  "endFadeOpacity": {
-                    "type": "number",
-                    "minimum": 0,
-                    "maximum": 1
-                  }
-                },
-                "required": [
-                  "kind"
-                ],
-                "additionalProperties": false
-              },
-              "widgets": {
-                "type": "array",
-                "items": {
-                  "anyOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "const": "stat"
-                        },
-                        "x": {
-                          "type": "number"
-                        },
-                        "y": {
-                          "type": "number"
-                        },
-                        "w": {
-                          "type": "number",
-                          "exclusiveMinimum": 0
-                        },
-                        "h": {
-                          "type": "number",
-                          "exclusiveMinimum": 0
-                        },
-                        "enterAt": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/drawingPhases/items/properties/fadeOutFrom",
-                          "default": 0
-                        },
-                        "title": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "kicker": {
-                          "type": "string"
-                        },
-                        "caption": {
-                          "type": "string"
-                        },
-                        "accent": {
-                          "type": "string"
-                        },
-                        "value": {
-                          "type": [
-                            "string",
-                            "number"
-                          ]
-                        },
-                        "sub": {
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "type",
-                        "x",
-                        "y",
-                        "w",
-                        "h",
-                        "title",
-                        "value"
-                      ],
-                      "additionalProperties": false
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "const": "text"
-                        },
-                        "x": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/x"
-                        },
-                        "y": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/y"
-                        },
-                        "w": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/w"
-                        },
-                        "h": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/h"
-                        },
-                        "enterAt": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/enterAt"
-                        },
-                        "title": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/title"
-                        },
-                        "kicker": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/kicker"
-                        },
-                        "caption": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/caption"
-                        },
-                        "accent": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/accent"
-                        },
-                        "lines": {
-                          "type": "array",
-                          "items": {
-                            "type": "string",
-                            "minLength": 1
-                          },
-                          "minItems": 1
-                        }
-                      },
-                      "required": [
-                        "type",
-                        "x",
-                        "y",
-                        "w",
-                        "h",
-                        "title",
-                        "lines"
-                      ],
-                      "additionalProperties": false
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "const": "donut"
-                        },
-                        "x": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/x"
-                        },
-                        "y": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/y"
-                        },
-                        "w": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/w"
-                        },
-                        "h": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/h"
-                        },
-                        "enterAt": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/enterAt"
-                        },
-                        "title": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/title"
-                        },
-                        "kicker": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/kicker"
-                        },
-                        "caption": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/caption"
-                        },
-                        "accent": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/accent"
-                        },
-                        "pct": {
-                          "type": "number",
-                          "minimum": 0,
-                          "maximum": 100
-                        }
-                      },
-                      "required": [
-                        "type",
-                        "x",
-                        "y",
-                        "w",
-                        "h",
-                        "title",
-                        "pct"
-                      ],
-                      "additionalProperties": false
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "const": "bars"
-                        },
-                        "x": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/x"
-                        },
-                        "y": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/y"
-                        },
-                        "w": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/w"
-                        },
-                        "h": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/h"
-                        },
-                        "enterAt": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/enterAt"
-                        },
-                        "title": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/title"
-                        },
-                        "kicker": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/kicker"
-                        },
-                        "caption": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/caption"
-                        },
-                        "accent": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/accent"
-                        },
-                        "values": {
-                          "type": "array",
-                          "items": {
-                            "type": "number",
-                            "minimum": 0
-                          },
-                          "minItems": 1
-                        }
-                      },
-                      "required": [
-                        "type",
-                        "x",
-                        "y",
-                        "w",
-                        "h",
-                        "title",
-                        "values"
-                      ],
-                      "additionalProperties": false
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "const": "FlowDiagram"
-                        },
-                        "x": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/x"
-                        },
-                        "y": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/y"
-                        },
-                        "w": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/w"
-                        },
-                        "h": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/h"
-                        },
-                        "enterAt": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/enterAt"
-                        },
-                        "title": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/title"
-                        },
-                        "kicker": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/kicker"
-                        },
-                        "caption": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/caption"
-                        },
-                        "accent": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/accent"
-                        },
-                        "items": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "label": {
-                                "type": "string"
-                              },
-                              "detail": {
-                                "type": "string"
-                              },
-                              "value": {
-                                "type": [
-                                  "string",
-                                  "number"
-                                ]
-                              },
-                              "tone": {
-                                "type": "string",
-                                "enum": [
-                                  "ok",
-                                  "warn",
-                                  "danger"
-                                ]
-                              }
-                            },
-                            "required": [
-                              "label"
-                            ],
-                            "additionalProperties": false
-                          },
-                          "default": []
-                        }
-                      },
-                      "required": [
-                        "type",
-                        "x",
-                        "y",
-                        "w",
-                        "h",
-                        "title"
-                      ],
-                      "additionalProperties": false
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "const": "TimelineStepper"
-                        },
-                        "x": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/x"
-                        },
-                        "y": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/y"
-                        },
-                        "w": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/w"
-                        },
-                        "h": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/h"
-                        },
-                        "enterAt": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/enterAt"
-                        },
-                        "title": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/title"
-                        },
-                        "kicker": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/kicker"
-                        },
-                        "caption": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/caption"
-                        },
-                        "accent": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/accent"
-                        },
-                        "items": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/4/properties/items"
-                        }
-                      },
-                      "required": [
-                        "type",
-                        "x",
-                        "y",
-                        "w",
-                        "h",
-                        "title"
-                      ],
-                      "additionalProperties": false
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "const": "DataTable"
-                        },
-                        "x": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/x"
-                        },
-                        "y": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/y"
-                        },
-                        "w": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/w"
-                        },
-                        "h": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/h"
-                        },
-                        "enterAt": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/enterAt"
-                        },
-                        "title": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/title"
-                        },
-                        "kicker": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/kicker"
-                        },
-                        "caption": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/caption"
-                        },
-                        "accent": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/accent"
-                        },
-                        "items": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/4/properties/items"
-                        }
-                      },
-                      "required": [
-                        "type",
-                        "x",
-                        "y",
-                        "w",
-                        "h",
-                        "title"
-                      ],
-                      "additionalProperties": false
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "const": "ProcessStepCard"
-                        },
-                        "x": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/x"
-                        },
-                        "y": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/y"
-                        },
-                        "w": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/w"
-                        },
-                        "h": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/h"
-                        },
-                        "enterAt": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/enterAt"
-                        },
-                        "title": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/title"
-                        },
-                        "kicker": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/kicker"
-                        },
-                        "caption": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/caption"
-                        },
-                        "accent": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/accent"
-                        },
-                        "items": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/4/properties/items"
-                        }
-                      },
-                      "required": [
-                        "type",
-                        "x",
-                        "y",
-                        "w",
-                        "h",
-                        "title"
-                      ],
-                      "additionalProperties": false
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "const": "WarningCard"
-                        },
-                        "x": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/x"
-                        },
-                        "y": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/y"
-                        },
-                        "w": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/w"
-                        },
-                        "h": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/h"
-                        },
-                        "enterAt": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/enterAt"
-                        },
-                        "title": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/title"
-                        },
-                        "kicker": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/kicker"
-                        },
-                        "caption": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/caption"
-                        },
-                        "accent": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/accent"
-                        },
-                        "items": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/4/properties/items"
-                        }
-                      },
-                      "required": [
-                        "type",
-                        "x",
-                        "y",
-                        "w",
-                        "h",
-                        "title"
-                      ],
-                      "additionalProperties": false
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "const": "PersonAvatar"
-                        },
-                        "x": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/x"
-                        },
-                        "y": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/y"
-                        },
-                        "w": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/w"
-                        },
-                        "h": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/h"
-                        },
-                        "enterAt": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/enterAt"
-                        },
-                        "title": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/title"
-                        },
-                        "kicker": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/kicker"
-                        },
-                        "caption": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/caption"
-                        },
-                        "accent": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/accent"
-                        },
-                        "items": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/4/properties/items"
-                        }
-                      },
-                      "required": [
-                        "type",
-                        "x",
-                        "y",
-                        "w",
-                        "h",
-                        "title"
-                      ],
-                      "additionalProperties": false
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "const": "ChatBubble"
-                        },
-                        "x": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/x"
-                        },
-                        "y": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/y"
-                        },
-                        "w": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/w"
-                        },
-                        "h": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/h"
-                        },
-                        "enterAt": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/enterAt"
-                        },
-                        "title": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/title"
-                        },
-                        "kicker": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/kicker"
-                        },
-                        "caption": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/caption"
-                        },
-                        "accent": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/accent"
-                        },
-                        "items": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/4/properties/items"
-                        }
-                      },
-                      "required": [
-                        "type",
-                        "x",
-                        "y",
-                        "w",
-                        "h",
-                        "title"
-                      ],
-                      "additionalProperties": false
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "const": "CompareBars"
-                        },
-                        "x": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/x"
-                        },
-                        "y": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/y"
-                        },
-                        "w": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/w"
-                        },
-                        "h": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/h"
-                        },
-                        "enterAt": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/enterAt"
-                        },
-                        "title": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/title"
-                        },
-                        "kicker": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/kicker"
-                        },
-                        "caption": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/caption"
-                        },
-                        "accent": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/accent"
-                        },
-                        "items": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/4/properties/items"
-                        }
-                      },
-                      "required": [
-                        "type",
-                        "x",
-                        "y",
-                        "w",
-                        "h",
-                        "title"
-                      ],
-                      "additionalProperties": false
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "const": "BulletList"
-                        },
-                        "x": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/x"
-                        },
-                        "y": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/y"
-                        },
-                        "w": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/w"
-                        },
-                        "h": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/h"
-                        },
-                        "enterAt": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/enterAt"
-                        },
-                        "title": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/title"
-                        },
-                        "kicker": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/kicker"
-                        },
-                        "caption": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/caption"
-                        },
-                        "accent": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/accent"
-                        },
-                        "items": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/4/properties/items"
-                        }
-                      },
-                      "required": [
-                        "type",
-                        "x",
-                        "y",
-                        "w",
-                        "h",
-                        "title"
-                      ],
-                      "additionalProperties": false
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "const": "QuoteText"
-                        },
-                        "x": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/x"
-                        },
-                        "y": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/y"
-                        },
-                        "w": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/w"
-                        },
-                        "h": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/h"
-                        },
-                        "enterAt": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/enterAt"
-                        },
-                        "title": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/title"
-                        },
-                        "kicker": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/kicker"
-                        },
-                        "caption": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/caption"
-                        },
-                        "accent": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/accent"
-                        },
-                        "items": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/4/properties/items"
-                        }
-                      },
-                      "required": [
-                        "type",
-                        "x",
-                        "y",
-                        "w",
-                        "h",
-                        "title"
-                      ],
-                      "additionalProperties": false
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "const": "Headline"
-                        },
-                        "x": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/x"
-                        },
-                        "y": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/y"
-                        },
-                        "w": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/w"
-                        },
-                        "h": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/h"
-                        },
-                        "enterAt": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/enterAt"
-                        },
-                        "title": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/title"
-                        },
-                        "kicker": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/kicker"
-                        },
-                        "caption": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/caption"
-                        },
-                        "accent": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/0/properties/accent"
-                        },
-                        "items": {
-                          "$ref": "#/definitions/RenderProps/properties/scenes/items/properties/widgets/items/anyOf/4/properties/items"
-                        }
-                      },
-                      "required": [
-                        "type",
-                        "x",
-                        "y",
-                        "w",
-                        "h",
-                        "title"
-                      ],
-                      "additionalProperties": false
-                    }
-                  ]
-                },
-                "default": []
+              "wash": {
+                "default": false,
+                "type": "boolean"
               }
             },
             "required": [
-              "id",
-              "durationInFrames"
-            ],
-            "additionalProperties": false
+              "lines"
+            ]
           },
-          "minItems": 1
-        }
-      },
-      "required": [
-        "schemaVersion",
-        "projectId",
-        "scenes"
-      ],
-      "additionalProperties": false
+          "subtitleStyle": {
+            "type": "object",
+            "properties": {
+              "bottom": {
+                "type": "number"
+              },
+              "fontSize": {
+                "type": "number"
+              },
+              "maxWidth": {
+                "type": "number"
+              },
+              "paddingX": {
+                "type": "number"
+              },
+              "paddingY": {
+                "type": "number"
+              },
+              "color": {
+                "type": "string"
+              },
+              "highlightColor": {
+                "type": "string"
+              },
+              "background": {
+                "type": "string"
+              },
+              "border": {
+                "type": "string"
+              }
+            }
+          },
+          "naturalEffects": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "mist",
+                  "forestDust",
+                  "streamSparkle",
+                  "meadowWind",
+                  "sunsetGlow",
+                  "starTwinkle"
+                ]
+              },
+              "opacity": {
+                "default": 0.05,
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "parallaxScale": {
+                "default": 1,
+                "type": "number"
+              },
+              "seed": {
+                "default": 1,
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "endFadeOpacity": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "widgets": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "stat"
+                    },
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    },
+                    "w": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "h": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "enterAt": {
+                      "default": 0,
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "kicker": {
+                      "type": "string"
+                    },
+                    "caption": {
+                      "type": "string"
+                    },
+                    "accent": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        }
+                      ]
+                    },
+                    "sub": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "x",
+                    "y",
+                    "w",
+                    "h",
+                    "title",
+                    "value"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "text"
+                    },
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    },
+                    "w": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "h": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "enterAt": {
+                      "default": 0,
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "kicker": {
+                      "type": "string"
+                    },
+                    "caption": {
+                      "type": "string"
+                    },
+                    "accent": {
+                      "type": "string"
+                    },
+                    "lines": {
+                      "minItems": 1,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "x",
+                    "y",
+                    "w",
+                    "h",
+                    "title",
+                    "lines"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "donut"
+                    },
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    },
+                    "w": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "h": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "enterAt": {
+                      "default": 0,
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "kicker": {
+                      "type": "string"
+                    },
+                    "caption": {
+                      "type": "string"
+                    },
+                    "accent": {
+                      "type": "string"
+                    },
+                    "pct": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "x",
+                    "y",
+                    "w",
+                    "h",
+                    "title",
+                    "pct"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "bars"
+                    },
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    },
+                    "w": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "h": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "enterAt": {
+                      "default": 0,
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "kicker": {
+                      "type": "string"
+                    },
+                    "caption": {
+                      "type": "string"
+                    },
+                    "accent": {
+                      "type": "string"
+                    },
+                    "values": {
+                      "minItems": 1,
+                      "type": "array",
+                      "items": {
+                        "type": "number",
+                        "minimum": 0
+                      }
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "x",
+                    "y",
+                    "w",
+                    "h",
+                    "title",
+                    "values"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "FlowDiagram"
+                    },
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    },
+                    "w": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "h": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "enterAt": {
+                      "default": 0,
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "kicker": {
+                      "type": "string"
+                    },
+                    "caption": {
+                      "type": "string"
+                    },
+                    "accent": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "default": [],
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string"
+                          },
+                          "detail": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              }
+                            ]
+                          },
+                          "tone": {
+                            "type": "string",
+                            "enum": [
+                              "ok",
+                              "warn",
+                              "danger"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "label"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "x",
+                    "y",
+                    "w",
+                    "h",
+                    "title"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "TimelineStepper"
+                    },
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    },
+                    "w": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "h": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "enterAt": {
+                      "default": 0,
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "kicker": {
+                      "type": "string"
+                    },
+                    "caption": {
+                      "type": "string"
+                    },
+                    "accent": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "default": [],
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string"
+                          },
+                          "detail": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              }
+                            ]
+                          },
+                          "tone": {
+                            "type": "string",
+                            "enum": [
+                              "ok",
+                              "warn",
+                              "danger"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "label"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "x",
+                    "y",
+                    "w",
+                    "h",
+                    "title"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "DataTable"
+                    },
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    },
+                    "w": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "h": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "enterAt": {
+                      "default": 0,
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "kicker": {
+                      "type": "string"
+                    },
+                    "caption": {
+                      "type": "string"
+                    },
+                    "accent": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "default": [],
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string"
+                          },
+                          "detail": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              }
+                            ]
+                          },
+                          "tone": {
+                            "type": "string",
+                            "enum": [
+                              "ok",
+                              "warn",
+                              "danger"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "label"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "x",
+                    "y",
+                    "w",
+                    "h",
+                    "title"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "ProcessStepCard"
+                    },
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    },
+                    "w": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "h": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "enterAt": {
+                      "default": 0,
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "kicker": {
+                      "type": "string"
+                    },
+                    "caption": {
+                      "type": "string"
+                    },
+                    "accent": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "default": [],
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string"
+                          },
+                          "detail": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              }
+                            ]
+                          },
+                          "tone": {
+                            "type": "string",
+                            "enum": [
+                              "ok",
+                              "warn",
+                              "danger"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "label"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "x",
+                    "y",
+                    "w",
+                    "h",
+                    "title"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "WarningCard"
+                    },
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    },
+                    "w": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "h": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "enterAt": {
+                      "default": 0,
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "kicker": {
+                      "type": "string"
+                    },
+                    "caption": {
+                      "type": "string"
+                    },
+                    "accent": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "default": [],
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string"
+                          },
+                          "detail": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              }
+                            ]
+                          },
+                          "tone": {
+                            "type": "string",
+                            "enum": [
+                              "ok",
+                              "warn",
+                              "danger"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "label"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "x",
+                    "y",
+                    "w",
+                    "h",
+                    "title"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "PersonAvatar"
+                    },
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    },
+                    "w": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "h": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "enterAt": {
+                      "default": 0,
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "kicker": {
+                      "type": "string"
+                    },
+                    "caption": {
+                      "type": "string"
+                    },
+                    "accent": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "default": [],
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string"
+                          },
+                          "detail": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              }
+                            ]
+                          },
+                          "tone": {
+                            "type": "string",
+                            "enum": [
+                              "ok",
+                              "warn",
+                              "danger"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "label"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "x",
+                    "y",
+                    "w",
+                    "h",
+                    "title"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "ChatBubble"
+                    },
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    },
+                    "w": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "h": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "enterAt": {
+                      "default": 0,
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "kicker": {
+                      "type": "string"
+                    },
+                    "caption": {
+                      "type": "string"
+                    },
+                    "accent": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "default": [],
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string"
+                          },
+                          "detail": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              }
+                            ]
+                          },
+                          "tone": {
+                            "type": "string",
+                            "enum": [
+                              "ok",
+                              "warn",
+                              "danger"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "label"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "x",
+                    "y",
+                    "w",
+                    "h",
+                    "title"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "CompareBars"
+                    },
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    },
+                    "w": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "h": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "enterAt": {
+                      "default": 0,
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "kicker": {
+                      "type": "string"
+                    },
+                    "caption": {
+                      "type": "string"
+                    },
+                    "accent": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "default": [],
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string"
+                          },
+                          "detail": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              }
+                            ]
+                          },
+                          "tone": {
+                            "type": "string",
+                            "enum": [
+                              "ok",
+                              "warn",
+                              "danger"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "label"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "x",
+                    "y",
+                    "w",
+                    "h",
+                    "title"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "BulletList"
+                    },
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    },
+                    "w": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "h": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "enterAt": {
+                      "default": 0,
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "kicker": {
+                      "type": "string"
+                    },
+                    "caption": {
+                      "type": "string"
+                    },
+                    "accent": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "default": [],
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string"
+                          },
+                          "detail": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              }
+                            ]
+                          },
+                          "tone": {
+                            "type": "string",
+                            "enum": [
+                              "ok",
+                              "warn",
+                              "danger"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "label"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "x",
+                    "y",
+                    "w",
+                    "h",
+                    "title"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "QuoteText"
+                    },
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    },
+                    "w": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "h": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "enterAt": {
+                      "default": 0,
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "kicker": {
+                      "type": "string"
+                    },
+                    "caption": {
+                      "type": "string"
+                    },
+                    "accent": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "default": [],
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string"
+                          },
+                          "detail": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              }
+                            ]
+                          },
+                          "tone": {
+                            "type": "string",
+                            "enum": [
+                              "ok",
+                              "warn",
+                              "danger"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "label"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "x",
+                    "y",
+                    "w",
+                    "h",
+                    "title"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "Headline"
+                    },
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    },
+                    "w": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "h": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "enterAt": {
+                      "default": 0,
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "kicker": {
+                      "type": "string"
+                    },
+                    "caption": {
+                      "type": "string"
+                    },
+                    "accent": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "default": [],
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string"
+                          },
+                          "detail": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              }
+                            ]
+                          },
+                          "tone": {
+                            "type": "string",
+                            "enum": [
+                              "ok",
+                              "warn",
+                              "danger"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "label"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "x",
+                    "y",
+                    "w",
+                    "h",
+                    "title"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "durationInFrames"
+        ]
+      }
     }
   },
-  "$schema": "http://json-schema.org/draft-07/schema#"
+  "required": [
+    "schemaVersion",
+    "projectId",
+    "scenes"
+  ]
 }

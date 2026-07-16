@@ -2,7 +2,7 @@
 name: storybook-full-touch-video
 description: >-
   동화 주제·대본·SRT와 캐릭터 레퍼런스로부터 장면별 풀터칭 그림, 펜 외곽선→브러시 채색 애니메이션,
-  Supertonic 내레이션, 자막, BGM, 자동 QA가 포함된 가로 또는 세로 동화 영상을 제작하는 스킬.
+  로컬 TTS 내레이션, 자막, BGM, 자동 QA가 포함된 가로 또는 세로 동화 영상을 제작하는 스킬. 기본 voice preset은 Supertonic이며 다른 엔진은 공통 카탈로그를 따른다.
   "동화 영상", "그림책 쇼츠", "10씬 100초", "풀터칭 이미지", "펜으로 그리고 채색",
   "젊고 밝은 여성 동화 낭독" 요청과 기존 동화 영상을 같은 형식으로 확장·재제작할 때 사용한다.
 ---
@@ -120,6 +120,7 @@ pipeline/.venv/bin/python bin/build.py \
 
 - 이미지 생성·정규화·캐릭터 일관성: [full-touch-image-contract.md](references/full-touch-image-contract.md)
 - 시나리오·SRT·Supertonic 고정 타이밍: [story-srt-tts-contract.md](references/story-srt-tts-contract.md)
-- 10종 음색·청취·공개 고지: [Supertonic 음성 카탈로그](../_shared/references/supertonic-voice-catalog.md)
+- 엔진 선택·설치·reference·공개 고지: [TTS 엔진 카탈로그](../_shared/references/tts-engine-catalog.md)
+- Supertonic 10종 음색·청취: [Supertonic 음성 카탈로그](../_shared/references/supertonic-voice-catalog.md)
 - 스테이지·전환·수치 QA·실패 복구: [build-and-qa.md](references/build-and-qa.md)
 - 검증된 100초 예제와 기준 수치: [validated-example.md](references/validated-example.md)

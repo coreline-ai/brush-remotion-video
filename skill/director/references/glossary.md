@@ -51,7 +51,7 @@
 | Ambience (환경음) | 빗소리·장작·시냇물 등 공간 백색소음 | **확장 후보 — v1 미구현.** 요청 시 "합성 BGM 대체 + 추후 확장" 안내 | 구 시스템에만 존재 |
 | Cross-Fade (크로스페이드) | 볼륨 곡선을 겹쳐 소리를 부드럽게 전환 | `bgm.mode: playlist`, `playlist.crossfadeSec` | 로컬 등록 음원 2~3곡 |
 | Ducking (덕킹) | 음성이 나올 때 BGM을 자동 감쇄 | `bgm.ducking{amountDb,attackMs,releaseMs}` | 내레이션 BGM 기본 활성 |
-| TTS Narration (합성 더빙) | 자막/대본 텍스트를 Supertonic으로 문장별 합성 — 음성 길이가 타이밍의 시계 | `input.tts{voice: female-01~10, speed, pauseMs}`; F1~F5/M1~M5 호환 | RTF 0.24, AI 생성 고지·voice manifest 필수 |
+| TTS Narration (합성 더빙) | 자막/대본 텍스트를 선택한 로컬 TTS 엔진으로 문장별 합성 — 음성 길이가 타이밍의 시계 | `input.tts{engine, voice, speed, pauseMs}`; Supertonic F1~F5/M1~M5 호환 | 엔진별 AI 생성 고지·voice manifest 필수 |
 | STT (전사) | 더빙 음성 → whisper(small·ko) → SRT | `input.audio`만 제공 시 자동 | — |
 
 ## 4. 파이프라인 · 개발

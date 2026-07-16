@@ -247,3 +247,26 @@
 - **clean snapshot**: 스테이징 index를 별도 Git 트리로 export해 `PUBLIC TREE PASS voices=10 projects=24 localOnly=5 markdown=76/223`, 예제 preflight `pass=19 localOnly=5 unexpectedFail=0`을 확인했다. 로컬 ignored 파일이 깨진 링크를 가리지 못하도록 tracked tree 기준으로 검사한다.
 - **회귀**: public-tree·voice 10/10·skill catalog 9/9·camera catalog 37/9/96/12·schema sync·skill quick validate 9/9·typecheck·Vitest 50/50·Pytest 312/312·`git diff --check` PASS. BGM은 자산 14/14·E2E 4/4 PASS이지만 `listening-approval.json` 미작성으로 사람 청취 승인을 의도적으로 false로 유지했다.
 - **보존**: 동시 제작 중인 untracked `assets/storybook/*-v1/` 4개는 수정·스테이징·삭제하지 않았다.
+
+## 2026-07-16 · 공통 TTS 엔진 편입 — Melo/Qwen 계약·worker·manifest
+
+- **기준**: `/Volumes/ExternalSSD/projects_7/tts-bench`는 `3958224dd6920de6f66abae878ec7e4d935e99c5`에서 clean이었다. Melo `0.1.2`, Qwen `0.1.1`, Python `3.11.15`와 Melo/Qwen pinned model revision을 대상 계약에 기록했다.
+- **발견**: 외부 Melo venv는 `mecab-python3`가 없어 import가 실패했고, 대상 macOS 환경에서는 대소문자 package 충돌로 `mecab` 호환 shim이 필요했다. 외부 venv는 수정하지 않고 대상 선택 의존성에 `mecab-python3==1.0.9`, `python-mecab-ko-dic`, `g2pkk`, `unidic`, `fugashi`를 pin했다.
+- **수정**: `AudioResult`·registry·공통 44.1kHz mono 정규화·engine manifest v2·cache signature를 추가하고, Supertonic manifest v1 회귀를 유지했다. Melo는 `KR` speaker 불일치를 hard fail하며, Qwen은 controlled reference copy·prompt 1회 재사용·JSONL worker·300/600/5초 timeout·절대 output/fallback 금지를 적용했다.
+- **운영 경계**: `scripts/tts-doctor.py --check`는 network를 사용하지 않고, `--prepare`만 패키지와 pinned snapshot을 준비한다. Qwen은 `BRUSHVID_QWEN_PYTHON`으로 별도 venv를 선택할 수 있다. 개인 reference WAV/TXT는 저장소에 추가하지 않는다.
+- **검증**: TTS·project·build·audit 집중 회귀 `166 passed`, 전체 Python 회귀 `367 passed`, `pip check` PASS, 실제 Melo 2문장 smoke가 `KR`/44.1kHz/mono/실제 duration으로 통과했다. 실제 Qwen worker와 오케스트레이터 smoke도 24kHz native→44.1kHz mono/SRT 정합으로 통과했다.
+- **전체 E2E**: Melo `examples/tts-melo/project.yaml --from stt --audit`와 Qwen `examples/tts-qwen/project.yaml --from stt --audit`가 각각 실제 합성·SRT·렌더·mux·QA까지 완료되어 `PASS (FAIL 0 / WARN 0)`을 기록했다. TTS WAV는 Melo 44.1kHz mono/9.548662초, Qwen 44.1kHz mono/11.100000초이며 최종 MP4는 각각 10.533초·12.100초, 48kHz stereo다.
+- **10초 acceptance**: `tts-bench` variants의 raw duration은 Melo 11.585828/12.665556초, Qwen 8.960000/12.320000초였고, `_10s` 보정본은 각각 9.982902/9.980907초, 9.964833/9.985292초였다. 8개 모두 mono·clipping 없음으로 확인했으며 WAV는 저장소에 복사하지 않았다.
+- **이슈**: 예제 BGM 값 `off`를 YAML bare scalar로 두면 `False`가 되어 검증에 실패하므로 예제·문서에서 `"off"`로 고쳤다. Melo audit report의 불필요한 reference 출력도 Qwen 전용으로 제한했다. pipeline venv의 Supertonic 미설치는 외부 pinned runner 비교로 보완했으며, pipeline venv 자체 설치는 환경 보존을 위해 수행하지 않았다.
+- **최종 자동 검증**: 전체 Pytest `373 passed`, TTS contract `31 passed`, build/audit 집중 `67 passed`, Vitest `55 passed`, `npm run typecheck`, schema sync, skill catalog, `pip check`, `git diff --check`, 임시 index 기반 public tree `PASS voices=10 projects=26 localOnly=6 markdown=84/249`.
+- **3-way 비교**: 동일 대본·pause 300ms·speed 1.0에서 `tts-bench` Supertonic F1 external runner는 44.1kHz/9.564762초, 대상 Melo는 44.1kHz→44.1kHz/9.525442초, 대상 Qwen은 24kHz→44.1kHz/7.820000초였다. SRT 마지막 timestamp 정합을 확인했고, manifest 차이는 Supertonic v1 대 Melo/Qwen v2로 기록했다.
+- **환경 차단**: 잘못된 Qwen Python 경로는 `DEPENDENCY_MISSING`, local-only snapshot 누락은 `MODEL_MISSING`, model loader 메모리 부족은 `OOM`으로 종료됐고, Qwen local reference를 제거한 예제 build는 `reference.audio regular file 없음`으로 중단됐다. 모두 다른 음성이나 bundled reference fallback은 발생하지 않았다.
+- **worker lifecycle**: idle cancel command의 `CANCELLED` JSON 응답, 생성 중 cancel의 SIGTERM→5초 grace→SIGKILL, Qwen controlled workspace 삭제, 실제 selector 기반 bounded generation timeout을 contract test로 확인했다.
+- **장문 timeout**: 실제 Qwen 1.7B CPU worker에 긴 prompt 120회 반복을 주고 generation timeout을 0.5초로 주입했다. 모델 startup 포함 약 17.966초에 `GENERATION_TIMEOUT`으로 종료됐고, `/tmp/brushvid-qwen-long-timeout`의 controlled child는 0개였다. bundled reference·다른 voice fallback은 없었다.
+- **승인**: 상태를 `PENDING_USER_LISTENING`으로 기록했다. 실제 음성 품질의 사용자 청취 승인 기록은 아직 작성하지 않았으며, 검토 대상은 `output/tts-melo-demo.mp4`와 `output/tts-qwen-demo.mp4`다.
+
+## 2026-07-16 · TTS 사용자 청취 승인
+- **발견**: Melo/Qwen 실제 음성 품질은 자동 테스트만으로 최종 판정할 수 있어 사용자 청취 승인이 필요했다.
+- **원인**: 자동 build·audit PASS와 사람의 음성 품질 판단은 서로 다른 검증 계층이다.
+- **수정**: 사용자가 `output/tts-melo-demo.mp4`와 `output/tts-qwen-demo.mp4`를 직접 청취하고 두 결과를 모두 `PASS`로 승인했다. 문제 구간 timestamp와 추가 수정 메모는 없었다.
+- **환류** ★필수: 승인 상태와 두 영상의 SHA-256을 `data/tts-listening-approval.json`에 기록하고, `dev-plan/implement_20260716_092633.md`의 Phase 5 및 청취 승인 체크박스를 완료 처리했다.

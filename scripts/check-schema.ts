@@ -2,11 +2,11 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { zodToJsonSchema } from "zod-to-json-schema";
+import { toJSONSchema } from "zod";
 import { RenderPropsSchema } from "../src/schema";
 
 const outFile = join(dirname(fileURLToPath(import.meta.url)), "..", "schema", "render-props.schema.json");
-const expected = JSON.stringify(zodToJsonSchema(RenderPropsSchema, "RenderProps"), null, 2) + "\n";
+const expected = JSON.stringify(toJSONSchema(RenderPropsSchema, { io: "input" }), null, 2) + "\n";
 const actual = readFileSync(outFile, "utf8");
 if (actual !== expected) {
   throw new Error("render-props.schema.json 드리프트 — `npm run export-schema`를 실행하세요.");

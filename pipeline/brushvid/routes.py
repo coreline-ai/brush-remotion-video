@@ -246,6 +246,32 @@ def _seal_bands(missing: np.ndarray, step: int, seal_width: float, axis: str) ->
     return out
 
 
+def _seal_residual_components(missing: np.ndarray, up: float) -> list[_Route]:
+    """마지막 미세 잉크 성분을 round-cap route로 마감한다.
+
+    가로·세로 seal band는 긴 잉크를 효율적으로 덮지만, 분석 해상도에서 1~2px로
+    남은 anti-alias 성분은 band step 사이에 놓일 수 있다. 이 보강은 그런 성분만
+    각각 감싸며 원본 이미지를 덮거나 outline 마스크를 넓히지 않는다.
+    """
+    from scipy import ndimage
+
+    labels, count = ndimage.label(missing, structure=np.ones((3, 3), int))
+    out: list[_Route] = []
+    for label in range(1, count + 1):
+        ys, xs = np.nonzero(labels == label)
+        if not len(xs):
+            continue
+        cx = float((xs.min() + xs.max()) / 2)
+        cy = float((ys.min() + ys.max()) / 2)
+        radius = float(np.hypot(xs - cx, ys - cy).max())
+        delta = min(0.45, max(0.15, radius * 0.08))
+        # target px width → _raster가 분석 px로 되돌리므로 분석상 반경은
+        # 항상 component radius보다 1px 이상 크다.
+        width = max(3.0 * up, float(math.ceil(radius * 2 + 2)) * up)
+        out.append(_Route([(cx - delta, cy - delta), (cx + delta, cy + delta)], width, "seal"))
+    return out
+
+
 def _order_routes(routes: list[_Route], aw: int, ah: int, up: float, seed: int,
                   start_pt: Point | None = None) -> list[_Route]:
     """source-inspired ordering: 이동 anchor 순회 + travel/재방문 penalty.
@@ -257,6 +283,17 @@ def _order_routes(routes: list[_Route], aw: int, ah: int, up: float, seed: int,
                     (0.8, 0.82), (0.5, 0.24), (0.3, 0.6), (0.72, 0.62), (0.16, 0.5)]
     anchors = [(ax * aw, ay * ah) for (ax, ay) in anchors_norm]
     total = len(routes)
+    # 고해상도 스캔에서 seal route가 수천 개가 되면 매번 모든 후보를 비교하는
+    # O(n²) greedy 정렬이 수십 분을 점유한다. 이 경우에는 동일한 3x3 공간
+    # 버킷 안에서 지그재그로 정렬해 이동을 짧게 유지한다. route 자체와 coverage는
+    # 바꾸지 않으며, 작은 route 집합은 기존의 세밀한 greedy 경로를 그대로 쓴다.
+    if total > 1200:
+        cell_w, cell_h = aw / 3, ah / 3
+        def serpentine_key(rt: _Route) -> tuple[int, int, float, float]:
+            row = min(2, int(rt.cy / cell_h))
+            col = min(2, int(rt.cx / cell_w))
+            return (row, col, rt.cy, rt.cx if row % 2 == 0 else -rt.cx)
+        return sorted(routes, key=serpentine_key)
     advance_every = max(1, total // (len(anchors) * 2))
 
     def zone(rt: _Route) -> int:
@@ -451,6 +488,12 @@ def generate_routes(image_path: str | Path, params: RouteParams | None = None,
     seal = _seal_bands(content & ~covered, step, p.seal_width, "h")
     covered2 = _raster(contour + seal, aw, ah, up) if (contour or seal) else covered
     seal += _seal_bands(content & ~covered2, step, p.seal_width, "v")
+    # pen-brush는 exterior recall을 strict QA하므로, zone-mode에서만 남은
+    # anti-alias 잉크 섬을 정확히 마감한다. 일반 brush output은 golden route
+    # 계약을 그대로 유지한다.
+    if p.group_by_zone:
+        covered3 = _raster(contour + seal, aw, ah, up)
+        seal += _seal_residual_components(content & ~covered3, up)
 
     routes = contour + seal
     if not routes:

@@ -163,7 +163,7 @@ bgm:
 |---|---|
 | 대사 없음(ambient) + `bgm` 없음 | **자동 로컬 BGM 선택** (아래 표) |
 | 대사 있음(narration/tts/whisper) + `bgm` 없음 | 음성만 사용 (BGM 안 붙임) — 원하면 `bgm:` 명시 |
-| 완전 무음 원함 | `bgm: { mode: off }` 명시 |
+| 완전 무음 원함 | `bgm: { mode: "off" }` 명시 |
 | 특정 곡 고정 | 그때만 `bgm: { mode: asset, assetId: ... }` |
 | 로컬 자산 미준비 | 기존 synth 합성 BGM으로 안전 폴백 (빌드 실패 없음) |
 

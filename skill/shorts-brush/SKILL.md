@@ -67,7 +67,7 @@ pipeline/.venv/bin/python bin/build.py <project.yaml>
 
 목소리가 필요한 새 프로젝트는 밝고 명료한 `female-07`, `speed: 1.10`을 기본 추천한다.
 사용자가 지정한 음성은 유지하며 `voice:auto`는 쓰지 않는다. 10종 비교와 청취는
-[공통 Supertonic 음성 카탈로그](../_shared/references/supertonic-voice-catalog.md)를 따른다.
+[공통 TTS 엔진 카탈로그](../_shared/references/tts-engine-catalog.md)와 [Supertonic 음성 카탈로그](../_shared/references/supertonic-voice-catalog.md)를 따른다.
 
 ## 세로 배경
 

@@ -51,7 +51,7 @@ export const RandomTouchPointSchema = z.tuple([
 export const RandomTouchStrokeSchema = z.object({
   id: z.string(),
   kind: z.literal("random-touch"),
-  width: z.number().min(230).max(365),
+  width: z.number().positive(),
   start: fractionalFrame,
   end: fractionalFrame,
   opacity: z.number().min(0).max(1),
@@ -79,7 +79,7 @@ export const RandomTouchRoutesMetaSchema = z.object({
   contentAnalysisVersion: z.literal("luma-chroma-v1").optional(),
   visibleContentFraction: z.number().min(0.001).max(1).optional(),
   visibleContentCoverage: z.number().min(0.985).max(1).optional(),
-  brushWidthRange: z.tuple([z.number().min(230).max(365), z.number().min(230).max(365)]),
+  brushWidthRange: z.tuple([z.number().positive(), z.number().positive()]),
   meanCenterJump: z.number().min(650),
   maxCenterJump: z.number().min(1200),
   seed: z.number().int(),
@@ -105,6 +105,15 @@ export const RandomTouchRoutesDataSchema = z.object({
     ctx.addIssue({code: z.ZodIssueCode.custom, path: ["strokes"],
       message: "strokes 길이는 meta.strokeCount와 같아야 함"});
   }
+  const coordinateScale = data.meta.width / 1920;
+  const minBrush = 230 * coordinateScale;
+  const maxBrush = 365 * coordinateScale;
+  data.strokes.forEach((stroke, index) => {
+    if (stroke.width < minBrush || stroke.width > maxBrush) {
+      ctx.addIssue({code: z.ZodIssueCode.custom, path: ["strokes", index, "width"],
+        message: `width는 현재 캔버스 비율 범위 ${minBrush}~${maxBrush}여야 합니다`});
+    }
+  });
 });
 
 // ---------- 씬 구성 요소 ----------
@@ -233,10 +242,20 @@ export const WidgetSchema = z.discriminatedUnion("type", [
 
 // ---------- 씬 ----------
 
+// 원본 프레임의 시간적 진행 또는 풀블리드 스토리 장면은 route 재생성 없이
+// 원본 bitmap을 그대로 보존한다. 기존 brush/pen route 계약과는 분리한다.
+export const FullBleedPresentationSchema = z.enum([
+  "progressive-frame-sequence",
+  "storybook-full-bleed",
+]);
+
 export const SceneSchema = z.object({
   id: z.string().min(1),
   routes: z.string().optional(), // routes JSON 경로 (public/ 기준). 없으면 렌더가 명시적 에러 표시
   drawingPhases: z.array(DrawingPhaseSchema).length(2).optional(),
+  presentation: FullBleedPresentationSchema.optional(),
+  image: z.string().min(1).optional(), // presentation 전용 full-bleed bitmap
+  previousImage: z.string().min(1).optional(), // scene 시작 cross-dissolve의 이전 bitmap
   durationInFrames: z.number().int().positive(),
 
   // 리빌 튜닝 — 기본값은 참조 시스템의 튜닝 결과를 채택
@@ -268,6 +287,7 @@ export const SceneSchema = z.object({
 
   brushDynamics: BrushDynamicsSchema.optional(),
   cues: z.array(CueSchema).default([]),
+  captionsVisible: z.boolean().default(true),
   topTitle: TopTitleSchema.optional(),
   subtitleStyle: SubtitleStyleSchema.optional(),
   naturalEffects: NaturalEffectsSchema.optional(),
@@ -279,6 +299,10 @@ export const SceneSchema = z.object({
         message: "drawingPhases는 outline → paint 정확히 2단계여야 함" });
     }
   } else if (!scene.routes) {
+    if (scene.presentation && !scene.image) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["image"],
+        message: "full-bleed presentation에는 image가 필요합니다" });
+    }
     // 기존 렌더의 화면 내 오류 표시는 유지하되, props 계약에서는 누락을 허용한다.
   }
 });
@@ -308,6 +332,7 @@ export type TopTitle = z.infer<typeof TopTitleSchema>;
 export type SubtitleStyle = z.infer<typeof SubtitleStyleSchema>;
 export type NaturalEffects = z.infer<typeof NaturalEffectsSchema>;
 export type DrawingPhase = z.infer<typeof DrawingPhaseSchema>;
+export type FullBleedPresentation = z.infer<typeof FullBleedPresentationSchema>;
 export type Scene = z.infer<typeof SceneSchema>;
 export type RenderProps = z.infer<typeof RenderPropsSchema>;
 export type Widget = z.infer<typeof WidgetSchema>;

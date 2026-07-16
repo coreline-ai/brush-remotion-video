@@ -12,7 +12,7 @@ description: >-
 
 # brush-video — 화이트 붓 드로잉 영상 생성
 
-**실행 대상 리포**: `/Users/hwanchoi/project_202606/brush_remotion_video`
+**실행 대상 리포**: `/Volumes/ExternalSSD/projects_7/brush-remotion-video`
 이 스킬은 코드를 내장하지 않는다. 리포가 유일한 소스다 (드리프트 방지 제1원칙).
 
 ## 워크플로
@@ -28,7 +28,7 @@ description: >-
      audio: 더빙.mp3          # srt 없고 audio만 있으면 whisper로 SRT 생성
      script: 대본.txt         # 대본 텍스트 (tts와 함께 사용)
      tts:                     # 음성이 없어도 TTS로 더빙 자동 생성 (아래 "TTS" 섹션)
-       engine: supertonic
+       engine: supertonic     # melo-ko / qwen3-base도 선택 가능
        voice: female-01       # 여성팩 female-01~10 / 호환 F1~F5·M1~M5
        speed: 1.10
        pauseMs: 350
@@ -45,7 +45,7 @@ description: >-
 2. **빌드 실행** — 리포 루트에서:
 
    ```bash
-   cd /Users/hwanchoi/project_202606/brush_remotion_video
+   cd /Volumes/ExternalSSD/projects_7/brush-remotion-video
    python3 bin/build.py <project.yaml 경로>
    ```
 
@@ -69,11 +69,14 @@ description: >-
 
 ## TTS — 음성 없이 자막/대본만으로 더빙 생성 (선택)
 
-`input.tts` 블록이 있으면 실제 더빙 없이도 Supertonic TTS(온디바이스, API 키 불필요)가 더빙을 합성한다:
+`input.tts` 블록이 있으면 실제 더빙 없이도 선택한 로컬 TTS 엔진이 더빙을 합성한다:
 
 - **srt + tts**: SRT의 텍스트를 문장별 합성 — 타이밍은 합성 음성 길이가 시계 (SRT 타이밍은 재계산됨)
 - **script + tts**: 대본 텍스트 → 더빙 + SRT 동시 생성
 - **srt + audio 동시 제공 시 TTS는 무시** (실제 더빙 우선)
+- `melo-ko`는 `voice: kr-default`, `language: ko`와 Melo `KR` speaker를 사용한다.
+- `qwen3-base`는 명시적 `reference.audio` + `reference.transcript`가 필수이며 bundled voice fallback을 사용하지 않는다.
+- 모든 엔진 출력은 44.1kHz mono로 정규화되고 실제 샘플 길이가 SRT 시계가 된다.
 - 실측: 실시간 대비 약 4배 합성 속도(RTF 0.24)
 - 여성 음성팩 10종은 [Supertonic 음성 카탈로그](../_shared/references/supertonic-voice-catalog.md)를 따른다.
   brush-video 새 프로젝트 권장은 `female-01`, 기존 `F1`~`F5`·`M1`~`M5`도 호환된다.
@@ -82,10 +85,13 @@ description: >-
 **첫 사용 설치 (1회)** — 미설치 상태로 tts를 쓰면 빌드가 설치 명령을 안내하며 중단된다. 그때 실행:
 
 ```bash
-cd /Users/hwanchoi/project_202606/brush_remotion_video
+cd /Volumes/ExternalSSD/projects_7/brush-remotion-video
 pipeline/.venv/bin/pip install -e "pipeline[tts]"
-# 첫 합성 시 모델(385MB)이 ~/.cache/supertonic3 에 자동 다운로드된다 (이후 오프라인)
+pipeline/.venv/bin/python scripts/tts-doctor.py --check supertonic
+# Melo/Qwen은 scripts/tts-doctor.py --prepare <engine>를 명시할 때만 설치·snapshot 준비
 ```
+
+공통 엔진 선택·license·reference·manifest 계약은 [TTS 엔진 카탈로그](../_shared/references/tts-engine-catalog.md)를 따른다.
 
 **라이선스 주의(OpenRAIL-M)**: 합성 더빙이 들어간 영상을 공개 배포할 때는
 **AI 생성 콘텐츠임을 고지**해야 한다 (영상 설명란 등). 딥페이크·사칭 등 금지 용도는 Attachment A 참조.
@@ -119,7 +125,7 @@ pipeline/.venv/bin/python bin/bgm-assets.py status
 ```
 
 - **자동 BGM (기본)**: `bgm` 블록을 안 써도 **대사 없는(ambient) 영상엔 로컬 BGM이 자동으로 붙는다.**
-  대사(음성/TTS)가 있으면 음성만 쓰고, 완전 무음은 `bgm: { mode: off }`로 끈다. 특정 곡은 그때만 `assetId` 지정.
+  대사(음성/TTS)가 있으면 음성만 쓰고, 완전 무음은 `bgm: { mode: "off" }`로 끈다. 특정 곡은 그때만 `assetId` 지정.
   자동 선택(결정적): brush/dark→Honor · pen→Chance/Luck · pen-brush/shorts→Satya Yuga · 10분 초과→허용 3곡 playlist.
   로컬 자산 미준비 시 synth 폴백. 상세: [공통 BGM 정책](../_shared/references/bgm-policy.md) §자동 BGM.
 - 내레이션이 있으면 기본 `+3dB`와 자동 덕킹, 없으면 기본 `+5dB`

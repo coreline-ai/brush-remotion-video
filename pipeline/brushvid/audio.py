@@ -133,6 +133,32 @@ def synth_ambient_bgm(out_path: str | Path, duration_sec: float, seed: int = 1) 
     return out
 
 
+def create_silent_audio(out_path: str | Path, duration_sec: float) -> Path:
+    """전달 규격용 무음 PCM WAV를 스트리밍 생성한다.
+
+    BGM과 내레이션이 모두 없는 영상도 H.264/AAC MP4 계약을 유지하기 위해 사용한다.
+    메모리에 10분 전체 버퍼를 올리지 않고 일정 크기의 48 kHz 스테레오 무음 블록을
+    반복 기록한다.
+    """
+    if duration_sec <= 0:
+        raise ValueError("무음 오디오 길이는 0보다 커야 함")
+    out = Path(out_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    frames_left = round(SR * duration_sec)
+    block_frames = 96_000
+    block = b"\x00\x00\x00\x00" * block_frames  # 16-bit stereo
+    with wave.open(str(out), "wb") as wav:
+        wav.setnchannels(2)
+        wav.setsampwidth(2)
+        wav.setframerate(SR)
+        while frames_left:
+            count = min(block_frames, frames_left)
+            wav.writeframes(block if count == block_frames else b"\x00\x00\x00\x00" * count)
+            frames_left -= count
+    log.info("무음 오디오 %.1fs -> %s", duration_sec, out)
+    return out
+
+
 def probe_duration(media_path: str | Path) -> float:
     """ffprobe 로 미디어 길이(초)."""
     res = subprocess.run(

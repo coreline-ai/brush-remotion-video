@@ -15,6 +15,7 @@ import { CosmicRandomBrushLayer } from "./CosmicRandomBrushLayer";
 import { CursorLayer } from "./CursorLayer";
 import { DrawingPhaseLayer } from "./DrawingPhaseLayer";
 import { EffectLayer } from "./EffectLayer";
+import { FullBleedPresentationLayer } from "./FullBleedPresentationLayer";
 import { getRevealTiming, RevealLayer } from "./RevealLayer";
 import { SubtitleLayer } from "./SubtitleLayer";
 import { TitleLayer } from "./TitleLayer";
@@ -89,6 +90,24 @@ export const BrushScene: React.FC<{ scene: Scene; paper: string; brush?: Brush }
       })
     : null;
 
+  // 누적 드로잉/풀블리드 동화는 원본 프레임 자체가 연출의 진실이다.
+  // route를 새로 생성해 원본 진행이나 캐릭터 외형을 훼손하지 않는다.
+  if (scene.presentation && scene.image) {
+    return (
+      <AbsoluteFill style={{ backgroundColor: paper, overflow: "hidden" }}>
+        <FullBleedPresentationLayer
+          presentation={scene.presentation}
+          image={scene.image}
+          previousImage={scene.previousImage}
+          durationInFrames={scene.durationInFrames}
+        />
+        <WidgetLayer frame={frame} widgets={scene.widgets} />
+        {scene.topTitle && <TitleLayer frame={frame} spec={scene.topTitle} />}
+        {scene.captionsVisible && <SubtitleLayer frame={frame} cues={scene.cues} style={scene.subtitleStyle} />}
+      </AbsoluteFill>
+    );
+  }
+
   if ((!scene.routes && !scene.drawingPhases) || loadError) {
     return (
       <AbsoluteFill style={{ backgroundColor: paper, alignItems: "center", justifyContent: "center" }}>
@@ -155,7 +174,7 @@ export const BrushScene: React.FC<{ scene: Scene; paper: string; brush?: Brush }
       )}
       <WidgetLayer frame={frame} widgets={scene.widgets} />
       {scene.topTitle && <TitleLayer frame={frame} spec={scene.topTitle} />}
-      <SubtitleLayer frame={frame} cues={scene.cues} style={scene.subtitleStyle} />
+      {scene.captionsVisible && <SubtitleLayer frame={frame} cues={scene.cues} style={scene.subtitleStyle} />}
     </AbsoluteFill>
   );
 };

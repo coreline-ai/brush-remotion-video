@@ -2,10 +2,11 @@
 import logging
 import math
 
+import numpy as np
 import pytest
 from PIL import Image, ImageDraw
 
-from brushvid.routes import RouteParams, generate_routes
+from brushvid.routes import RouteParams, _raster, _seal_residual_components, generate_routes
 
 W, H = 1920, 1080
 CX, CY, R = 960, 540, 300
@@ -77,3 +78,18 @@ def test_routes_meta_shape(circle_png):
     for key in ("id", "kind", "width", "start", "end", "points"):
         assert key in s
     assert isinstance(s["points"][0], list) and len(s["points"][0]) == 2
+
+
+def test_residual_component_seals_cover_sparse_ink_without_zero_length_paths():
+    """band 사이의 미세 잉크 섬도 non-zero round-cap route로 완결한다."""
+    missing = np.zeros((40, 60), dtype=bool)
+    missing[4, 5] = True
+    missing[31, 48] = True
+    missing[18:21, 27] = True
+
+    seals = _seal_residual_components(missing, up=1.0)
+    covered = _raster(seals, 60, 40, up=1.0)
+
+    assert len(seals) == 3
+    assert all(route.pts[0] != route.pts[-1] for route in seals)
+    assert (covered & missing).sum() == missing.sum()

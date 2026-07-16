@@ -99,9 +99,12 @@ def normalize_track(input_path: str | Path, out_path: str | Path, *, target_lufs
     )
     out = Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
-    _run(["ffmpeg", "-y", "-stream_loop", "-1", "-i", str(input_path),
-          "-t", f"{duration_sec:.6f}", "-af", filt, "-ar", str(SR), "-ac", "2",
-          "-c:a", "pcm_s16le", str(out)])
+    cmd = ["ffmpeg", "-y"]
+    if probe_duration(input_path) + 0.01 < duration_sec:
+        cmd += ["-stream_loop", "-1"]
+    cmd += ["-i", str(input_path), "-t", f"{duration_sec:.6f}", "-af", filt, "-ar", str(SR), "-ac", "2",
+            "-c:a", "pcm_s16le", str(out)]
+    _run(cmd)
     return out, measured
 
 
@@ -338,17 +341,20 @@ def mix_voice_and_bgm(voice_path: str | Path, bgm_path: str | Path, out_path: st
     region_metrics = measure_ducking_regions(
         voice_norm, bgm_path, ducked_bgm, duration_sec=duration_sec
     ) if ducking_enabled and ducking_amount_db > 0 else None
+    # FFmpeg 버전에 따라 단일 pass loudnorm는 -16 LUFS 목표에서 1dB 이상 흔들릴 수 있다.
+    # 먼저 믹스하고, 고정 길이의 2-pass loudnorm으로 master를 확정한다.
     filters = (
-        f"[0:a][1:a]amix=inputs=2:duration=longest:dropout_transition=0,"
-        f"loudnorm=I={VOICE_TARGET_LUFS}:LRA=11:TP={TRUE_PEAK_DB},"
-        f"alimiter=limit={LIMIT_LINEAR:.8f}:level=false,"
-        "aresample=48000,aformat=sample_fmts=s16:channel_layouts=stereo[out]"
+        "[0:a][1:a]amix=inputs=2:duration=longest:dropout_transition=0,"
+        "alimiter=limit=" + f"{LIMIT_LINEAR:.8f}:level=false,"
+        "aresample=48000,aformat=sample_fmts=s16:channel_layouts=stereo[mix]"
     )
     out = Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
+    mixed = work / "master-pre-normalized.wav"
     _run(["ffmpeg", "-y", "-i", str(ducked_bgm), "-i", str(voice_norm),
-          "-filter_complex", filters, "-map", "[out]", "-t", f"{duration_sec:.6f}",
-          "-ar", str(SR), "-ac", "2", "-c:a", "pcm_s16le", str(out)])
+          "-filter_complex", filters, "-map", "[mix]", "-t", f"{duration_sec:.6f}",
+          "-ar", str(SR), "-ac", "2", "-c:a", "pcm_s16le", str(mixed)])
+    normalize_track(mixed, out, target_lufs=VOICE_TARGET_LUFS, duration_sec=duration_sec)
     final = measure_loudness(out, duration_sec=duration_sec)
     return out, {"voiceInput": voice_before, "ducking": {"enabled": ducking_enabled,
                   "requestedAmountDb": ducking_amount_db, "ratio": ratio,

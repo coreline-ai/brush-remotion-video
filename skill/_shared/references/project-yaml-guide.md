@@ -11,7 +11,7 @@ input:                       # 모드 판정 (우선순위 순)
   audio: path/to/더빙.mp3    # ② srt 없고 audio만 → whisper(small, ko)로 SRT 생성 후 내레이션
   script: path/to/대본.txt   # 대본 텍스트 — tts와 함께 쓰면 더빙+SRT 동시 생성 (단독 사용 불가)
   tts:                       # 음성 없이 더빙 자동 합성 (srt 또는 script의 텍스트 사용)
-    engine: supertonic       # 현재 supertonic만 지원 (설치: pip install -e "pipeline[tts]")
+    engine: supertonic       # supertonic | melo-ko | qwen3-base (공통 카탈로그 참조)
     voice: female-01         # 여성팩 female-01~10 / 호환 F1~F5·M1~M5
     speed: 1.10              # 기본 1.05, 허용 0.70~2.00
     pauseMs: 350             # 문장 사이 무음(ms)
@@ -56,10 +56,10 @@ bgm:                         # input.audio와 별도. 상세: bgm-policy.md
 |---|---|---|---|---|
 | 내레이션 | srt + audio | SRT 구간 그룹핑 | cue로 변환 (긴 문장 자동 분할) | 제공 오디오 mux (**tts 있어도 무시 — 실더빙 우선**) |
 | whisper | audio만 | 생성된 SRT 기준 | 위와 동일 | 제공 오디오 mux |
-| **tts** | (srt 또는 script) + tts | **합성 음성 길이 기준 재계산** | 문장별 cue | **Supertonic 합성 더빙** mux |
+| **tts** | (srt 또는 script) + tts | **합성 음성 길이 기준 재계산** | 문장별 cue | 선택한 TTS 엔진 합성 더빙 mux |
 | 앰비언트 | 무입력 | 300f × N 고정 | ambient.cues 수동 | `bgm` 미지정은 기존 합성, 지정 시 synth/로컬 asset/playlist |
 
-TTS 10종 선택·청취·voice manifest는 [supertonic-voice-catalog.md](supertonic-voice-catalog.md),
+TTS 엔진 선택·설치·voice manifest는 [공통 TTS 엔진 카탈로그](tts-engine-catalog.md)와 [supertonic-voice-catalog.md](supertonic-voice-catalog.md),
 첫 사용 설치·모델 다운로드·AI 생성 고지 의무는 SKILL.md의 "TTS" 섹션 참조.
 외부 BGM 다운로드·라이선스·Content ID·등록 절차는 [bgm-policy.md](bgm-policy.md) 참조.
 `format: youtube|shorts`에서는 `pixabay-*` 음원이 금지되며 preflight에서 hard fail한다.

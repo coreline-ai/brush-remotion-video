@@ -37,7 +37,8 @@ cd pipeline
 | `brushvid/bgm.py` | 로컬 BGM catalog·import·SHA-256·라이선스/Content ID preflight |
 | `brushvid/mix.py` | ffmpeg LUFS 정규화·gain/fade·playlist crossfade·내레이션 ducking |
 | `brushvid/audit.py` | 완성 mp4 시각·LUFS/True Peak·라이선스 매니페스트 감사 |
-| `brushvid/tts.py` | Supertonic TTS: 대본/자막 텍스트 → 더빙 wav + 타이밍 SRT (설치: `pip install -e "pipeline[tts]"`) |
+| `brushvid/tts.py` | 공통 TTS 오케스트레이터: 대본/자막 → 44.1kHz mono 더빙 WAV + 실제 길이 기준 SRT |
+| `brushvid/tts_engines/` | `supertonic`, `melo-ko`, `qwen3-base` adapter·registry·Qwen worker |
 | `brushvid/voice_presets.py` | 여성 음성팩 `female-01`~`female-10` catalog 검증·별칭·style blend·preview hard gate |
 
 ## SRT-first 자동화 (bin/build.py)
@@ -53,7 +54,11 @@ pipeline/.venv/bin/python bin/build.py examples/ambient/project.yaml --from rend
 pipeline/.venv/bin/python bin/build.py examples/ambient-bgm/project.yaml --from mix --audit
 python3 bin/voice-assets.py validate                                     # 여성 음성팩 10종 + 청취 링크
 pipeline/.venv/bin/python bin/qa.py examples/ambient/project.yaml        # QA 단독 재실행
+pipeline/.venv/bin/python scripts/tts-doctor.py --check melo-ko          # Melo 오프라인 점검
+pipeline/.venv/bin/python scripts/tts-doctor.py --check qwen3-base       # Qwen 환경·snapshot 점검
 ```
+
+TTS 엔진 선택·설치·reference·manifest 규칙은 [공통 TTS 엔진 카탈로그](../skill/_shared/references/tts-engine-catalog.md)를 따른다. `--prepare`를 명시한 경우에만 패키지 설치와 모델 snapshot 준비가 실행되며, 일반 build는 local-only다.
 
 공식 페이지에서 내려받은 외부 BGM은 `bin/bgm-assets.py import`로 등록하고
 `bin/bgm-assets.py verify`를 통과한 뒤 사용한다. 원본과 증빙은 Git에서 제외된 `local-assets/`에만 둔다.
