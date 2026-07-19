@@ -37,13 +37,17 @@ TTS_ENGINES = ENGINE_IDS
 TTS_TIMINGS = ("tts", "srt")
 DRAWING_PROFILES = (
     "brush", "pen", "pen-brush", "dark-random-brush", "cosmic-random-brush",
-    "progressive-frame-sequence", "storybook-full-bleed",
+    "progressive-frame-sequence", "storybook-full-bleed", "full-color-motion",
 )
 # public name is content-agnostic; keep the historical runtime key for golden/build compatibility.
 DRAWING_PROFILE_ALIASES = {"dark-random-brush": "cosmic-random-brush"}
 DRAWING_SYNCS = ("auto", "off")
 BGM_MODES = ("off", "synth", "asset", "playlist")
 BGM_LICENSE_POLICIES = ("strict", "warn")
+MOTION_MOVEMENTS = ("push-in", "push-out", "pan-left", "pan-right", "rise", "fall", "arc-left", "arc-right")
+MOTION_EFFECTS = ("none", "rays", "mist", "birds", "stars", "storm", "sparkles", "lanterns",
+                  "fireflies", "ripples", "aurora", "trail")
+MOTION_REVEALS = ("none", "brush")
 
 # 쇼츠 길이 규정 (2026): 최대 180초 = 앰비언트 18씬(씬당 300f/30fps=10초), 60초 미만 권장
 SHORTS_AMBIENT_SCENE_SEC = 10
@@ -70,6 +74,28 @@ class BgmConfig:
     license_policy: str = "strict"
 
 
+@dataclass(frozen=True)
+class MotionSceneConfig:
+    """Full Color Motion의 씬별 2D 움직임/효과/선택형 붓 리빌 계약."""
+
+    movement: str = "push-in"
+    effect: str = "none"
+    intensity: float = 1.0
+    reveal: str = "none"
+    reveal_frames: int = 96
+
+
+@dataclass(frozen=True)
+class MotionConfig:
+    """default는 모든 derived scene에 적용하고 scenes는 같은 순서의 명시 override다."""
+
+    default: MotionSceneConfig = MotionSceneConfig()
+    scenes: tuple[MotionSceneConfig, ...] = ()
+
+    def scene_for(self, index: int) -> MotionSceneConfig:
+        return self.scenes[index] if self.scenes else self.default
+
+
 @dataclass
 class ProjectConfig:
     """검증 완료된 project.yaml 설정. 경로는 yaml 위치 기준으로 해석된 절대 경로."""
@@ -92,9 +118,11 @@ class ProjectConfig:
     drawing_sync: str = "auto"      # 내레이션 동기 드로잉 auto|off (pen+cue 있을 때만 동작)
     drawing_preserve_source: bool = False  # pen 완료 시 원본 전체 색면·그림자 복원
     drawing_full_bleed: bool = False  # pen-brush 풀블리드 원본을 여백 없이 채색
+    drawing_viewport_scale: float = 1.0  # pen-brush 화면 채움 확대(모든 레이어 함께 크롭)
     drawing_outline_ratio: float = 0.38
     drawing_handoff_frames: int = 8
     drawing_paint_end_ratio: float = 0.88
+    motion: MotionConfig | None = None
     bgm: BgmConfig | None = None
     ambient_scenes: int = 3
     ambient_cues: list[str] = field(default_factory=list)
@@ -129,6 +157,52 @@ class ProjectConfig:
 def _require(cond: bool, msg: str) -> None:
     if not cond:
         raise ValueError(f"project.yaml 검증 실패: {msg}")
+
+
+def _load_motion_scene(raw: object, *, fallback: MotionSceneConfig, label: str) -> MotionSceneConfig:
+    """motion.default / motion.scenes[]의 작은 strict 계약을 읽는다.
+
+    movement는 실제 3D camera가 아니라 정지 이미지에 적용되는 2D 프리셋이다.
+    raw camera/cameraMotion 키를 받지 않아 Director의 Camera Prompt Pack과 runtime을
+    혼동하지 않는다.
+    """
+    _require(isinstance(raw, dict), f"{label} 는 매핑이어야 함")
+    allowed = {"movement", "effect", "intensity", "reveal", "revealFrames"}
+    unknown = sorted(set(raw) - allowed)
+    _require(not unknown, f"{label} 지원하지 않는 옵션: {', '.join(unknown)}")
+    movement = raw.get("movement", fallback.movement)
+    effect = raw.get("effect", fallback.effect)
+    reveal = raw.get("reveal", fallback.reveal)
+    _require(movement in MOTION_MOVEMENTS,
+             f"{label}.movement 는 {MOTION_MOVEMENTS} 중 하나여야 함 (입력: {movement!r})")
+    _require(effect in MOTION_EFFECTS,
+             f"{label}.effect 는 {MOTION_EFFECTS} 중 하나여야 함 (입력: {effect!r})")
+    _require(reveal in MOTION_REVEALS,
+             f"{label}.reveal 는 {MOTION_REVEALS} 중 하나여야 함 (입력: {reveal!r})")
+    intensity = float(raw.get("intensity", fallback.intensity))
+    reveal_frames = int(raw.get("revealFrames", fallback.reveal_frames))
+    _require(0.25 <= intensity <= 2.0, f"{label}.intensity 는 0.25~2.0")
+    _require(30 <= reveal_frames <= 180, f"{label}.revealFrames 는 30~180")
+    return MotionSceneConfig(
+        movement=movement, effect=effect, intensity=intensity,
+        reveal=reveal, reveal_frames=reveal_frames,
+    )
+
+
+def _load_motion(raw: object) -> MotionConfig:
+    _require(isinstance(raw, dict), "motion 은 매핑이어야 함")
+    allowed = {"default", "scenes"}
+    unknown = sorted(set(raw) - allowed)
+    _require(not unknown, f"motion 지원하지 않는 옵션: {', '.join(unknown)}")
+    default_raw = raw.get("default") or {}
+    default = _load_motion_scene(default_raw, fallback=MotionSceneConfig(), label="motion.default")
+    scenes_raw = raw.get("scenes") or []
+    _require(isinstance(scenes_raw, list), "motion.scenes 는 목록이어야 함")
+    scenes = tuple(
+        _load_motion_scene(item, fallback=default, label=f"motion.scenes[{index}]")
+        for index, item in enumerate(scenes_raw)
+    )
+    return MotionConfig(default=default, scenes=scenes)
 
 
 def load_project(yaml_path: str | Path) -> ProjectConfig:
@@ -275,9 +349,13 @@ def load_project(yaml_path: str | Path) -> ProjectConfig:
     # with an animation promised as full-bleed.
     _require(not full_bleed or bg_fit == "cover",
              "drawing.fullBleed 는 background.fit: cover 필수 (contain은 외곽 종이 여백을 만듦)")
-    allowed_drawing = {"profile", "sync", "seed", "preserveSource", "fullBleed", "outlineRatio", "handoffFrames", "paintEndRatio"}
+    allowed_drawing = {"profile", "sync", "seed", "preserveSource", "fullBleed", "viewportScale", "outlineRatio", "handoffFrames", "paintEndRatio"}
     unknown_drawing = sorted(set(drawing) - allowed_drawing)
     _require(not unknown_drawing, f"drawing 지원하지 않는 옵션: {', '.join(unknown_drawing)}")
+    viewport_scale = float(drawing.get("viewportScale", 1.0))
+    _require(1.0 <= viewport_scale <= 1.35, "drawing.viewportScale 는 1.00~1.35")
+    _require(viewport_scale == 1.0 or profile == "pen-brush",
+             "drawing.viewportScale 는 drawing.profile: pen-brush 에서만 지원")
     outline_ratio = float(drawing.get("outlineRatio", 0.38))
     handoff_frames = int(drawing.get("handoffFrames", 8))
     paint_end_ratio = float(drawing.get("paintEndRatio", 0.88))
@@ -285,6 +363,20 @@ def load_project(yaml_path: str | Path) -> ProjectConfig:
     _require(0 <= handoff_frames <= 30, "drawing.handoffFrames 는 0~30")
     _require(outline_ratio + 0.05 < paint_end_ratio <= 0.95,
              "drawing.paintEndRatio 는 outlineRatio+0.05 초과, 0.95 이하")
+
+    # Full Color Motion은 원본 bitmap을 cover-fit으로 보존하고 routes는 선택형
+    # brush reveal에서만 사용한다. motion block은 다른 drawing profile에서는
+    # 침묵 무시하지 않고 입력 오류로 처리한다.
+    motion_cfg: MotionConfig | None = None
+    if "motion" in raw:
+        _require(profile == "full-color-motion", "motion 은 drawing.profile: full-color-motion 에서만 지원")
+        motion_cfg = _load_motion(raw.get("motion"))
+    if profile == "full-color-motion":
+        _require(motion_cfg is not None, "full-color-motion에는 motion 블록이 필요")
+        _require(strategy == "user-images", "full-color-motion은 background.strategy: user-images 필수")
+        _require(bg_fit == "cover", "full-color-motion은 background.fit: cover 필수")
+        _require(not preserve_source and not full_bleed,
+                 "full-color-motion은 drawing.preserveSource/fullBleed를 지원하지 않음")
 
     # bgm — input.audio(내레이션)와 완전히 분리된 로컬 음악 트랙.
     # 블록 자체가 없으면 기존 프로젝트의 오디오 동작을 보존한다.
@@ -402,9 +494,11 @@ def load_project(yaml_path: str | Path) -> ProjectConfig:
         drawing_sync=sync,
         drawing_preserve_source=preserve_source,
         drawing_full_bleed=full_bleed,
+        drawing_viewport_scale=viewport_scale,
         drawing_outline_ratio=outline_ratio,
         drawing_handoff_frames=handoff_frames,
         drawing_paint_end_ratio=paint_end_ratio,
+        motion=motion_cfg,
         bgm=bgm_cfg,
         ambient_scenes=ambient_scenes,
         ambient_cues=list(ambient_cues),
@@ -437,4 +531,11 @@ def load_project(yaml_path: str | Path) -> ProjectConfig:
         if cfg.ambient_scenes == 60:
             _require(len(cfg.ambient_cues) == 60,
                      "cosmic-random-brush 60씬은 ambient.cues 60개가 필요")
+    if cfg.drawing_profile == "full-color-motion":
+        assert cfg.motion is not None  # 위 validator가 보장
+        if cfg.mode == "ambient":
+            _require(len(cfg.bg_images) == cfg.ambient_scenes,
+                     "full-color-motion ambient는 background.images 수가 ambient.scenes와 같아야 함")
+            _require(not cfg.motion.scenes or len(cfg.motion.scenes) == cfg.ambient_scenes,
+                     "full-color-motion motion.scenes 수가 ambient.scenes와 같아야 함")
     return cfg

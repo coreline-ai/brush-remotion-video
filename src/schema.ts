@@ -253,6 +253,8 @@ export const SceneSchema = z.object({
   id: z.string().min(1),
   routes: z.string().optional(), // routes JSON 경로 (public/ 기준). 없으면 렌더가 명시적 에러 표시
   drawingPhases: z.array(DrawingPhaseSchema).length(2).optional(),
+  // pen-brush의 outline·paint·cursor를 같은 비율로 확대해 외곽 종이 여백을 크롭한다.
+  viewportScale: z.number().min(1).max(1.35).default(1),
   presentation: FullBleedPresentationSchema.optional(),
   image: z.string().min(1).optional(), // presentation 전용 full-bleed bitmap
   previousImage: z.string().min(1).optional(), // scene 시작 cross-dissolve의 이전 bitmap
@@ -322,6 +324,78 @@ export const RenderPropsSchema = z.object({
   scenes: z.array(SceneSchema).min(1),
 });
 
+// ---------- Full Color Motion ----------
+// 붓/펜 리빌과 달리 원본 색상을 보존한 정지 이미지를 2D Ken-Burns 이동과
+// 효과로 연출하는 별도 계약이다. RenderPropsSchema에 routes/faint 같은 붓 전용
+// 필드를 섞지 않아 두 제품 라인의 기본값 드리프트를 막는다.
+
+export const MotionMovementSchema = z.enum([
+  "push-in",
+  "push-out",
+  "pan-left",
+  "pan-right",
+  "rise",
+  "fall",
+  "arc-left",
+  "arc-right",
+]);
+
+export const MotionEffectSchema = z.enum([
+  "none",
+  "rays",
+  "mist",
+  "birds",
+  "stars",
+  "storm",
+  "sparkles",
+  "lanterns",
+  "fireflies",
+  "ripples",
+  "aurora",
+  "trail",
+]);
+
+export const MotionRevealSchema = z.object({
+  mode: z.enum(["none", "brush"]).default("none"),
+  // brush 모드일 때 pipeline routes stage가 생성하는 public-relative JSON 경로.
+  routes: z.string().min(1).optional(),
+  frames: z.number().int().min(30).max(180).default(96),
+  cursor: BrushSchema.optional(),
+}).superRefine((reveal, ctx) => {
+  if (reveal.mode === "brush" && !reveal.routes) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["routes"],
+      message: "motion reveal.mode=brush에는 routes가 필요합니다",
+    });
+  }
+});
+
+export const FullColorMotionSceneSchema = z.object({
+  id: z.string().min(1),
+  image: z.string().min(1),
+  durationInFrames: z.number().int().positive(),
+  movement: MotionMovementSchema.default("push-in"),
+  effect: MotionEffectSchema.default("none"),
+  intensity: z.number().min(0.25).max(2).default(1),
+  reveal: MotionRevealSchema.default({ mode: "none", frames: 96 }),
+  cues: z.array(CueSchema).default([]),
+  captionsVisible: z.boolean().default(true),
+  topTitle: TopTitleSchema.optional(),
+  subtitleStyle: SubtitleStyleSchema.optional(),
+});
+
+export const FullColorMotionPropsSchema = z.object({
+  schemaVersion: z.literal(SCHEMA_VERSION),
+  projectId: z.string().min(1),
+  title: z.string().optional(),
+  format: z.enum(["youtube", "shorts"]).default("youtube"),
+  // 영상은 audio:null로 렌더한 뒤 기존 mix/mux stage가 AAC를 결합한다.
+  audio: z.string().nullable().default(null),
+  brush: BrushSchema.optional(),
+  scenes: z.array(FullColorMotionSceneSchema).min(1),
+});
+
 export type Stroke = z.infer<typeof StrokeSchema>;
 export type RoutesData = z.infer<typeof RoutesDataSchema>;
 export type RandomTouchPoint = z.infer<typeof RandomTouchPointSchema>;
@@ -340,3 +414,8 @@ export type RenderProps = z.infer<typeof RenderPropsSchema>;
 export type Widget = z.infer<typeof WidgetSchema>;
 export type WidgetItem = z.infer<typeof WidgetItemSchema>;
 export type CardWidget = Extract<Widget, { items: WidgetItem[] }>;
+export type MotionMovement = z.infer<typeof MotionMovementSchema>;
+export type MotionEffect = z.infer<typeof MotionEffectSchema>;
+export type MotionReveal = z.infer<typeof MotionRevealSchema>;
+export type FullColorMotionScene = z.infer<typeof FullColorMotionSceneSchema>;
+export type FullColorMotionProps = z.infer<typeof FullColorMotionPropsSchema>;

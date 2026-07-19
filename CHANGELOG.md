@@ -3,6 +3,24 @@
 이 프로젝트의 사용자 영향 변경 사항을 기록한다. 버전 태그는 모든 자동 게이트와 해당 릴리스의
 수동 게이트가 완료된 뒤에만 생성한다.
 
+
+## [Unreleased]
+
+### Added
+
+- **`seamless-short-video` 정식 v1.0.0 stable** (catalog 11종, Remotion 독립 라인)
+  - 조인 정본: 이전 씬 말미 ~2초 동작 연속 (`docs/seamless-short-video/16` §0)
+  - CLI: `init` / `handoff` / `verify` / `concat` / `join-score` / `--auto-head-trim`
+  - SSOT: `docs/seamless-short-video/` · 개발 계획 `dev-plan/implement_20260717_141429.md`
+  - 데모: momo join-fix · popo 60s · lulu 30s
+- 설계·운영 SSOT 문서 패키지 `docs/seamless-short-video/` (Multi-Signal, C-xxx, 10초 경계 C0–C26)
+- **공통 수정 방향 표준** `docs/seamless-short-video/13-common-remediation-standard.md`
+
+### Changed
+
+- `skill/catalog.json` catalogVersion `1.3.1`; seamless status specialized→**stable**, version **1.0.0**
+- `bin/seamless-short.py frame0-check` (docs 15 C12 hard gate); `pipeline/tests/test_seamless_short.py`; `schema/seamless-project.schema.json` draft
+
 ## [0.1.0] - 2026-07-13
 
 ### Added

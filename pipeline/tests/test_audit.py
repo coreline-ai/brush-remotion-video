@@ -83,6 +83,29 @@ def test_completion_windows_are_loaded_from_standard_props(tmp_path):
     assert windows[0]["sceneEnd"] == 300
 
 
+def test_pen_brush_paint_windows_are_exempt_from_completion_pulse(tmp_path):
+    repo = tmp_path / "repo"
+    props_dir = repo / "data" / "demo"
+    route_dir = repo / "public" / "demo" / "routes"
+    props_dir.mkdir(parents=True)
+    route_dir.mkdir(parents=True)
+    (route_dir / "scene-01-paint.routes.json").write_text(json.dumps({
+        "meta": {"drawStart": 114, "drawEnd": 264},
+        "strokes": [{"start": 114, "end": 264}],
+    }), encoding="utf-8")
+    props = props_dir / "props.json"
+    props.write_text(json.dumps({"scenes": [{
+        "id": "scene-01", "durationInFrames": 300, "outroFadeFrames": 36,
+        "drawingPhases": [{"kind": "paint", "routes": "demo/routes/scene-01-paint.routes.json"}],
+    }]}), encoding="utf-8")
+    windows = A.completion_windows_from_props(props)
+    assert len(windows) == 1
+    assert windows[0]["auditKind"] == "pen-brush-paint"
+    assert A.phase_for_frame(180, windows) == "drawing"
+    issues, stats = A.completion_pulse_issues(np.full(300, 180.0), windows, FPS)
+    assert issues == [] and stats == []
+
+
 def test_judge_candidate_three_way():
     """transient=스파이크 / 지속+구도유지=워시 / 지속+구도변화=하드컷."""
     kind, sev = A.judge_candidate(3.0, 3.0, 0.5, transient=True, corr=1.0, near_scene_end=False)

@@ -73,3 +73,8 @@ assets/storybook/**/*.jpg
 # Storybook 에셋 검수 결과는 재생성 가능한 보고서이며, 공개 매니페스트와 분리해 추적하지 않음
 assets/storybook/**/qa-report.md
 assets/storybook/**/qa-metrics.json
+
+# TTS 런타임 가상환경 및 외부 비디오 샘플 (대용량)
+.tts-runtimes/
+external_samples/**/*.mp4
+

@@ -1,0 +1,26 @@
+# V1: 원본 색상 보존 + 2D movement/effect + 선택형 brush reveal.
+projectId: full-color-motion-demo
+format: youtube
+render: {resolution: fhd}
+title: 궤도 위의 빛
+overlays: none
+background:
+  strategy: user-images
+  fit: cover
+  images:
+    - ../cosmic-random-brush-v03/assets/scene-01-earth-orbit-sunrise.png
+    - ../cosmic-random-brush-v03/assets/scene-02-earth-at-night.png
+    - ../cosmic-random-brush-v03/assets/scene-03-aurora-from-orbit.png
+drawing:
+  profile: full-color-motion
+  seed: 20260717
+motion:
+  default: {movement: push-in, effect: none, intensity: 1.0}
+  scenes:
+    - {movement: rise, effect: rays, reveal: brush, revealFrames: 96}
+    - {movement: pan-right, effect: stars}
+    - {movement: arc-left, effect: aurora}
+ambient:
+  scenes: 3
+  cues: ["첫 빛", "도시의 밤", "오로라"]
+bgm: {mode: "off"}

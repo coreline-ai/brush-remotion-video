@@ -257,51 +257,63 @@ class QwenAdapter:
             raise ValueError("qwen3-base language는 ko만 지원함")
         if not sentences:
             raise ValueError("Qwen sentences가 비어 있음")
+        try:
+            batch_size = int(os.environ.get("BRUSHVID_QWEN_BATCH_SIZE", "8"))
+        except ValueError as exc:
+            raise ValueError("BRUSHVID_QWEN_BATCH_SIZE는 양의 정수여야 함") from exc
+        if batch_size < 1:
+            raise ValueError("BRUSHVID_QWEN_BATCH_SIZE는 양의 정수여야 함")
         self.metadata["referenceVoiceId"] = voice
         audio = self.work_root / "reference" / "reference.wav"
         transcript = self.work_root / "reference" / "reference.txt"
-        request = {
-            "protocolVersion": PROTOCOL_VERSION,
-            "requestId": self.request_id,
-            "engine": self.engine_id,
-            "modelRevision": MODEL_REVISIONS[self.engine_id],
-            "language": LANGUAGE,
-            "xVectorOnlyMode": False,
-            "reference": {
-                "audio": "reference/reference.wav", "transcript": "reference/reference.txt",
-                "audioSha256": _sha256(audio), "transcriptSha256": _sha256(transcript),
-            },
-            "sentences": [{"id": f"s{index + 1}", "text": text} for index, text in enumerate(sentences)],
-            "outputDir": "outputs",
+        reference = {
+            "audio": "reference/reference.wav", "transcript": "reference/reference.txt",
+            "audioSha256": _sha256(audio), "transcriptSha256": _sha256(transcript),
         }
+        results: list[AudioResult] = []
         try:
-            response = self.client.request(request)
-            outputs = response.get("outputs")
-            if not isinstance(outputs, list) or len(outputs) != len(sentences):
-                raise TtsEngineError("PROTOCOL_ERROR: Qwen output 수 불일치")
-            results = []
-            for expected_index, item in enumerate(outputs):
-                if (
-                    not isinstance(item, dict)
-                    or item.get("id") != f"s{expected_index + 1}"
-                    or not isinstance(item.get("filename"), str)
-                    or Path(item["filename"]).is_absolute()
-                ):
-                    raise TtsEngineError("PROTOCOL_ERROR: Qwen output 순서/경로 불일치")
-                output_root = (self.work_root / "outputs").resolve()
-                path = (output_root / item["filename"]).resolve()
-                try:
-                    path.relative_to(output_root)
-                except ValueError as exc:
-                    raise TtsEngineError("PROTOCOL_ERROR: Qwen output 경로가 work root 밖") from exc
-                if not path.is_file():
-                    raise TtsEngineError("PROTOCOL_ERROR: Qwen output 파일 없음")
-                with wave.open(str(path), "rb") as wav:
-                    raw = wav.readframes(wav.getnframes())
-                    samples = np.frombuffer(raw, dtype="<i2").astype(np.float32) / 32767.0
-                    results.append(AudioResult(samples, wav.getframerate(), {
-                        **self.metadata, "nativeSampleRate": wav.getframerate(), "speed": speed,
-                    }))
+            # 긴 대본은 작은 chunk로 나눠 GPU/통합 메모리 폭증을 막되, worker는 한 번만
+            # 기동한다. 즉 모델·reference는 계속 유지되고 output 순서도 원본 그대로다.
+            for chunk_index, start in enumerate(range(0, len(sentences), batch_size)):
+                chunk = sentences[start:start + batch_size]
+                request = {
+                    "protocolVersion": PROTOCOL_VERSION,
+                    "requestId": f"{self.request_id}-{chunk_index:03d}",
+                    "engine": self.engine_id,
+                    "modelRevision": MODEL_REVISIONS[self.engine_id],
+                    "language": LANGUAGE,
+                    "xVectorOnlyMode": False,
+                    "reference": reference,
+                    "sentences": [{"id": f"s{index + 1}", "text": text}
+                                  for index, text in enumerate(chunk)],
+                    "outputDir": f"outputs/chunk-{chunk_index:03d}",
+                }
+                response = self.client.request(request)
+                outputs = response.get("outputs")
+                if not isinstance(outputs, list) or len(outputs) != len(chunk):
+                    raise TtsEngineError("PROTOCOL_ERROR: Qwen output 수 불일치")
+                output_root = (self.work_root / request["outputDir"]).resolve()
+                for expected_index, item in enumerate(outputs):
+                    if (
+                        not isinstance(item, dict)
+                        or item.get("id") != f"s{expected_index + 1}"
+                        or not isinstance(item.get("filename"), str)
+                        or Path(item["filename"]).is_absolute()
+                    ):
+                        raise TtsEngineError("PROTOCOL_ERROR: Qwen output 순서/경로 불일치")
+                    path = (output_root / item["filename"]).resolve()
+                    try:
+                        path.relative_to(output_root)
+                    except ValueError as exc:
+                        raise TtsEngineError("PROTOCOL_ERROR: Qwen output 경로가 work root 밖") from exc
+                    if not path.is_file():
+                        raise TtsEngineError("PROTOCOL_ERROR: Qwen output 파일 없음")
+                    with wave.open(str(path), "rb") as wav:
+                        raw = wav.readframes(wav.getnframes())
+                        samples = np.frombuffer(raw, dtype="<i2").astype(np.float32) / 32767.0
+                        results.append(AudioResult(samples, wav.getframerate(), {
+                            **self.metadata, "nativeSampleRate": wav.getframerate(), "speed": speed,
+                        }))
             return results
         finally:
             self.close()

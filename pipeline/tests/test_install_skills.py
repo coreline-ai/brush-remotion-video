@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 from pathlib import Path
@@ -7,17 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 INSTALLER = ROOT / "bin" / "install-skills.sh"
-SKILL_IDS = {
-    "brush-director",
-    "brush-video",
-    "pen-video",
-    "pen-brush-video",
-    "shorts-brush",
-    "dark-random-brush-video",
-    "storybook-full-touch-video",
-    "brush-qa-review",
-    "video-auditor",
-}
+SKILL_IDS = {item["id"] for item in json.loads((ROOT / "skill" / "catalog.json").read_text(encoding="utf-8"))["skills"]}
 
 
 def _run(home: Path, *args: str, check: bool = True):
@@ -49,7 +40,7 @@ def test_no_arg_preserves_claude_default_and_migrates_broken_legacy(tmp_path: Pa
     _run(tmp_path, "--check")
 
 
-def test_target_all_installs_nine_to_both_and_is_idempotent(tmp_path: Path):
+def test_target_all_installs_catalog_to_both_and_is_idempotent(tmp_path: Path):
     first = _run(tmp_path, "--target", "all")
     second = _run(tmp_path, "--target", "all")
     assert "설치:" in first.stdout

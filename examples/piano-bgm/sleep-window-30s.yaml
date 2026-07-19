@@ -1,0 +1,13 @@
+projectId: sleep-window-30s
+kind: piano-bgm
+sleepRoutine: window
+durationSec: 30
+preset: ambient-piano
+mood: quiet-night
+purpose: background
+key: D-minor
+tempoBpm: 48
+seed: 20260722
+output:
+  distribution: local
+  preview: true

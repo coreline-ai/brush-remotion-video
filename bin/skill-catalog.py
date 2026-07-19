@@ -291,7 +291,7 @@ def _command_check(_args: argparse.Namespace) -> int:
     catalog = load_catalog()
     validate_catalog(catalog, require_agents=True)
     update_readme(catalog, check=True)
-    print(f"PASS skill catalog check: skills={len(catalog['skills'])}, agents=9, README=sync")
+    print(f"PASS skill catalog check: skills={len(catalog['skills'])}, agents={len(catalog['skills'])}, README=sync")
     return 0
 
 
@@ -303,7 +303,7 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("--allow-missing-agents", action="store_true")
     validate.set_defaults(func=_command_validate)
 
-    list_cmd = sub.add_parser("list", help="정식 스킬 9종 표시")
+    list_cmd = sub.add_parser("list", help="정식 스킬 목록 표시")
     list_cmd.add_argument("--format", choices=("table", "json"), default="table")
     list_cmd.add_argument("--allow-missing-agents", action="store_true")
     list_cmd.set_defaults(func=_command_list)

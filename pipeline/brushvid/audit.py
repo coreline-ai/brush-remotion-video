@@ -215,26 +215,36 @@ def boundaries_from_props(props_path: str | Path) -> tuple[list[int], int]:
 
 
 def completion_windows_from_props(props_path: str | Path) -> list[dict]:
-    """props와 public routes에서 integrated-develop 완료 구간을 계산한다.
+    """props/public routes에서 표준 완료 구간과 pen→brush 채색 구간을 계산한다.
 
-    auditor의 mp4 단독 독립성은 유지하며, props가 표준 data/<pid>/props.json 위치에
-    있고 routes를 찾을 수 있을 때만 정밀 완료 검사를 활성화한다.
+    pen→brush의 넓은 왕복 채색은 한 프레임의 큰 면적 변화를 만들 수 있다. 이는
+    씬 중간 워시 점프가 아니라 명시된 ``paint`` route의 정상 스트로크이므로,
+    ``auditKind=pen-brush-paint`` 으로 별도 기록한다. 표준 integrated-develop만
+    완료 펄스 분석 대상으로 유지한다.
     """
     path = Path(props_path).resolve()
     props = json.loads(path.read_text(encoding="utf-8"))
     root = path.parents[2] if len(path.parents) >= 3 else path.parent
     public = root / "public"
     windows: list[dict] = []
+
+    def load_route(route_ref: object) -> dict | None:
+        if not isinstance(route_ref, str) or not route_ref:
+            return None
+        route_path = Path(route_ref)
+        if not route_path.is_absolute():
+            route_path = public / route_path
+        if not route_path.is_file():
+            return None
+        return json.loads(route_path.read_text(encoding="utf-8"))
+
     offset = 0
     for scene in props.get("scenes") or []:
         duration = int(scene.get("durationInFrames", 0))
         route_ref = scene.get("routes")
         if scene.get("completionMode") == "integrated-develop" and route_ref:
-            route_path = Path(route_ref)
-            if not route_path.is_absolute():
-                route_path = public / route_path
-            if route_path.is_file():
-                routes = json.loads(route_path.read_text(encoding="utf-8"))
+            routes = load_route(route_ref)
+            if routes is not None:
                 strokes = routes.get("strokes") or []
                 meta = routes.get("meta") or {}
                 last_end = max((float(s.get("end", 0)) for s in strokes),
@@ -242,6 +252,7 @@ def completion_windows_from_props(props_path: str | Path) -> list[dict]:
                 develop_end = last_end + int(scene.get("developFrames", 0))
                 settle_end = develop_end + int(scene.get("colorSettleFrames", 0))
                 windows.append({
+                    "auditKind": "integrated-develop",
                     "sceneId": scene.get("id", "<scene>"),
                     "offset": offset,
                     "drawStart": offset + float(meta.get("drawStart", 0)),
@@ -251,6 +262,32 @@ def completion_windows_from_props(props_path: str | Path) -> list[dict]:
                     "outroStart": offset + duration - int(scene.get("outroFadeFrames", 0)),
                     "sceneEnd": offset + duration,
                 })
+
+        # pen→brush는 색이 보이는 paint phase만 기록한다. outline과 paint의 위상은
+        # 겹치지 않는다는 렌더 계약이므로 이 구간 안의 correlated 변화는 정상 채색이다.
+        for phase in scene.get("drawingPhases") or []:
+            if not isinstance(phase, dict) or phase.get("kind") != "paint":
+                continue
+            routes = load_route(phase.get("routes"))
+            if routes is None:
+                continue
+            strokes = routes.get("strokes") or []
+            meta = routes.get("meta") or {}
+            starts = [float(stroke.get("start", meta.get("drawStart", 0))) for stroke in strokes]
+            draw_start = min(starts, default=float(meta.get("drawStart", 0)))
+            last_end = max((float(stroke.get("end", 0)) for stroke in strokes),
+                           default=float(meta.get("drawEnd", 0)))
+            windows.append({
+                "auditKind": "pen-brush-paint",
+                "sceneId": scene.get("id", "<scene>"),
+                "offset": offset,
+                "drawStart": offset + draw_start,
+                "lastStrokeEnd": offset + last_end,
+                "developEnd": offset + last_end,
+                "colorSettleEnd": offset + last_end,
+                "outroStart": offset + duration - int(scene.get("outroFadeFrames", 0)),
+                "sceneEnd": offset + duration,
+            })
         offset += duration
     return windows
 
@@ -282,6 +319,9 @@ def completion_pulse_issues(lums: np.ndarray, windows: list[dict], fps: float) -
     issues: list[Issue] = []
     stats: list[dict] = []
     for window in windows:
+        # paint route는 개별 스트로크 폭이 크므로 completion-pulse 대상이 아니다.
+        if window.get("auditKind", "integrated-develop") != "integrated-develop":
+            continue
         start = max(0, round(float(window["lastStrokeEnd"])))
         end = min(len(lums) - 1, round(float(window["colorSettleEnd"])))
         metrics = completion_reversal_metrics(lums[start:end + 1])
@@ -302,15 +342,21 @@ def completion_pulse_issues(lums: np.ndarray, windows: list[dict], fps: float) -
     return issues, stats
 
 
-def phase_for_frame(frame: int, windows: list[dict]) -> str | None:
-    for w in windows:
-        if float(w["drawStart"]) <= frame <= float(w["lastStrokeEnd"]):
-            return "drawing"
-        if float(w["lastStrokeEnd"]) < frame <= float(w["colorSettleEnd"]):
-            return "completion"
-        if float(w["outroStart"]) <= frame < float(w["sceneEnd"]):
-            return "outro"
+def phase_window_for_frame(frame: int, windows: list[dict]) -> tuple[str, dict] | None:
+    """프레임이 속한 정확한 route 단계와 해당 윈도우를 반환한다."""
+    for window in windows:
+        if float(window["drawStart"]) <= frame <= float(window["lastStrokeEnd"]):
+            return "drawing", window
+        if float(window["lastStrokeEnd"]) < frame <= float(window["colorSettleEnd"]):
+            return "completion", window
+        if float(window["outroStart"]) <= frame < float(window["sceneEnd"]):
+            return "outro", window
     return None
+
+
+def phase_for_frame(frame: int, windows: list[dict]) -> str | None:
+    active = phase_window_for_frame(frame, windows)
+    return active[0] if active else None
 
 
 def estimate_boundaries(lums: np.ndarray) -> list[int]:
@@ -1137,7 +1183,8 @@ def run_audit(video: str | Path, props: str | Path | None = None,
 
     # 씬 중간 후보: 원본 해상도 정밀 분석 → 번쩍 스파이크 / 워시 점프 / 씬 중간 하드컷 3분류
     labels = {"spike": "씬 중간 번쩍 스파이크", "outro-wash": "씬 끝 워시 온셋(연출)",
-              "wash-jump": "씬 중간 급격한 워시 점프", "hardcut": "씬 중간 하드컷"}
+              "wash-jump": "씬 중간 급격한 워시 점프", "hardcut": "씬 중간 하드컷",
+              "pen-brush-paint-stroke": "브러시 채색 스트로크(연출)"}
     exclude = {b + o for b in boundaries for o in (-1, 0, 1)}
     candidates = spike_candidates(diffs, roll, exclude)
     measurement_order = prioritize_spike_candidates(candidates, diffs, roll)
@@ -1157,10 +1204,14 @@ def run_audit(video: str | Path, props: str | Path | None = None,
         kind, sev = judge_candidate(peak, low, float(roll[f]),
                                     transient=transient, corr=corr, near_scene_end=near_end)
         if sev:
-            phase = phase_for_frame(f, completion_windows)
+            active_phase = phase_window_for_frame(f, completion_windows)
+            phase = active_phase[0] if active_phase else None
+            phase_window = active_phase[1] if active_phase else None
             # 큰 seal stroke는 그림을 실제로 확장하는 정상 draw 이벤트다. 빠른 transient
             # spike/hardcut은 그대로 두고, 구도 유지 wash-jump만 참고 정보로 낮춘다.
             if phase == "drawing" and kind == "wash-jump":
+                if phase_window and phase_window.get("auditKind") == "pen-brush-paint":
+                    kind = "pen-brush-paint-stroke"
                 sev = "INFO"
             issues.append(Issue(sev, kind,
                                 f"{labels[kind]} diff {peak:.2f}% "

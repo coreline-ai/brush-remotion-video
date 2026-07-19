@@ -83,15 +83,15 @@ export const DrawingPhaseLayer: React.FC<Props> = ({
     outroWashOpacity,
   );
   const thumbnailImage = data[1]?.meta.image ?? data[0]?.meta.image;
-  // 파일 표지는 첫 씬에서만 쓴다. 12f(0.40초) 동안 종이 배경으로 선형 페이드해
-  // 카드 썸네일과 무하드컷 재생을 함께 만족한다.
+  // 첫 장면 완성 이미지는 9f(0.30초) 동안 종이 배경으로 선형 페이드한다.
+  // 페이드가 끝난 다음 route의 펜 외곽선 → 브러시 채색만 보인다.
   const thumbnailOpacity = thumbnailPoster
-    ? 1 - interpolate(frame, [0, 12], [0, 1], clamp)
+    ? interpolate(frame, [0, 9], [0.68, 0], clamp)
     : 0;
 
   return <>
-    {/* Codex/브라우저 영상 카드는 MP4 표지가 아니라 재생 v:0의 0프레임을 썸네일로 쓴다.
-        첫 씬의 완성 장면만 f0에 두고 0.40초 안에 지운다. */}
+    {/* Codex/브라우저 영상 카드는 MP4 표지가 아니라 재생 v:0의 0프레임을 쓴다.
+        첫 씬의 완성 장면만 f0에 두고 0.30초 안에 지운다. */}
     {thumbnailImage && thumbnailOpacity > 0.001 && (
       <Img
         src={staticFile(thumbnailImage)}

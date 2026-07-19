@@ -38,6 +38,7 @@ from brushvid import audio as bv_audio
 from brushvid import background as bv_bg
 from brushvid import bgm as bv_bgm
 from brushvid import mix as bv_mix
+from brushvid import motion as bv_motion
 from brushvid import qa as bv_qa
 from brushvid import render as bv_render
 from brushvid import stt as bv_stt
@@ -116,6 +117,7 @@ def pen_route_params(duration: int, seed: int, *, draw_start: float = 8) -> Rout
 CANVAS = {"youtube": (1920, 1080), "shorts": (1080, 1920)}
 UHD_CANVAS = (3840, 2160)
 FULL_BLEED_PROFILES = {"progressive-frame-sequence", "storybook-full-bleed"}
+FULL_COLOR_MOTION_PROFILE = "full-color-motion"
 # 한 프로젝트만 렌더 큐에 넣는 전제에서, UHD 청크 내부 병렬 인코더 수.
 # 10-core / 24 GB 워크스테이션에서 100초 청크 6개를 안정적으로 처리하는 값이다.
 UHD_RENDER_CONCURRENCY = 4
@@ -128,6 +130,10 @@ def resolve_canvas(fmt: str, resolution: str) -> tuple[int, int]:
 
 
 def resolve_composition(cfg: ProjectConfig) -> str:
+    if cfg.drawing_profile == FULL_COLOR_MOTION_PROFILE:
+        if cfg.fmt == "shorts":
+            return "FullColorMotionPortrait"
+        return "FullColorMotionLandscape4K" if cfg.render_resolution == "uhd" else "FullColorMotionLandscape"
     if cfg.fmt == "shorts":
         return "BrushPortrait"
     return "BrushLandscape4K" if cfg.render_resolution == "uhd" else "BrushLandscape"
@@ -591,6 +597,10 @@ class Pipeline:
         return {"strategies": results, "signature": self._background_signature()}
 
     def stage_clean(self) -> dict:
+        if self.cfg.drawing_profile == FULL_COLOR_MOTION_PROFILE:
+            # Full Color Motion은 원본 색면을 그대로 움직인다. clean/content 분리는
+            # pen/brush 전용 전처리이므로 여기서 새 bitmap을 만들지 않는다.
+            return {"profile": FULL_COLOR_MOTION_PROFILE, "preservedSource": True}
         if self.cfg.drawing_profile in FULL_BLEED_PROFILES:
             # 원본 프레임의 시간적 진행/캐릭터 일관성이 연출의 핵심이므로 종이 clean을 적용하지 않는다.
             for i in range(len(self._scenes())):
@@ -642,6 +652,45 @@ class Pipeline:
         pen = self.cfg.drawing_profile == "pen"
         pen_brush = self.cfg.drawing_profile == "pen-brush"
         cosmic = self.cfg.drawing_profile == "cosmic-random-brush"
+        if self.cfg.drawing_profile == FULL_COLOR_MOTION_PROFILE:
+            assert self.cfg.motion is not None
+            reveal_scenes = []
+            for i, scene in enumerate(self._scenes()):
+                spec = self.cfg.motion.scene_for(i)
+                if spec.reveal != "brush":
+                    continue
+                source = self.public_dir / "bg" / f"scene-{i + 1:02d}.png"
+                coordinate_scale = self.canvas[0] / 1920
+                params = RouteParams(
+                    duration=scene["durationInFrames"], draw_start=0,
+                    draw_end=spec.reveal_frames,
+                    pen_invisible_after=spec.reveal_frames,
+                    seed=self.cfg.seed + i * 37,
+                    contour_width=44 * coordinate_scale,
+                    seal_width=68 * coordinate_scale,
+                    seal_step=18 * coordinate_scale,
+                )
+                params.width, params.height = self.canvas
+                data = generate_routes(
+                    source, params,
+                    image_rel=f"{self.cfg.project_id}/bg/scene-{i + 1:02d}.png",
+                )
+                # Motion renderer는 마지막 28%에 전체 fill을 섞어 색면 누락을 막지만,
+                # 실제 붓 경로는 분석된 원본 위에서 먼저 진행되어야 한다.
+                if not data.get("strokes"):
+                    raise SystemExit(f"scene-{i + 1:02d}: motion brush reveal routes가 비어 있음")
+                # motion_route_rel은 staticFile/public 기준 경로다. self.public_dir는
+                # 이미 public/<projectId>이므로 여기에서 projectId를 한 번 더 붙이면
+                # scoped renderer가 404를 낸다.
+                route_path = self.public_dir.parent / bv_motion.motion_route_rel(self.cfg.project_id, i)
+                write_routes(data, route_path)
+                reveal_scenes.append({"sceneId": f"scene-{i + 1:02d}",
+                                      "routes": str(route_path.relative_to(self.public_dir)),
+                                      "coverage": data["meta"].get("coverage")})
+            if not reveal_scenes:
+                log.info("routes: full-color-motion brush reveal 없음 — routes 생략")
+            return {"profile": FULL_COLOR_MOTION_PROFILE,
+                    "brushRevealScenes": reveal_scenes}
         if self.cfg.drawing_profile in FULL_BLEED_PROFILES:
             log.info("routes: profile=%s — 원본 frame sequence/full-bleed presentation 사용", self.cfg.drawing_profile)
             return {"skippedReason": self.cfg.drawing_profile}
@@ -844,6 +893,19 @@ class Pipeline:
 
     def stage_props(self) -> dict:
         scenes_meta = self._scenes()
+        if self.cfg.drawing_profile == FULL_COLOR_MOTION_PROFILE:
+            props = bv_motion.build_motion_props(
+                self.cfg,
+                scenes_meta,
+                shorts_subtitle_style=SHORTS_SUBTITLE_STYLE,
+            )
+            bv_motion.write_motion_props(props, self.props_json)
+            return {
+                "props": str(self.props_json.relative_to(REPO_ROOT)),
+                "profile": FULL_COLOR_MOTION_PROFILE,
+                "brushRevealScenes": [scene["id"] for scene in props["scenes"]
+                                      if scene["reveal"]["mode"] == "brush"],
+            }
         scene_props = []
         completion_timings = []
         schema_scene_props = load_schema()["properties"]["scenes"]["items"]["properties"]
@@ -921,6 +983,7 @@ class Pipeline:
                 fade_to = round(float(paint_meta["drawEnd"]))
                 fade_from = max(round(float(paint_meta["drawStart"])), fade_to - 24)
                 kwargs.update(PEN_SCENE_PRESET)
+                kwargs["viewportScale"] = self.cfg.drawing_viewport_scale
                 kwargs["drawingPhases"] = [
                     {"kind": "outline", "routes": f"{self.cfg.project_id}/routes/scene-{i + 1:02d}-outline.routes.json",
                      "cursor": scale_brush(PEN_BRUSH, coordinate_scale), "zIndex": 20, "edgeFeather": 0,
@@ -1186,7 +1249,13 @@ class Pipeline:
         offset = 0
         for i, sm in enumerate(self._scenes()):
             d = sm["durationInFrames"]
-            if self.cfg.drawing_profile == "pen-brush":
+            if self.cfg.drawing_profile == FULL_COLOR_MOTION_PROFILE:
+                spec = self.cfg.motion.scene_for(i) if self.cfg.motion else None
+                local = (("reveal-end", max(1, min(d - 8, spec.reveal_frames - 1))),
+                         ("motion-mid", d // 2), ("pre-transition", d - 8)) \
+                    if spec and spec.reveal == "brush" else \
+                    (("opening", 12), ("motion-mid", d // 2), ("pre-transition", d - 8))
+            elif self.cfg.drawing_profile == "pen-brush":
                 om = json.loads((self.public_dir / "routes" / f"scene-{i + 1:02d}-outline.routes.json").read_text())["meta"]
                 pm = json.loads((self.public_dir / "routes" / f"scene-{i + 1:02d}-paint.routes.json").read_text())["meta"]
                 local = (("start", 6), ("outline-mid", round((om["drawStart"] + om["drawEnd"]) / 2)),
@@ -1222,6 +1291,7 @@ class Pipeline:
         # 들고, 실제 전달 파일과 다른 렌더 경로를 검증하게 된다.
         if self.cfg.drawing_profile == "pen-brush" \
                 or (self.cfg.drawing_profile == "cosmic-random-brush" and self.cfg.ambient_scenes == 60) \
+                or self.cfg.drawing_profile == FULL_COLOR_MOTION_PROFILE \
                 or self.cfg.drawing_profile in FULL_BLEED_PROFILES \
                 or completion_timings:
             entries = bv_qa.capture_video_frames(self.output, frames, qa_dir,
@@ -1250,11 +1320,15 @@ class Pipeline:
             for i, _ in enumerate(self._scenes()):
                 outline = json.loads((self.public_dir / "routes" / f"scene-{i + 1:02d}-outline.routes.json").read_text())["meta"]
                 paint = json.loads((self.public_dir / "routes" / f"scene-{i + 1:02d}-paint.routes.json").read_text())["meta"]
-                source_thickness = estimate_line_thickness(self.public_dir / "bg" / f"scene-{i + 1:02d}.png")
+                outline_asset = self.public_dir / "bg" / f"scene-{i + 1:02d}-outline.png"
+                # fullBleed는 색칠 알파를 의도적으로 캔버스 전체로 확장한다. 원본 RGB의
+                # 종이/콘텐츠 경계로 굵기를 재추정하면 실제 선 변화 없이 false delta가 난다.
+                # 이 모드에서는 화면 확대 전후 모두 최상단 neutral outline 알파가 선의 정본이다.
+                source_thickness = alpha_line_thickness(outline_asset) if self.cfg.drawing_full_bleed                     else estimate_line_thickness(self.public_dir / "bg" / f"scene-{i + 1:02d}.png")
                 # 최종 프레임의 선은 color RGBA가 아니라 그 위에 놓이는 neutral outline RGBA가
                 # 보존한다. 투명 color의 종이 재합성으로 선 굵기를 재측정하면 한지 질감에 의해
                 # 오차가 생기므로, 실제 최상단 outline 레이어를 계측한다.
-                final_thickness = alpha_line_thickness(self.public_dir / "bg" / f"scene-{i + 1:02d}-outline.png")
+                final_thickness = alpha_line_thickness(outline_asset)
                 delta_pct = (final_thickness - source_thickness) / max(1e-9, source_thickness) * 100
                 report_scenes.append({"sceneId": f"scene-{i + 1:02d}", "outline": outline, "paint": paint,
                                       "lineThickness": source_thickness,

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Full Color Motion Video"
+  short_description: "원본 색상을 보존한 사진·일러스트 모션 영상과 선택형 붓 리빌을 제작합니다."
+  default_prompt: "준비한 컬러 이미지를 Full Color Motion으로 제작해줘. 원본 색상은 보존하고 장면별 2D 모션·효과·전환·로컬 오디오·QA를 연결하며, 필요하면 시작 붓 리빌도 적용해줘."

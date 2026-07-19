@@ -1,0 +1,4 @@
+interface:
+  display_name: "Piano BGM"
+  short_description: "실제 샘플 피아노 BGM과 A 방식 수면 루틴을 화성·성부 진행까지 검사해 제작합니다."
+  default_prompt: "요청한 길이·무드·용도에 맞는 독립 피아노 BGM을 제작해줘. 수면용이면 sleepRoutine(lullaby·breath·window)으로 실제 피아노만 사용하고, 주파수 드론·바이노럴 비트는 넣지 마."

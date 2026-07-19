@@ -122,22 +122,31 @@ export const BrushScene: React.FC<{ scene: Scene; paper: string; brush?: Brush }
     );
   }
 
+  // 첫 장면은 완성 이미지를 0.3초 동안 연하게 보여 준 뒤 종이로 지운다.
+  // 이후부터 펜 외곽선 → 브러시 채색이 시작되며, 포스터는 첫 장면에만 허용한다.
+  const useThumbnailPoster = scene.id === "scene-01";
+
   return (
     <AbsoluteFill style={{ backgroundColor: randomData ? "#01020d" : paper, overflow: "hidden" }}>
       {!randomData && <AbsoluteFill style={{ backgroundImage: PAPER_TEXTURE }} />}
       {scene.drawingPhases && (
-        <DrawingPhaseLayer
-          sceneId={scene.id}
-          phases={scene.drawingPhases}
-          frame={frame}
-          W={W}
-          H={H}
-          fallbackBrush={brush}
-          outroFadeFrames={scene.outroFadeFrames}
-          outroWashOpacity={scene.outroWashOpacity}
-          outroBlur={scene.outroBlur}
-          thumbnailPoster={scene.id === "scene-01"}
-        />
+        <AbsoluteFill style={{
+          transform: `scale(${scene.viewportScale})`, transformOrigin: "center center",
+          pointerEvents: "none",
+        }}>
+          <DrawingPhaseLayer
+            sceneId={scene.id}
+            phases={scene.drawingPhases}
+            frame={frame}
+            W={W}
+            H={H}
+            fallbackBrush={brush}
+            outroFadeFrames={scene.outroFadeFrames}
+            outroWashOpacity={scene.outroWashOpacity}
+            outroBlur={scene.outroBlur}
+            thumbnailPoster={useThumbnailPoster}
+          />
+        </AbsoluteFill>
       )}
       {randomData && <CosmicRandomBrushLayer data={randomData} frame={frame} W={W} H={H} />}
       {standardData && dynamic && (

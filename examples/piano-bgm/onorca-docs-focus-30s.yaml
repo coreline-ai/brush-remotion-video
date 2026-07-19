@@ -1,0 +1,13 @@
+# promo-widget-video/onorca-docs-demo.json용 로컬 피아노 BGM 요청.
+projectId: onorca-docs-focus-30s
+kind: piano-bgm
+durationSec: 30
+preset: minimal-ambient
+mood: calm-focused
+purpose: background
+key: D-major
+tempoBpm: 64
+seed: 20260719
+output:
+  distribution: local
+  preview: false

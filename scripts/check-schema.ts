@@ -3,12 +3,18 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { toJSONSchema } from "zod";
-import { RenderPropsSchema } from "../src/schema";
+import { FullColorMotionPropsSchema, RenderPropsSchema } from "../src/schema";
 
 const outFile = join(dirname(fileURLToPath(import.meta.url)), "..", "schema", "render-props.schema.json");
+const motionOutFile = join(dirname(fileURLToPath(import.meta.url)), "..", "schema", "full-color-motion-props.schema.json");
 const expected = JSON.stringify(toJSONSchema(RenderPropsSchema, { io: "input" }), null, 2) + "\n";
 const actual = readFileSync(outFile, "utf8");
 if (actual !== expected) {
   throw new Error("render-props.schema.json 드리프트 — `npm run export-schema`를 실행하세요.");
+}
+const motionExpected = JSON.stringify(toJSONSchema(FullColorMotionPropsSchema, { io: "input" }), null, 2) + "\n";
+const motionActual = readFileSync(motionOutFile, "utf8");
+if (motionActual !== motionExpected) {
+  throw new Error("full-color-motion-props.schema.json 드리프트 — `npm run export-schema`를 실행하세요.");
 }
 console.log("schema sync PASS");

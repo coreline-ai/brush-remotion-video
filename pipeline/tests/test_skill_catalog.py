@@ -22,10 +22,10 @@ def _skill(catalog, skill_id: str):
     return next(skill for skill in catalog["skills"] if skill["id"] == skill_id)
 
 
-def test_current_catalog_matches_nine_skill_folders_allowing_pending_agents():
+def test_current_catalog_matches_all_skill_folders_allowing_pending_agents():
     catalog = _catalog()
     warnings = skill_catalog.validate_catalog(catalog, root=ROOT, require_agents=False)
-    assert len(catalog["skills"]) == 9
+    assert len(catalog["skills"]) == 13
     assert isinstance(warnings, list)
 
 
@@ -105,7 +105,7 @@ def test_readme_table_is_deterministic_and_contains_exact_ids():
     first = skill_catalog.render_readme_table(catalog)
     second = skill_catalog.render_readme_table(skill_catalog.clone_catalog(catalog))
     assert first == second
-    assert first.count("| [") == 9
+    assert first.count("| [") == 13
     assert "cosmic-random-brush-video" not in first
     for skill in catalog["skills"]:
         assert f"[{skill['id']}]" in first

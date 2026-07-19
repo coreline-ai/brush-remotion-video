@@ -1,0 +1,12 @@
+projectId: fantasy-garden-30s
+kind: piano-bgm
+durationSec: 30
+preset: fantasy-piano
+mood: luminous-curious
+purpose: background
+key: D-lydian
+tempoBpm: 72
+seed: 20260717
+output:
+  distribution: local
+  preview: true

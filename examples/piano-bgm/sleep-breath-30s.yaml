@@ -1,0 +1,13 @@
+projectId: sleep-breath-30s
+kind: piano-bgm
+sleepRoutine: breath
+durationSec: 30
+preset: minimal-ambient
+mood: weightless-gentle
+purpose: background
+key: C-major
+tempoBpm: 56
+seed: 20260721
+output:
+  distribution: local
+  preview: true

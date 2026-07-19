@@ -316,20 +316,28 @@ def capture_video_frames(video_path: str | Path, frames: list[int], out_dir: str
     for stale in out_dir.glob(".qa-select-*"):
         shutil.rmtree(stale, ignore_errors=True)
     # 쉘을 통과하지 않는 subprocess 인수지만 ffmpeg filter parser의 쉼표는 이스케이프한다.
-    select_expr = "select=" + "+".join(f"eq(n\\,{frame})" for frame in unique_frames)
-    video_filter = f"{select_expr},scale=w='min({QA_MAX_WIDTH}\\,iw)':h=-2"
+    # 60씬 × 3점처럼 선택 프레임이 많으면 하나의 select 식이 지나치게 길어져
+    # 일부 ffmpeg 빌드에서 filter parser 메모리 오류가 난다. 고정 크기 배치로
+    # 나눠도 완성 MP4만 읽고, 성공한 모든 배치가 모인 뒤에만 QA 프레임을 교체한다.
+    select_batch_size = 48
     with tempfile.TemporaryDirectory(prefix=".qa-select-", dir=out_dir) as temp_name:
         temp_dir = Path(temp_name)
-        pattern = temp_dir / "capture-%04d.png"
-        cmd = ["ffmpeg", "-y", "-loglevel", "error", "-threads", str(workers),
-               "-i", str(video), "-vf", video_filter, "-vsync", "0", str(pattern)]
-        log.info("$ %s", " ".join(cmd))
-        subprocess.run(cmd, check=True)
-        captured = sorted(temp_dir.glob("capture-*.png"))
-        if len(captured) != len(unique_frames):
-            raise RuntimeError(
-                f"QA frame extraction mismatch: requested {len(unique_frames)}, got {len(captured)}")
-        for frame, source in zip(unique_frames, captured):
+        captures: list[tuple[int, Path]] = []
+        for batch_index, start in enumerate(range(0, len(unique_frames), select_batch_size)):
+            batch = unique_frames[start:start + select_batch_size]
+            select_expr = "select=" + "+".join(f"eq(n\\,{frame})" for frame in batch)
+            video_filter = f"{select_expr},scale=w='min({QA_MAX_WIDTH}\\,iw)':h=-2"
+            pattern = temp_dir / f"batch-{batch_index:03d}-%04d.png"
+            cmd = ["ffmpeg", "-y", "-loglevel", "error", "-threads", str(workers),
+                   "-i", str(video), "-vf", video_filter, "-vsync", "0", str(pattern)]
+            log.info("$ %s", " ".join(cmd))
+            subprocess.run(cmd, check=True)
+            captured = sorted(temp_dir.glob(f"batch-{batch_index:03d}-*.png"))
+            if len(captured) != len(batch):
+                raise RuntimeError(
+                    f"QA frame extraction mismatch: requested {len(batch)}, got {len(captured)}")
+            captures.extend(zip(batch, captured))
+        for frame, source in captures:
             destination = out_dir / f"frame-{frame:05d}.png"
             if destination.exists():
                 destination.unlink()
@@ -444,7 +452,12 @@ def build_gallery(props_path: str | Path, qa_dir: str | Path,
                 warnings.append(f"{card['sceneId']}: 캡처 파일 누락 — {c['file']}")
 
     project_id = props.get("projectId", "?")
-    profile = "pen" if (props.get("brush") or {}).get("kind") == "pen" else "brush"
+    # Full Color Motion은 brush cursor를 선택적으로 쓰더라도 붓 리빌 제품으로
+    # 오인하면 안 된다. 별도 props의 movement 필드로 gallery profile을 구분한다.
+    profile = (
+        "full-color-motion" if any("movement" in scene for scene in (props.get("scenes") or []))
+        else ("pen" if (props.get("brush") or {}).get("kind") == "pen" else "brush")
+    )
 
     def esc(s):
         return html_mod.escape(str(s), quote=True)

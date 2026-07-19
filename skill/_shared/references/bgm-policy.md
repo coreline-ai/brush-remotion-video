@@ -228,3 +228,14 @@ preflight 실패(자산 미등록/해시 불일치) 시 synth로 폴백한다.
 
 최종 자동 검수와 별도로 이어폰·노트북 스피커에서 내레이션 가독성, 펌핑,
 곡 전환, 시작/종료의 자연스러움을 직접 청취한다.
+
+## generated-piano BGM 후보 (piano-bgm 스킬)
+
+`bin/piano-bgm.py`가 만드는 BGM은 완성곡을 가져온 asset이 아니라, 로컬 Noct-Salamander CC BY 3.0 샘플을
+새 score event로 연주한 **generated candidate**다. `output/original-audio/piano-bgm/<projectId>/generated-bgm-manifest.json`의
+상태가 `APPROVED`가 되기 전에는 기존 BGM catalog·자동 선택·YouTube delivery에 등록하거나 사용하지 않는다.
+
+- `TECHNICAL_PASS`/`PENDING_USER_LISTENING`은 사람이 이어폰과 노트북 스피커에서 모두 승인하기 전의 중간 상태다.
+- `provenance.json`의 request/score/performance/renderer/sample archive hash와 `youtube-description.txt`의 CC BY attribution·변경 고지를 보존한다.
+- 사람이 승인한 candidate도 `bgm.mode: asset`에 넣기 전에는 별도 catalog 등록/라이선스 검토가 필요하다. 이 단계는 현 자동 BGM 선택 정책을 바꾸지 않는다.
+- shared sample source 기반 결과는 Content ID에 등록하지 않는다.

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "catalogVersion": "1.1.0",
+  "catalogVersion": "1.4.0",
   "defaultInstallTarget": "claude",
   "skills": [
     {
@@ -10,9 +10,14 @@
       "summary": "일반 영상 요청과 일상적인 카메라 표현을 전문 연출 브리프·한/영 Camera Prompt Pack·project.yaml 초안으로 변환하며 직접 렌더하지 않습니다.",
       "entrypoint": "conversation -> brief + optional camera prompt pack + project.yaml draft",
       "profiles": [],
-      "formats": ["youtube", "shorts"],
+      "formats": [
+        "youtube",
+        "shorts"
+      ],
       "defaultVoice": null,
-      "dependsOn": ["brush-video"],
+      "dependsOn": [
+        "brush-video"
+      ],
       "version": "1.1.0",
       "status": "stable",
       "interface": {
@@ -27,8 +32,13 @@
       "role": "production",
       "summary": "수묵·수채 이미지를 붓이 그려 완성하는 내레이션·TTS·앰비언트 영상을 제작합니다.",
       "entrypoint": "bin/build.py",
-      "profiles": ["brush"],
-      "formats": ["youtube", "shorts"],
+      "profiles": [
+        "brush"
+      ],
+      "formats": [
+        "youtube",
+        "shorts"
+      ],
       "defaultVoice": "female-01",
       "dependsOn": [],
       "version": "1.0.0",
@@ -40,15 +50,47 @@
       }
     },
     {
+      "id": "full-color-motion-video",
+      "folder": "full-color-motion-video",
+      "role": "production",
+      "summary": "원본 색상을 보존한 정지 이미지에 2D 모션·환경 효과·전환·로컬 오디오를 연결하고 선택형 붓 리빌을 적용합니다.",
+      "entrypoint": "bin/build.py",
+      "profiles": [
+        "full-color-motion"
+      ],
+      "formats": [
+        "youtube",
+        "shorts"
+      ],
+      "defaultVoice": null,
+      "dependsOn": [
+        "brush-video"
+      ],
+      "version": "1.0.0",
+      "status": "stable",
+      "interface": {
+        "displayName": "Full Color Motion Video",
+        "shortDescription": "원본 색상을 보존한 사진·일러스트 모션 영상과 선택형 붓 리빌을 제작합니다.",
+        "defaultPrompt": "준비한 컬러 이미지를 Full Color Motion으로 제작해줘. 원본 색상은 보존하고 장면별 2D 모션·효과·전환·로컬 오디오·QA를 연결하며, 필요하면 시작 붓 리빌도 적용해줘."
+      }
+    },
+    {
       "id": "pen-video",
       "folder": "pen-video",
       "role": "production",
       "summary": "원본을 자르지 않고 얇고 정교한 펜 윤곽선을 순차적으로 그리는 설명형 영상을 제작합니다.",
       "entrypoint": "bin/build.py",
-      "profiles": ["pen"],
-      "formats": ["youtube", "shorts"],
+      "profiles": [
+        "pen"
+      ],
+      "formats": [
+        "youtube",
+        "shorts"
+      ],
       "defaultVoice": "female-09",
-      "dependsOn": ["brush-video"],
+      "dependsOn": [
+        "brush-video"
+      ],
       "version": "1.0.0",
       "status": "stable",
       "interface": {
@@ -63,10 +105,18 @@
       "role": "production",
       "summary": "펜으로 샤프한 외곽선을 먼저 완성한 뒤 브러시로 색을 채우는 2단계 영상을 제작합니다.",
       "entrypoint": "bin/build.py",
-      "profiles": ["pen-brush"],
-      "formats": ["youtube", "shorts"],
+      "profiles": [
+        "pen-brush"
+      ],
+      "formats": [
+        "youtube",
+        "shorts"
+      ],
       "defaultVoice": "female-09",
-      "dependsOn": ["brush-video", "pen-video"],
+      "dependsOn": [
+        "brush-video",
+        "pen-video"
+      ],
       "version": "1.0.0",
       "status": "stable",
       "interface": {
@@ -81,10 +131,16 @@
       "role": "production",
       "summary": "1080×1920 세로 화면에서 훅·세이프존·루프 엔딩을 적용한 힐링 브러시 쇼츠를 제작합니다.",
       "entrypoint": "bin/build.py",
-      "profiles": ["brush"],
-      "formats": ["shorts"],
+      "profiles": [
+        "brush"
+      ],
+      "formats": [
+        "shorts"
+      ],
       "defaultVoice": "female-07",
-      "dependsOn": ["brush-video"],
+      "dependsOn": [
+        "brush-video"
+      ],
       "version": "1.0.0",
       "status": "stable",
       "interface": {
@@ -99,10 +155,16 @@
       "role": "production",
       "summary": "우주·심해·야간 등 어두운 16:9 이미지 1/6/60씬을 자유 랜덤 붓 터치로 드러냅니다.",
       "entrypoint": "bin/build.py",
-      "profiles": ["dark-random-brush"],
-      "formats": ["youtube"],
+      "profiles": [
+        "dark-random-brush"
+      ],
+      "formats": [
+        "youtube"
+      ],
       "defaultVoice": null,
-      "dependsOn": ["brush-video"],
+      "dependsOn": [
+        "brush-video"
+      ],
       "version": "0.3.0",
       "status": "specialized",
       "interface": {
@@ -117,10 +179,18 @@
       "role": "production",
       "summary": "동화 이미지·씬별 TTS·자막·BGM과 펜 외곽선→브러시 채색을 통합한 영상을 제작합니다.",
       "entrypoint": "scripts/prepare-storybook-full-touch.py + bin/build.py",
-      "profiles": ["pen-brush"],
-      "formats": ["youtube", "shorts"],
+      "profiles": [
+        "pen-brush"
+      ],
+      "formats": [
+        "youtube",
+        "shorts"
+      ],
       "defaultVoice": "female-08",
-      "dependsOn": ["brush-video", "pen-brush-video"],
+      "dependsOn": [
+        "brush-video",
+        "pen-brush-video"
+      ],
       "version": "0.1.0",
       "status": "specialized",
       "interface": {
@@ -130,15 +200,40 @@
       }
     },
     {
+      "id": "seamless-short-video",
+      "folder": "seamless-short-video",
+      "role": "production",
+      "summary": "이전 씬 말미 ~2초 동작 연속(정본)과 Last Frame·Multi-Signal Handoff로 캐릭터·동작이 이어지는 연속형 숏폼 I2V를 반자동 제작합니다. Remotion 붓 라인과 독립.",
+      "entrypoint": "bin/seamless-short.py",
+      "profiles": [],
+      "formats": [
+        "shorts"
+      ],
+      "defaultVoice": null,
+      "dependsOn": [],
+      "version": "1.0.0",
+      "status": "stable",
+      "interface": {
+        "displayName": "Seamless Short Video",
+        "shortDescription": "이전 말미 동작 연속·Last Frame Handoff로 심리스 I2V 숏폼을 제작합니다.",
+        "defaultPrompt": "캐릭터와 이야기로 연속 숏폼을 만들어줘. 조인 정본은 이전 씬 말미 ~2초 동작 이어 받기, Multi-Signal handoff, frame0 게이트, join-score 후 auto-head-trim concat까지."
+      }
+    },
+    {
       "id": "brush-qa-review",
       "folder": "qa-review",
       "role": "qa",
       "summary": "파이프라인의 씬 캡처와 capture manifest를 검토해 수정 요청과 재빌드 시작점을 제시합니다.",
       "entrypoint": "bin/qa.py",
       "profiles": [],
-      "formats": ["youtube", "shorts"],
+      "formats": [
+        "youtube",
+        "shorts"
+      ],
       "defaultVoice": null,
-      "dependsOn": ["brush-video"],
+      "dependsOn": [
+        "brush-video"
+      ],
       "version": "1.0.0",
       "status": "stable",
       "interface": {
@@ -154,7 +249,10 @@
       "summary": "완성 MP4의 하드컷·번쩍임·정지·무음·클리핑·음량·규격을 독립적으로 검사합니다.",
       "entrypoint": "bin/audit.py",
       "profiles": [],
-      "formats": ["youtube", "shorts"],
+      "formats": [
+        "youtube",
+        "shorts"
+      ],
       "defaultVoice": null,
       "dependsOn": [],
       "version": "1.0.0",
@@ -163,6 +261,49 @@
         "displayName": "Video Auditor",
         "shortDescription": "완성 MP4의 화면 전환·오디오·규격 결함을 독립 검사합니다.",
         "defaultPrompt": "완성 MP4를 video-auditor로 검사해 PASS/FAIL, 문제 시각, 증거 스틸, 오디오·규격 지표를 정리해줘."
+      }
+    },
+    {
+      "id": "piano-bgm",
+      "folder": "piano-bgm",
+      "role": "production",
+      "summary": "라이선스 검증된 로컬 다중 샘플 피아노로 새 score를 작곡·렌더하고, A 방식 수면 루틴(lullaby·breath·window)·화성·성부 진행·사람 청취 gate까지 검증합니다.",
+      "entrypoint": "bin/piano-bgm.py",
+      "profiles": [
+        "sleep-routine"
+      ],
+      "formats": [
+        "youtube",
+        "shorts"
+      ],
+      "defaultVoice": null,
+      "dependsOn": [],
+      "version": "0.1.0",
+      "status": "specialized",
+      "interface": {
+        "displayName": "Piano BGM",
+        "shortDescription": "실제 샘플 피아노 BGM과 A 방식 수면 루틴을 화성·성부 진행까지 검사해 제작합니다.",
+        "defaultPrompt": "요청한 길이·무드·용도에 맞는 독립 피아노 BGM을 제작해줘. 수면용이면 sleepRoutine(lullaby·breath·window)으로 실제 피아노만 사용하고, 주파수 드론·바이노럴 비트는 넣지 마."
+      }
+    },
+    {
+      "id": "promo-widget-video",
+      "folder": "promo-widget-video",
+      "role": "production",
+      "summary": "KIMI-K3 분석에서 자산화한 다크 프로모 위젯 31종(게이지·바·리더보드·카운트업·데이터 패널·UI 크롬·배지)으로 위젯 씬 시퀀스를 props JSON 하나로 조립·렌더합니다. 붓/펜 라인과 독립.",
+      "entrypoint": "src/promo/PromoWidgetGallery.tsx",
+      "profiles": [],
+      "formats": [
+        "youtube"
+      ],
+      "defaultVoice": null,
+      "dependsOn": [],
+      "version": "0.1.0",
+      "status": "specialized",
+      "interface": {
+        "displayName": "Promo Widget Video",
+        "shortDescription": "다크 프로모 위젯 31종으로 게이지·리더보드·카운트업 중심의 위젯 씬 영상을 조립·렌더합니다.",
+        "defaultPrompt": "assets/promo-widgets/catalog.json의 위젯으로 씬(페이지)별 props JSON을 구성하고 PromoWidgetGallery 컴포지션으로 다크 프로모 위젯 영상을 렌더해줘. 위젯 계약은 catalog demos를 출발점으로 하고, 색·폰트는 토큰에 맡겨."
       }
     }
   ],

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Seamless Short Video"
+  short_description: "이전 말미 동작 연속·Last Frame Handoff로 심리스 I2V 숏폼을 제작합니다."
+  default_prompt: "캐릭터와 이야기로 연속 숏폼을 만들어줘. 조인 정본은 이전 씬 말미 ~2초 동작 이어 받기, Multi-Signal handoff, frame0 게이트, join-score 후 auto-head-trim concat까지."

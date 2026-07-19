@@ -24,41 +24,39 @@ MODEL_FILES = ("config.json", "checkpoint.pth")
 
 
 def _ensure_korean_mecab() -> None:
-    """macOS case-insensitive FS에서 MeCab/mecab 패키지 충돌을 보정한다."""
+    """Melo import가 요구하는 대문자 MeCab 모듈을 안전하게 제공한다.
+
+    한국어 추론은 `python-mecab-ko`의 소문자 `mecab` 및 g2pkk를 그대로
+    사용한다. Melo는 모든 언어 모듈을 한 번에 import하면서 비사용 일본어
+    모듈에도 `MeCab.Tagger()`를 요구한다. macOS의 lower-case 한국어 패키지
+    환경에서는 그 import만 호환시키는 shim을 등록한다. 한국어 tokenizer,
+    G2P, BERT embedding이나 모델 출력에는 개입하지 않는다.
+    """
     try:
-        import mecab  # noqa: F401
+        import MeCab  # noqa: F401
         return
     except ModuleNotFoundError:
         pass
     try:
-        import MeCab
-        import mecab_ko_dic
+        import mecab
     except ImportError as exc:
-        raise TtsEngineUnavailableError("mecab-python3와 mecab-ko-dic가 필요함") from exc
+        raise TtsEngineUnavailableError("python-mecab-ko가 필요함") from exc
 
-    # g2pkk 0.1.2는 소문자 `mecab.MeCab().pos()` API를 기대한다. macOS
-    # case-insensitive site-packages에서는 대문자 `MeCab` 패키지와 충돌하므로,
-    # mecab-ko-dic를 사용하는 얇은 호환 모듈을 메모리에 등록한다.
-    class KoreanMecab:
-        def __init__(self):
-            self._tagger = MeCab.Tagger(
-                f'-r "{Path(MeCab.__file__).parent / "mecabrc"}" '
-                f'-d "{mecab_ko_dic.dictionary_path}"'
+    class Tagger:
+        def __init__(self, *_args, **_kwargs):
+            self._mecab = mecab.MeCab()
+
+        def parse(self, sentence: str) -> str:
+            # 이 메서드는 한국어 경로에서 호출되지 않는다. 명시적으로 잘못된
+            # 일본어 입력을 합성하려 하면 오류를 내어 조용한 품질 저하를 막는다.
+            raise RuntimeError(
+                "이 Melo runtime은 Korean-only이며 Japanese MeCab parsing을 지원하지 않음"
             )
 
-        def pos(self, sentence: str) -> list[tuple[str, str]]:
-            node = self._tagger.parseToNode(sentence)
-            result = []
-            while node is not None:
-                if node.surface:
-                    result.append((node.surface, node.feature))
-                node = node.next
-            return result
-
-    module = ModuleType("mecab")
-    module.__spec__ = importlib.machinery.ModuleSpec("mecab", loader=None)
-    module.MeCab = KoreanMecab
-    sys.modules["mecab"] = module
+    module = ModuleType("MeCab")
+    module.__spec__ = importlib.machinery.ModuleSpec("MeCab", loader=None)
+    module.Tagger = Tagger
+    sys.modules["MeCab"] = module
 
 
 class MeloAdapter:
@@ -99,6 +97,8 @@ class MeloAdapter:
         speakers = getattr(getattr(getattr(model, "hps", None), "data", None), "spk2id", {})
         if "KR" not in speakers:
             raise RuntimeError(f"melo-ko speaker KR 없음; 임의 fallback 금지: {sorted(speakers)}")
+        if bool(getattr(model.hps.data, "disable_bert", False)):
+            raise RuntimeError("QUALITY_GATE_FAILED: melo-ko Korean contextual BERT가 비활성화됨")
         self._model = model
         self._speaker_id = speakers["KR"]
         self._sample_rate = int(model.hps.data.sampling_rate)
@@ -114,6 +114,7 @@ class MeloAdapter:
             "language": "ko",
             "speaker": "KR",
             "nativeSampleRate": self._sample_rate,
+            "contextualBert": "kykim/bert-kor-base enabled",
             "speedAppliedBy": "melo-native-length-scale",
             "license": {**ENGINE_LICENSES[self.engine_id], "aiDisclosureRequired": True},
         }
@@ -133,7 +134,6 @@ class MeloAdapter:
             raise ValueError(f"melo-ko language는 ko만 지원함: {language!r}")
         if reference is not None:
             raise ValueError("melo-ko는 reference를 지원하지 않음")
-        _ensure_korean_mecab()
         samples = self._model.tts_to_file(
             text,
             self._speaker_id,

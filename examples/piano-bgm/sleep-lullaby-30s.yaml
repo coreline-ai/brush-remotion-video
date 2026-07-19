@@ -1,0 +1,13 @@
+projectId: sleep-lullaby-30s
+kind: piano-bgm
+sleepRoutine: lullaby
+durationSec: 30
+preset: sleep-piano
+mood: soft-safe
+purpose: background
+key: C-major
+tempoBpm: 60
+seed: 20260720
+output:
+  distribution: local
+  preview: true

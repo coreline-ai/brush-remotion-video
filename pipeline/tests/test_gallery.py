@@ -70,3 +70,12 @@ def test_gallery_missing_manifest_and_capture(tmp_path):
     (qa_dir / "capture-manifest.json").unlink()    # manifest 자체 삭제
     html2 = build_gallery(props_path, qa_dir).read_text(encoding="utf-8")
     assert "capture-manifest.json" in html2 and 'class="warncard"' in html2
+
+
+def test_motion_props_are_labeled_as_full_color_motion_in_gallery(tmp_path):
+    props_path, qa_dir = _fixture(tmp_path, scenes=1, captures=1)
+    props = json.loads(props_path.read_text(encoding="utf-8"))
+    props["scenes"][0]["movement"] = "push-in"
+    props_path.write_text(json.dumps(props, ensure_ascii=False), encoding="utf-8")
+    html = build_gallery(props_path, qa_dir).read_text(encoding="utf-8")
+    assert ">full-color-motion</span>" in html

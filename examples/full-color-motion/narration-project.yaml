@@ -1,0 +1,26 @@
+# V2: SRT cue/자막. 실제 더빙은 input.audio 또는 input.tts를 추가한다.
+projectId: full-color-motion-narration-demo
+format: youtube
+title: 궤도 위의 빛
+input:
+  srt: narration.srt
+background:
+  strategy: user-images
+  fit: cover
+  images:
+    - ../cosmic-random-brush-v03/assets/scene-01-earth-orbit-sunrise.png
+    - ../cosmic-random-brush-v03/assets/scene-02-earth-at-night.png
+    - ../cosmic-random-brush-v03/assets/scene-03-aurora-from-orbit.png
+drawing:
+  profile: full-color-motion
+  seed: 20260717
+motion:
+  default: {movement: push-in, effect: mist, intensity: 1.0}
+  scenes:
+    - {movement: rise, effect: rays, reveal: brush, revealFrames: 96}
+    - {movement: pan-right, effect: stars}
+    - {movement: arc-left, effect: aurora}
+subtitleStyle:
+  bottom: 60
+  fontSize: 38
+bgm: {mode: "off"}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Promo Widget Video"
+  short_description: "다크 프로모 위젯 31종으로 게이지·리더보드·카운트업 중심의 위젯 씬 영상을 조립·렌더합니다."
+  default_prompt: "assets/promo-widgets/catalog.json의 위젯으로 씬(페이지)별 props JSON을 구성하고 PromoWidgetGallery 컴포지션으로 다크 프로모 위젯 영상을 렌더해줘. 위젯 계약은 catalog demos를 출발점으로 하고, 색·폰트는 토큰에 맡겨."

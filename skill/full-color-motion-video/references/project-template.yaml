@@ -1,0 +1,23 @@
+# 원본색 모션 V1. images는 이 YAML 파일 위치 기준 상대경로다.
+projectId: my-full-color-motion
+format: youtube
+render: {resolution: fhd} # youtube만 uhd 가능
+title: 원본색 모션
+background:
+  strategy: user-images
+  fit: cover
+  images:
+    - assets/scene-01.png
+    - assets/scene-02.png
+drawing:
+  profile: full-color-motion
+  seed: 20260717
+motion:
+  default: {movement: push-in, effect: mist, intensity: 1.0}
+  scenes:
+    - {movement: push-in, effect: rays, reveal: brush, revealFrames: 96}
+    - {movement: arc-left, effect: fireflies}
+ambient:
+  scenes: 2
+  cues: ["첫 장면", "둘째 장면"]
+bgm: {mode: "off"}

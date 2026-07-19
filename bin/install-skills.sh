@@ -5,7 +5,10 @@ set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 CATALOG_CLI="$REPO/bin/skill-catalog.py"
-if [ -x "$REPO/pipeline/.venv/bin/python" ]; then
+# 로컬 venv symlink 대상이 삭제된 경우(-x는 true지만 실행은 실패)에도
+# catalog 설치가 막히지 않도록 실제 실행 가능 여부까지 확인한다.
+if [ -x "$REPO/pipeline/.venv/bin/python" ] \
+  && "$REPO/pipeline/.venv/bin/python" -c 'import sys' >/dev/null 2>&1; then
   PYTHON_BIN="$REPO/pipeline/.venv/bin/python"
 else
   PYTHON_BIN="python3"
@@ -21,7 +24,7 @@ usage() {
 옵션:
   --target TARGET  설치 대상. 기본값은 하위 호환을 위해 claude.
   --dry-run        파일을 변경하지 않고 예정 작업만 출력.
-  --check          파일을 변경하지 않고 catalog 9종 설치 상태를 검사.
+  --check          파일을 변경하지 않고 catalog 스킬 설치 상태를 검사.
   -h, --help       도움말.
 EOF
 }
@@ -175,7 +178,8 @@ check_target() {
   done < <(legacy_aliases)
 
   [ "$failures" -eq 0 ] || return 1
-  echo "PASS [$label] catalog skills 9/9"
+  skill_count="$("$PYTHON_BIN" -c "import json; from pathlib import Path; print(len(json.loads(Path(r'$REPO/skill/catalog.json').read_text())['skills']))")"
+  echo "PASS [$label] catalog skills ${skill_count}/${skill_count}"
 }
 
 if $CHECK_ONLY; then

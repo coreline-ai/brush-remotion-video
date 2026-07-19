@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import pytest
 from PIL import Image
 
-from brushvid.project import BgmConfig
+from brushvid.project import BgmConfig, MotionConfig, MotionSceneConfig
 
 BUILD_PY = Path(__file__).resolve().parents[2] / "bin" / "build.py"
 
@@ -181,6 +181,22 @@ def test_uhd_canvas_and_composition_are_selected_for_youtube(tmp_path, monkeypat
     assert buildmod.resolve_composition(cfg) == "BrushLandscape4K"
 
 
+def test_full_color_motion_selects_its_own_fhd_uhd_and_portrait_compositions(tmp_path, monkeypatch):
+    monkeypatch.setattr(buildmod, "REPO_ROOT", tmp_path)
+    motion = MotionConfig()
+    assert buildmod.resolve_composition(buildmod.ProjectConfig(
+        project_id="motion-fhd", drawing_profile="full-color-motion", motion=motion,
+    )) == "FullColorMotionLandscape"
+    assert buildmod.resolve_composition(buildmod.ProjectConfig(
+        project_id="motion-uhd", drawing_profile="full-color-motion", motion=motion,
+        render_resolution="uhd",
+    )) == "FullColorMotionLandscape4K"
+    assert buildmod.resolve_composition(buildmod.ProjectConfig(
+        project_id="motion-shorts", drawing_profile="full-color-motion", motion=motion,
+        fmt="shorts",
+    )) == "FullColorMotionPortrait"
+
+
 def test_uhd_long_render_uses_internal_four_worker_limit(tmp_path, monkeypatch):
     """프로젝트 간 병렬 렌더 없이 UHD 100초 청크를 4개 워커로 처리한다."""
     monkeypatch.setattr(buildmod, "REPO_ROOT", tmp_path)
@@ -206,6 +222,39 @@ def test_full_bleed_profile_skips_route_generation(tmp_path, monkeypatch):
     cfg = buildmod.ProjectConfig(project_id="full-bleed-demo", drawing_profile="storybook-full-bleed")
     pipe = buildmod.Pipeline(cfg)
     assert pipe.stage_routes()["skippedReason"] == "storybook-full-bleed"
+
+
+def test_full_color_motion_generates_only_brush_routes_at_staticfile_path(tmp_path, monkeypatch):
+    """projectId를 public/<id> 아래에 두 번 붙이면 renderer가 routes 404를 낸다."""
+    monkeypatch.setattr(buildmod, "REPO_ROOT", tmp_path)
+    cfg = buildmod.ProjectConfig(
+        project_id="motion-demo", drawing_profile="full-color-motion",
+        motion=MotionConfig(scenes=(
+            MotionSceneConfig(reveal="brush", reveal_frames=90),
+            MotionSceneConfig(reveal="none"),
+        )),
+    )
+    pipe = buildmod.Pipeline(cfg)
+    pipe._write_scenes([
+        {"durationInFrames": 300, "cues": []},
+        {"durationInFrames": 300, "cues": []},
+    ])
+    captured = []
+
+    def fake_routes(_source, params, *, image_rel):
+        captured.append((params.draw_start, params.draw_end, image_rel))
+        return {"meta": {"coverage": 0.98}, "strokes": [
+            {"id": "s1", "kind": "contour", "width": 44, "start": 0, "end": 90,
+             "points": [[0, 0], [100, 100]]},
+        ]}
+
+    monkeypatch.setattr(buildmod, "generate_routes", fake_routes)
+    result = pipe.stage_routes()
+    route = tmp_path / "public" / "motion-demo" / "routes" / "scene-01.motion-reveal.routes.json"
+    assert route.is_file()
+    assert not (tmp_path / "public" / "motion-demo" / "motion-demo").exists()
+    assert captured == [(0, 90, "motion-demo/bg/scene-01.png")]
+    assert result["brushRevealScenes"][0]["routes"] == "routes/scene-01.motion-reveal.routes.json"
 def test_pen_first_scene_props_use_a_blurred_source_poster(tmp_path, monkeypatch):
     monkeypatch.setattr(buildmod, "REPO_ROOT", tmp_path)
     cfg = buildmod.ProjectConfig(project_id="pen-opening", drawing_profile="pen",

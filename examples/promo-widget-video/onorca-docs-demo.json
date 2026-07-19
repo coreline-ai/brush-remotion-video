@@ -1,0 +1,198 @@
+{
+  "kicker": "INDEPENDENT DOCS WALKTHROUGH // ONORCA.DEV",
+  "scenes": [
+    {
+      "id": "orca-intro",
+      "durationInFrames": 180,
+      "stage": { "preset": "orb", "tint": "blue", "glyph": "O" },
+      "transition": { "type": "none" },
+      "subtitle": "A desktop IDE for parallel AI coding worktrees",
+      "widgets": [
+        {
+          "type": "heroTitle",
+          "x": 190,
+          "y": 300,
+          "w": 1540,
+          "h": 450,
+          "enterAt": 12,
+          "text": "ORCA",
+          "accent": "WORKTREES",
+          "sub": "PARALLEL AI CODING, ONE DESKTOP",
+          "underline": true,
+          "scaleFrom": 1.55,
+          "settleFrames": 8
+        },
+        {
+          "type": "pillBadge",
+          "x": 800,
+          "y": 785,
+          "w": 320,
+          "h": 48,
+          "enterAt": 44,
+          "text": "DOCS-BASED DEMO",
+          "tone": "data",
+          "glyph": "◈"
+        }
+      ]
+    },
+    {
+      "id": "three-agents",
+      "durationInFrames": 180,
+      "stage": { "preset": "particle-dust", "tint": "blue" },
+      "transition": { "type": "light-sweep", "durationInFrames": 12 },
+      "subtitle": "One task, three isolated worktrees, three agent approaches",
+      "widgets": [
+        {
+          "type": "nodeGraph",
+          "x": 350,
+          "y": 180,
+          "w": 1220,
+          "h": 600,
+          "enterAt": 14,
+          "pill": "SAME TASK · PARALLEL BRANCHES",
+          "footer": "ISOLATED FILES · TERMINALS · BROWSERS",
+          "nodes": [
+            { "label": "TASK", "x": 0.5, "y": 0.12 },
+            { "label": "CLAUDE", "x": 0.18, "y": 0.54 },
+            { "label": "CODEX", "x": 0.5, "y": 0.72 },
+            { "label": "CURSOR", "x": 0.82, "y": 0.54 }
+          ],
+          "edges": [[0, 1], [0, 2], [0, 3]],
+          "drawFrames": 40
+        },
+        {
+          "type": "countUp",
+          "x": 720,
+          "y": 804,
+          "w": 480,
+          "h": 115,
+          "enterAt": 64,
+          "to": 3,
+          "decimals": 0,
+          "suffix": " AGENTS",
+          "caption": "ONE PROMPT · THREE DIFFS",
+          "countFrames": 26
+        },
+        {
+          "type": "marquee",
+          "x": 130,
+          "y": 114,
+          "w": 1660,
+          "h": 44,
+          "enterAt": 18,
+          "text": "WORKTREES · AGENTS · TERMINALS · BROWSERS",
+          "speed": 1.4
+        }
+      ]
+    },
+    {
+      "id": "worktree-flow",
+      "durationInFrames": 180,
+      "stage": { "preset": "grid", "tint": "blue" },
+      "transition": { "type": "push-in", "durationInFrames": 12 },
+      "subtitle": "Create a worktree, pick an agent, then work in its own branch",
+      "widgets": [
+        {
+          "type": "flowDiagram",
+          "x": 270,
+          "y": 250,
+          "w": 1380,
+          "h": 360,
+          "enterAt": 12,
+          "steps": ["ADD REPO", "CREATE WORKTREE", "PICK AGENT", "WORK IN PARALLEL"],
+          "stepFrames": 26
+        },
+        {
+          "type": "terminal",
+          "x": 520,
+          "y": 650,
+          "w": 880,
+          "h": 205,
+          "enterAt": 76,
+          "header": "WORKTREE TERMINAL",
+          "bootLines": ["branch ready", "agent context scoped"],
+          "prompt": "$",
+          "command": "review the implementation",
+          "status": "AGENT RUNNING",
+          "typeFrames": 34
+        }
+      ]
+    },
+    {
+      "id": "review-and-ship",
+      "durationInFrames": 180,
+      "stage": { "preset": "spotlight", "tint": "warm" },
+      "transition": { "type": "light-sweep", "durationInFrames": 12 },
+      "subtitle": "Compare changes, annotate the best approach, then ship",
+      "widgets": [
+        {
+          "type": "checklistPanel",
+          "x": 310,
+          "y": 205,
+          "w": 1300,
+          "h": 470,
+          "enterAt": 12,
+          "items": [
+            { "name": "COMPARE DIFFS", "status": "READY" },
+            { "name": "ANNOTATE CHANGES", "status": "READY" },
+            { "name": "STAGE BY HUNK", "status": "READY" },
+            { "name": "COMMIT AND PUSH", "status": "READY" }
+          ],
+          "footer": "REVIEW BEFORE YOU SHIP",
+          "populateFrames": 16
+        },
+        {
+          "type": "sportsCallout",
+          "x": 740,
+          "y": 720,
+          "w": 440,
+          "h": 115,
+          "enterAt": 86,
+          "variant": "stamp",
+          "text": "SHIP"
+        },
+        {
+          "type": "marquee",
+          "x": 130,
+          "y": 120,
+          "w": 1660,
+          "h": 44,
+          "enterAt": 12,
+          "text": "DIFF · ANNOTATE · STAGE · COMMIT · PUSH",
+          "speed": 1.25
+        }
+      ]
+    },
+    {
+      "id": "outro",
+      "durationInFrames": 180,
+      "stage": { "preset": "glow", "tint": "blue" },
+      "transition": { "type": "light-sweep", "durationInFrames": 12 },
+      "subtitle": "Explore the official documentation at onorca.dev/docs",
+      "widgets": [
+        {
+          "type": "logoLockup",
+          "x": 420,
+          "y": 275,
+          "w": 1080,
+          "h": 350,
+          "enterAt": 16,
+          "wordmark": "ORCA",
+          "icon": "O",
+          "sub": "WORKTREE IDE FOR AI CODING AGENTS",
+          "theme": "dark"
+        },
+        {
+          "type": "marquee",
+          "x": 0,
+          "y": 850,
+          "w": 1920,
+          "h": 90,
+          "enterAt": 38,
+          "text": "ONORCA.DEV/DOCS · WORKTREES · AGENTS · REVIEW · SHIP",
+          "speed": 2.2
+        }
+      ]
+    }
+  ]
+}

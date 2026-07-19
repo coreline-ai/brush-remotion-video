@@ -21,6 +21,102 @@
 
 ---
 
+## 2026-07-17 · seamless-short-video Phases 2–4 완료 (frame0-check·pytest·schema)
+- **발견**: 정식 스킬 v1.0 이후 frame0 게이트·sha/join 테스트·schema가 CLI/CI 경로에 없음.
+- **원인**: Phase 1은 catalog 승격 중심; 운영 hard-gate 자동화는 Phase 2+로 분리됨.
+- **수정**: `bin/seamless-short.py frame0-check` (C12 임계, qa.json, fail exit≠0); `evaluate_frame0_gate`/`frame0_check_paths`; `pipeline/tests/test_seamless_short.py` 7 passed; `schema/seamless-project.schema.json` 초안; docs 09/12·SKILL 동기화; `dev-plan/implement_20260717_141429.md` Phase 1–4 전부 완료 표시.
+- **환류** ★: CLI·pytest·schema·doc12·FIELD-LOG·계획 최종 요약. 잔여: video-tail 정본 API(도구 대기), grade-match CLI.
+
+## 2026-07-17 · seamless-short-video 정식 v1.0.0 (독립 스킬)
+- **발견**: 조인 정본(이전 말미 ~2초 동작 연속)이 문서에 정착했으나 스킬 카탈로그는 specialized v0.1.0으로 남아 정식 계약이 약함.
+- **원인**: 파일럿·doc 16 §0·auto-head-trim이 선행되고 catalog/SKILL 승격이 후순위였음.
+- **수정**: `skill/seamless-short-video` SKILL·agents·join-canon 정리, catalog **v1.0.0 stable**, catalogVersion 1.3.1, README GENERATED 동기화, 개발 계획 `dev-plan/implement_20260717_141429.md` (Phase 1 완료; frame0-check 등은 Phase 2+).
+- **환류** ★: `skill/seamless-short-video/SKILL.md`, `skill/catalog.json`, `docs/seamless-short-video/12-skill-adoption-checklist.md`, `docs/seamless-short-video/16 §0`, `bin/skill-catalog.py check` PASS, installer seamless-short-video PASS.
+
+## 2026-07-17 · seamless-lulu-star-walk-30s (seamless-short-video)
+- **발견**: 완성 30s에서 (1) ~10s 경계 밝기 점프 (2) ~20s 보행 부자연
+- **원인**: (1) **C-EXP** — handoff sha는 일치했으나 I2V frame0이 start를 재조명(meanY Δ≈+11). start 제공≠frame0 보장.
+  (2) **C-MOT** — 20s는 밝기 ΔY≈0; 보행 위상·속도 리셋. walk 인계 + 다음 씬 초반 새 연출.
+- **수정 (이번 건 방향)**: Look Lock, frame0 ΔY/MAE 게이트, hold/plant-feet 인계, 0–2s overlap only, grade-match.
+- **공통 수정 방향 (모든 영상)** ★: 작품 특수 처방이 아니라 원인 클래스 표준으로 고정.
+  - C-EXP → Look Lock + no-relight + frame0 게이트 + (보조) grade-match feather
+  - C-MOT → 경계 hold/plant-feet + 0–2s 문장 복붙 + 걷기를 경계 밖 + (보조) overlap/speed ramp
+  - 해시만으로 PASS 금지; 다음 씬 진행 전 4축(파일·frame0·노출·동작) 게이트
+- **환류** ★:
+  - **SSOT 공통 표준:** `docs/seamless-short-video/13-common-remediation-standard.md` (v0.3)
+  - 상세 분해: `04-look-lock-and-exposure.md`, `05-motion-and-walk-handoff.md`
+  - 실측: `10-pilot-lessons-lulu-30s.md`
+  - 스킬 요약·행동 계약: `skill/seamless-short-video/SKILL.md`
+  - 이후 seamless 영상은 경계 이상을 C-xxx로 분류하고 13번 문서 처방만 사용 (즉흥 처방 금지)
+
+## 2026-07-17 · seamless-lulu-star-walk-30s remaster-v2 (공통 처방 적용)
+- **발견**: v1 완성본 C-EXP(~10s ΔY≈+11), C-MOT(~20s 보행)
+- **수정 적용**:
+  1. Look Lock 추가
+  2. S2 I2V 재생성(no-relight) — raw frame0 여전히 +11 → **grade-match gain 0.9104** (E5/E6)
+  3. S2 말미 plant-feet hold 연출 + handoff 재추출
+  4. S3 재생성(0–2s hold 연속, 짧은 걸음만) — frame0 ΔY −0.7 PASS (무보정)
+  5. concat remaster → `output/seamless-lulu-star-walk-30s.mp4` (v1은 `-v1.mp4` 보관)
+- **실측 v2**: cut 10s meanY Δ **−0.6** (숫자 PASS) 그러나 **사용자 체감 밝기 점프 잔존**
+- **환류**: `projects/.../report/continuity_report.md`, scene qa.json, grade_match.json
+
+## 2026-07-17 · seamless-lulu 10s 재분석 → C-EXP-TONE (v3 tone-match)
+- **발견**: v2 이후에도 10s “밝기 변화” 체감. 20s 동작은 개선.
+- **원인 (재분석)**: meanY 게이트는 통과했으나 **톤/로컬 대비 불연속**
+  - centerY Δ **−8.2**, stdY **−9.4**, p90 **−17**, p10 **+9.6**
+  - I2V frame0이 start와 구조는 비슷해도 휘도 CDF·캐릭터 광채·암부가 다름
+  - uniform gain은 평균만 맞추고 하이라이트/대비를 복원하지 못함
+  - S1 8→10s 자체 발광 ramp로 말미가 더 반짝인 상태에서 flat한 S2로 넘어가 체감 증폭
+- **수정**: S2 **Y-CDF histogram tone-match** to S1 handoff; S3 feather tone-match to new S2 handoff; concat v3
+- **실측 v3 cut10**: Δmean **−0.4**, Δcenter **+0.8**, Δstd **+0.1**, Δp90 **−0.4**
+- **환류** ★:
+  - `projects/.../report/cut10-root-cause-analysis.md`
+  - `docs/seamless-short-video/13-common-remediation-standard.md`에 **C-EXP-TONE** + tone-match 처방·게이트(center/std/p90/p10) 추가
+  - 교훈: **meanY PASS ≠ 밝기 연속 PASS**
+
+## 2026-07-17 · seamless-lulu exact handoff inject (10s 하단 잔차)
+- **발견**: tone-match 후에도 하단 밝기 차이 체감. “마지막 이미지에서 시작하면 되지 않나?”
+- **원인**: I2V는 start PNG를 **픽셀 그대로 frame0에 쓰지 않음**. handoff 파일 일치 ≠ 생성 영상 0프레임 일치. 하단 잔디/암부가 재합성됨. 클립별 H.264 재인코딩도 미세 오차 유발.
+- **수정**: one-pass assemble — S1 끝 2f + S2 앞 2f를 **동일 handoff PNG** 강제 삽입 → 8f fade into I2V → 단일 x264 인코드.
+- **실측**: PNG 경계 identical **True / MAE 0 / bottom MAE 0**. 디코드 컷 순간 MAE≈0~0.025.
+- **환류**: 13번 문서 E5 exact inject를 최종 권장 처방으로 승격. `scenes/scene_02/exact_cut_inject.json`
+
+## 2026-07-17 · seamless-lulu 10s 끊김 (freeze hitch) → smooth bridge
+- **발견**: exact inject 후 밝기는 개선됐으나 10s가 **끊김/정지**처럼 보임
+- **원인**: S1 끝·S2 앞 각 2프레임 still hold → 동작이 죽었다가 다시 살아나는 체감
+- **수정**: ease-out 6f → bridge **1f only** → ease-in 10f (smoothstep), 정지 hold 제거. 단일 인코드 유지
+- **실측**: 컷 전후 stepMAE 연속적(~0.1→0.5→…), 급격한 freeze 스파이크 없음. `output/seamless-lulu-star-walk-30s.mp4`
+- **환류**: 13번 E5를 **smooth handoff bridge**로 정정 (multi-frame still 금지)
+
+## 2026-07-17 · seamless-lulu 끊김 재수정 — still 완전 제거
+- **발견**: ease+bridge 1f / long crossfade 모두 멈춤 또는 이중노출 플래시
+- **원인**: (1) handoff still 프레임 = 동작 사망 (2) 긴 crossfade = 두 장 겹침으로 “멍한 중간/밝기 튐”
+- **수정**: **hard match-cut** + S2/S3 tone-match only. 정지 inject 0, dissolve 0. 클립 내부 모션 유지.
+- **실측**: cut Δmean≈0.06, stepMAE s1말~1.8 / s2초~4 (freeze 0). `output/seamless-lulu-star-walk-30s.mp4`
+- **프로세스 반성**: 10s 증상만 후처리로 반복 추적 → 개선이 아닌 국소 최적화.  
+  **방향 전환** → Multi-Signal Handoff (마지막 이미지=frame0 + state/motion/look/camera 동시 인계).  
+  정본: `docs/seamless-short-video/14-multi-signal-handoff-architecture.md`
+
+## 2026-07-17 · seamless-popo-dandelion-60s (1분 스킬 선반영)
+- **목표**: Multi-Signal Handoff v0.4를 6×10s=60s에 선적용 (후처리 루프 회피)
+- **적용**: Character/Look Lock, scene마다 start=prev handoff, 0–2s motion continue 프롬프트, frame0 게이트, hard match-cut
+- **결과**: 전 씬 frame0 PASS (Δmean≈−0.5, MAE≈1.5–2.4), tone-match·still inject 없음. `output/seamless-popo-dandelion-60s.mp4` 60.2s
+- **환류**: `projects/seamless-popo-dandelion-60s/report/continuity_report.md`, skill validated-example 60s 항목
+
+## 2026-07-17 · popo B-ACC (말미 감속 + 다음 씬 가속)
+- **발견**: 모션을 줄여 어색함을 낮추려다 컷 직후 **가속**이 나 더 이상해짐
+- **원인**: 말미 settle/저속 + 다음 씬 I2V 초·중반 고모션 (post/pre stepMAE 2~4×)
+- **수정**: velocity-match v2 — 다음 씬 초반 2s s0≈0.45–0.83, hold 45% 후 완만 가속; tone-match hard cut. still 없음
+- **결과**: early ratio 완화(예: 1.3–1.7). 2s 이후 소스 본속은 재생성 영역
+- **환류**: doc15 **B-ACC** + constant cruise 프롬프트 + 레시피 A2; `remaster_velocity.json`
+
+## 2026-07-17 · 10초 경계 공통 적용 문서 + popo remaster
+- **추가**: `docs/seamless-short-video/15-ten-second-boundary-common-playbook.md` (C1–C20, 처방 순서, 결합 레시피 A/B/C)
+- **popo 수정**: 체인 Y-CDF tone-match + hard cut (overlap 시험 swing≈45>8로 abort). still/long dissolve 없음
+- **실측 FINAL**: 10/20/30/40/50s ΔmeanY ≈ +0.3~+0.6 / 0. 상세 `report/remaster_boundary.json`
+- **환류**: README·SKILL·13 링크, skill `references/ten-second-boundary.md`
+
+
 ## 2026-07-11 · pen-ref-demo (pen 프로파일 검증 제작)
 
 - **발견**: 완성 화면에서 원본 이미지의 좌우가 잘려 있음 (사용자 지적)

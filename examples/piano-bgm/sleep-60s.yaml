@@ -1,0 +1,12 @@
+projectId: sleep-cradle-60s
+kind: piano-bgm
+durationSec: 60
+preset: sleep-piano
+mood: soft-safe
+purpose: background
+key: C-major
+tempoBpm: 60
+seed: 20260718
+output:
+  distribution: local
+  preview: true
