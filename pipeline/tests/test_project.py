@@ -559,6 +559,33 @@ input:
 """))
 
 
+
+def test_qwen_customvoice_contract_requires_sohee_instruction(tmp_path):
+    (tmp_path / "script.txt").write_text("CustomVoice 문장.", encoding="utf-8")
+    cfg = load_project(_write_yaml(tmp_path, """
+projectId: customvoice
+input:
+  script: script.txt
+  tts:
+    engine: qwen3-customvoice
+    voice: Sohee
+    language: ko
+    instruction: 차분하고 담백하게 읽어 주세요.
+    speed: 0.90
+"""))
+    assert cfg.tts["voice"] == "Sohee"
+    assert cfg.tts["instruction"] == "차분하고 담백하게 읽어 주세요."
+    with pytest.raises(ValueError, match="instruction"):
+        load_project(_write_yaml(tmp_path, """
+projectId: customvoice-invalid
+input:
+  script: script.txt
+  tts:
+    engine: qwen3-customvoice
+    voice: Sohee
+"""))
+
+
 def test_script_without_tts_rejected(tmp_path):
     """script 만 있고 tts 없음 → 검증 실패 (더빙/타이밍 소스 없음)."""
     (tmp_path / "script.txt").write_text("문장.", encoding="utf-8")

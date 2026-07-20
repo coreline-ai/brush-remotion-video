@@ -9,32 +9,39 @@ from pathlib import Path
 from typing import Any
 
 
-ENGINE_IDS = ("supertonic", "melo-ko", "qwen3-base")
-NEW_ENGINE_IDS = ("melo-ko", "qwen3-base")
+ENGINE_IDS = ("supertonic", "melo-ko", "qwen3-base", "qwen3-customvoice")
+NEW_ENGINE_IDS = ("melo-ko", "qwen3-base", "qwen3-customvoice")
 TTS_FIELDS = frozenset({"engine", "voice", "language", "speed", "pauseMs", "timing", "reference"})
+CUSTOMVOICE_TTS_FIELDS = frozenset({"engine", "voice", "language", "speed", "pauseMs", "timing", "instruction"})
+QWEN3_CUSTOMVOICE_SPEAKERS = ("Sohee",)
 ENGINE_FIELDS = {
     "supertonic": frozenset({"engine", "voice", "language", "speed", "pauseMs", "timing"}),
     "melo-ko": frozenset({"engine", "voice", "language", "speed", "pauseMs", "timing"}),
     "qwen3-base": TTS_FIELDS,
+    "qwen3-customvoice": CUSTOMVOICE_TTS_FIELDS,
 }
 ENGINE_MODEL_IDS = {
     "supertonic": "supertonic-3",
     "melo-ko": "myshell-ai/MeloTTS-Korean",
     "qwen3-base": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+    "qwen3-customvoice": "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice",
 }
 MODEL_REVISIONS = {
     "melo-ko": "0207e5adfc90129a51b6b03d89be6d84360ed323",
     "qwen3-base": "fd4b254389122332181a7c3db7f27e918eec64e3",
+    "qwen3-customvoice": "0c0e3051f131929182e2c023b9537f8b1c68adfe",
 }
 ENGINE_PACKAGES = {
     "supertonic": "supertonic==1.3.1",
     "melo-ko": "melotts==0.1.2",
     "qwen3-base": "qwen-tts==0.1.1",
+    "qwen3-customvoice": "qwen-tts==0.1.1",
 }
 ENGINE_LICENSES = {
     "supertonic": {"model": "OpenRAIL-M", "url": "https://huggingface.co/Supertone/supertonic"},
     "melo-ko": {"model": "MIT", "url": "https://huggingface.co/myshell-ai/MeloTTS-Korean"},
     "qwen3-base": {"model": "Apache-2.0", "url": "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-Base"},
+    "qwen3-customvoice": {"model": "Apache-2.0", "url": "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"},
 }
 TTS_CACHE_SCHEMA_VERSION = 1
 TTS_MANIFEST_SCHEMA_VERSION = 2
@@ -93,6 +100,15 @@ def normalize_language(engine: str, value: Any) -> str:
     if engine in NEW_ENGINE_IDS and language != "ko":
         raise ValueError(f"{engine}은 language=ko만 지원함 (입력: {value!r})")
     return language
+
+
+def validate_customvoice_instruction(value: Any) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("input.tts.instruction 은 비어 있지 않은 문자열이어야 함")
+    instruction = value.strip()
+    if len(instruction) > 600:
+        raise ValueError("input.tts.instruction 은 600자 이하여야 함")
+    return instruction
 
 
 def validate_reference(reference: Any, *, base_dir: Path) -> dict[str, Any]:
@@ -154,6 +170,7 @@ def cache_signature_material(text: str, config: dict[str, Any]) -> dict[str, Any
         "speed": config.get("speed", 1.05),
         "pauseMs": config.get("pauseMs", 300),
         "timing": config.get("timing", "tts"),
+        "instruction": config.get("instruction"),
         "referenceSha256": reference_hashes,
     }
     return payload

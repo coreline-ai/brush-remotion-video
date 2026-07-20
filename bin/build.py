@@ -533,6 +533,7 @@ class Pipeline:
                 speed=self.cfg.tts.get("speed", 1.05), pause_ms=self.cfg.tts["pauseMs"],
                 lang=self.cfg.tts.get("language", "ko"),
                 reference=self.cfg.tts.get("reference"),
+                instruction=self.cfg.tts.get("instruction"),
                 work_root=self.data_dir / "tts" / ".work",
             )
             manifest_path = self.data_dir / "tts" / "voice-manifest.json"

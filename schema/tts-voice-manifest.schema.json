@@ -33,7 +33,7 @@
       "properties": {
         "schemaVersion": { "const": 2 },
         "projectId": { "type": "string", "minLength": 1 },
-        "engine": { "enum": ["melo-ko", "qwen3-base"] },
+        "engine": { "enum": ["melo-ko", "qwen3-base", "qwen3-customvoice"] },
         "voice": { "type": "string", "minLength": 1 },
         "model": { "type": "string", "minLength": 1 },
         "modelRevision": { "type": "string", "minLength": 1 },
@@ -53,6 +53,7 @@
         "license": { "$ref": "#/$defs/license" },
         "aiDisclosure": { "type": "string", "minLength": 1 },
         "speaker": { "type": "string", "minLength": 1 },
+        "instruction": { "type": "string", "minLength": 1, "maxLength": 600 },
         "referenceVoiceId": { "type": "string", "minLength": 1 },
         "referenceAudioSha256": { "$ref": "#/$defs/sha256" },
         "referenceTranscriptSha256": { "$ref": "#/$defs/sha256" },
@@ -94,10 +95,26 @@
         }
       ]
     },
+    "qwenCustomVoiceV2": {
+      "allOf": [
+        { "$ref": "#/$defs/commonV2" },
+        {
+          "type": "object",
+          "properties": {
+            "engine": { "const": "qwen3-customvoice" },
+            "voice": { "const": "Sohee" },
+            "speaker": { "const": "Sohee" },
+            "instruction": { "type": "string", "minLength": 1, "maxLength": 600 }
+          },
+          "required": ["speaker", "instruction"]
+        }
+      ]
+    },
     "engineV2": {
       "oneOf": [
         { "$ref": "#/$defs/meloV2" },
-        { "$ref": "#/$defs/qwenV2" }
+        { "$ref": "#/$defs/qwenV2" },
+        { "$ref": "#/$defs/qwenCustomVoiceV2" }
       ]
     },
     "supertonicV1": {

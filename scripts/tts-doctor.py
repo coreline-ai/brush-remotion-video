@@ -18,20 +18,22 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PIPELINE = ROOT / "pipeline"
 VENV_PY = PIPELINE / ".venv" / "bin" / "python"
-ENGINES = ("supertonic", "melo-ko", "qwen3-base")
+ENGINES = ("supertonic", "melo-ko", "qwen3-base", "qwen3-customvoice")
 MODEL_IDS = {
     "melo-ko": "myshell-ai/MeloTTS-Korean",
     "qwen3-base": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+    "qwen3-customvoice": "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice",
 }
 MODEL_REVISIONS = {
     "melo-ko": "0207e5adfc90129a51b6b03d89be6d84360ed323",
     "qwen3-base": "fd4b254389122332181a7c3db7f27e918eec64e3",
+    "qwen3-customvoice": "0c0e3051f131929182e2c023b9537f8b1c68adfe",
 }
-EXTRAS = {"supertonic": "tts", "melo-ko": "tts-melo", "qwen3-base": "tts-qwen"}
+EXTRAS = {"supertonic": "tts", "melo-ko": "tts-melo", "qwen3-base": "tts-qwen", "qwen3-customvoice": "tts-qwen"}
 
 
 def selected_python(engine: str) -> Path:
-    if engine == "qwen3-base" and os.environ.get("BRUSHVID_QWEN_PYTHON"):
+    if engine in {"qwen3-base", "qwen3-customvoice"} and os.environ.get("BRUSHVID_QWEN_PYTHON"):
         return Path(os.environ["BRUSHVID_QWEN_PYTHON"]).expanduser()
     return VENV_PY
 
@@ -70,6 +72,7 @@ def check_engine(engine: str) -> bool:
         "supertonic": "import supertonic; print(supertonic.__version__)",
         "melo-ko": "import melo.api; print('melo import ok')",
         "qwen3-base": "import qwen_tts; print('qwen import ok')",
+        "qwen3-customvoice": "import qwen_tts; print('qwen customvoice import ok')",
     }
     result = subprocess.run(
         [str(python), "-c", probes[engine]], cwd=ROOT,

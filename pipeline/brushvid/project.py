@@ -19,10 +19,12 @@ from .voice_presets import SPEED_MAX, SPEED_MIN, VoicePresetError, validate_voic
 from .tts_contract import (
     ENGINE_FIELDS,
     ENGINE_IDS,
+    QWEN3_CUSTOMVOICE_SPEAKERS,
     NEW_ENGINE_IDS,
     normalize_language,
     validate_pause_ms,
     validate_reference,
+    validate_customvoice_instruction,
     validate_speed,
 )
 
@@ -264,7 +266,7 @@ def load_project(yaml_path: str | Path) -> ProjectConfig:
             pause_ms = validate_pause_ms(pause_ms)
         except ValueError as exc:
             raise ValueError(str(exc)) from exc
-        voice_default = "kr-default" if engine == "melo-ko" else (None if engine == "qwen3-base" else "F1")
+        voice_default = "kr-default" if engine == "melo-ko" else (None if engine in {"qwen3-base", "qwen3-customvoice"} else "F1")
         voice_raw = tts_raw.get("voice", voice_default)
         _require(isinstance(voice_raw, str) and bool(voice_raw.strip()),
                  "input.tts.voice 는 비어 있지 않은 문자열이어야 함")
@@ -295,6 +297,13 @@ def load_project(yaml_path: str | Path) -> ProjectConfig:
         if engine == "qwen3-base":
             try:
                 tts_cfg["reference"] = validate_reference(tts_raw.get("reference"), base_dir=base)
+            except ValueError as exc:
+                raise ValueError(str(exc)) from exc
+        elif engine == "qwen3-customvoice":
+            if voice not in QWEN3_CUSTOMVOICE_SPEAKERS:
+                raise ValueError(f"qwen3-customvoice voice는 {QWEN3_CUSTOMVOICE_SPEAKERS} 중 하나여야 함")
+            try:
+                tts_cfg["instruction"] = validate_customvoice_instruction(tts_raw.get("instruction"))
             except ValueError as exc:
                 raise ValueError(str(exc)) from exc
         if audio_p is not None:

@@ -6,6 +6,7 @@ import io
 import os
 import signal
 import subprocess
+import wave
 from pathlib import Path
 
 import numpy as np
@@ -31,6 +32,7 @@ from brushvid.tts_engines.qwen3_worker import (
 )
 from brushvid.tts_engines import qwen as qwen_client
 from brushvid.tts_engines.qwen import QwenAdapter, QwenWorkerClient
+from brushvid.tts_engines.qwen3_customvoice_worker import handle_request as handle_customvoice_request
 from brushvid.tts_engines.registry import create_engine, register_engine, supported_engines
 
 
@@ -39,7 +41,7 @@ SCHEMA = ROOT / "schema" / "tts-voice-manifest.schema.json"
 
 
 def test_engine_ids_and_audio_result_contract():
-    assert ENGINE_IDS == ("supertonic", "melo-ko", "qwen3-base")
+    assert ENGINE_IDS == ("supertonic", "melo-ko", "qwen3-base", "qwen3-customvoice")
     result = AudioResult(np.array([0.0, 1.0 + 5e-7, -1.0], dtype=np.float64), 24000)
     assert result.samples.dtype == np.float32
     assert result.metadata["nativeClampCount"] == 1
@@ -69,6 +71,7 @@ def test_pause_requires_non_negative_integer(value):
 def test_new_engines_are_korean_only():
     assert normalize_language("melo-ko", "KO") == "ko"
     assert normalize_language("qwen3-base", "ko") == "ko"
+    assert normalize_language("qwen3-customvoice", "ko") == "ko"
     with pytest.raises(ValueError, match="language=ko"):
         normalize_language("qwen3-base", "en")
 
@@ -127,7 +130,7 @@ def test_registry_rejects_duplicate_and_unknown_engine():
 
 def test_runtime_tts_import_registers_builtin_engines():
     import brushvid.tts  # noqa: F401
-    assert {"supertonic", "melo-ko", "qwen3-base"}.issubset(set(supported_engines()))
+    assert {"supertonic", "melo-ko", "qwen3-base", "qwen3-customvoice"}.issubset(set(supported_engines()))
 
 
 def test_manifest_schema_accepts_v1_and_new_engine_v2(tmp_path):
@@ -203,6 +206,64 @@ def test_melo_adapter_uses_pinned_files_and_kr_without_fallback(tmp_path):
 
     with pytest.raises(RuntimeError, match="fallback 금지"):
         MeloAdapter(model_dir=tmp_path, tts_factory=lambda **_: BadModel())
+
+
+
+
+def test_customvoice_worker_uses_sohee_and_instruction_without_reference(tmp_path):
+    class FakeModel:
+        def generate_custom_voice(self, **kwargs):
+            assert kwargs["text"] == ["첫 문장.", "둘째 문장."]
+            assert kwargs["speaker"] == ["sohee", "sohee"]
+            assert kwargs["language"] == ["Korean", "Korean"]
+            assert kwargs["instruct"] == ["차분하고 담백하게 읽어 주세요."] * 2
+            assert kwargs["non_streaming_mode"] is True
+            return [np.zeros(240, dtype=np.float32), np.zeros(480, dtype=np.float32)], 24000
+
+    from brushvid.tts_contract import MODEL_REVISIONS
+    request = {
+        "protocolVersion": 1, "requestId": "custom-1", "engine": "qwen3-customvoice",
+        "modelRevision": MODEL_REVISIONS["qwen3-customvoice"], "language": "Korean",
+        "speaker": "Sohee", "instruction": "차분하고 담백하게 읽어 주세요.",
+        "sentences": [{"id": "s1", "text": "첫 문장."}, {"id": "s2", "text": "둘째 문장."}],
+        "outputDir": "outputs/custom-1",
+    }
+    response = handle_customvoice_request(FakeModel(), request, tmp_path)
+    assert response["ok"] is True
+    assert [item["id"] for item in response["outputs"]] == ["s1", "s2"]
+    assert (tmp_path / "outputs/custom-1/sentence-0000.wav").is_file()
+    request["reference"] = {"audio": "nope"}
+    with pytest.raises(WorkerProtocolError, match="reference"):
+        handle_customvoice_request(FakeModel(), request, tmp_path)
+
+
+def test_customvoice_manifest_contract(tmp_path):
+    from brushvid.tts_manifest import build_engine_manifest, write_manifest_atomic
+    wav = tmp_path / "narration.wav"
+    with wave.open(str(wav), "wb") as handle:
+        handle.setnchannels(1); handle.setsampwidth(2); handle.setframerate(44100)
+        handle.writeframes(np.zeros(4410, dtype="<i2").tobytes())
+    result = {
+        "wav": str(wav), "durationSec": 0.1, "entries": [{"text": "문장"}],
+        "voice": {
+            "engine": "qwen3-customvoice", "model": "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice",
+            "modelRevision": "0c0e3051f131929182e2c023b9537f8b1c68adfe", "packageVersion": "qwen-tts==0.1.1",
+            "nativeSampleRate": 24000, "speed": 0.9, "speedAppliedBy": "ffmpeg-atempo",
+            "speaker": "Sohee", "instruction": "차분하고 담백하게 읽어 주세요.",
+            "aiDisclosure": "AI 합성 음성", "license": {
+                "model": "Apache-2.0", "url": "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice",
+                "aiDisclosureRequired": True,
+            },
+        },
+    }
+    manifest = build_engine_manifest(
+        project_id="customvoice", config={"engine": "qwen3-customvoice", "voice": "Sohee", "instruction": "차분하고 담백하게 읽어 주세요.", "speed": 0.9, "pauseMs": 350}, result=result,
+    )
+    assert manifest["speaker"] == "Sohee"
+    assert manifest["instruction"] == "차분하고 담백하게 읽어 주세요."
+    assert manifest["requestedSpeed"] == manifest["appliedSpeed"] == 0.9
+    assert manifest["aiDisclosure"] == "AI 합성 음성"
+    assert write_manifest_atomic(manifest, tmp_path / "voice-manifest.json").is_file()
 
 
 def test_qwen_worker_builds_reference_prompt_once_and_returns_ordered_relative_outputs(tmp_path):

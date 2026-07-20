@@ -21,6 +21,7 @@ from ..tts_contract import (
     ENGINE_LICENSES,
     ENGINE_MODEL_IDS,
     MODEL_REVISIONS,
+    QWEN3_CUSTOMVOICE_SPEAKERS,
     resolve_local_snapshot,
 )
 from .base import AudioResult, TtsEngineError, TtsEngineUnavailableError
@@ -51,6 +52,8 @@ class QwenWorkerClient:
         device: str,
         startup_timeout: float = STARTUP_TIMEOUT_SEC,
         generation_timeout: float = GENERATION_TIMEOUT_SEC,
+        engine_id: str = "qwen3-base",
+        worker_module: str = "brushvid.tts_engines.qwen3_worker",
     ) -> None:
         self.python_path = str(python_path)
         self.model_dir = model_dir
@@ -58,6 +61,8 @@ class QwenWorkerClient:
         self.device = device
         self.startup_timeout = startup_timeout
         self.generation_timeout = generation_timeout
+        self.engine_id = engine_id
+        self.worker_module = worker_module
         self.process: subprocess.Popen[str] | None = None
 
     def _read_json(self, timeout: float) -> dict[str, Any]:
@@ -90,7 +95,7 @@ class QwenWorkerClient:
         existing_path = env.get("PYTHONPATH", "")
         env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(repo_root), existing_path]))
         command = [
-            self.python_path, "-m", "brushvid.tts_engines.qwen3_worker",
+            self.python_path, "-m", self.worker_module,
             "--model-dir", str(self.model_dir), "--work-root", str(self.work_root),
             "--device", self.device,
         ]
@@ -113,7 +118,7 @@ class QwenWorkerClient:
             raise TtsEngineUnavailableError(
                 f"{error.get('code', 'MODEL_ERROR')}: {error.get('message', 'worker ready 실패')}"
             )
-        if ready.get("modelRevision") != MODEL_REVISIONS["qwen3-base"]:
+        if ready.get("modelRevision") != MODEL_REVISIONS[self.engine_id]:
             self.close()
             raise TtsEngineError("Qwen worker model revision 불일치")
 
@@ -324,6 +329,142 @@ class QwenAdapter:
 
     def cancel(self) -> None:
         """합성 취소 시 worker와 controlled reference/output을 함께 폐기한다."""
+        try:
+            self.client.cancel()
+        finally:
+            self._temp.cleanup()
+
+
+class QwenCustomVoiceAdapter:
+    """Qwen3 CustomVoice adapter.
+
+    CustomVoice uses the model's official built-in speaker and instruction. It
+    intentionally has no reference input, so it cannot silently become a Base
+    clone request.
+    """
+
+    engine_id = "qwen3-customvoice"
+
+    def __init__(
+        self,
+        *,
+        speaker: str,
+        instruction: str,
+        model_dir: str | Path | None = None,
+        python_path: str | Path | None = None,
+        device: str = "cpu",
+        worker_client_factory=QwenWorkerClient,
+        work_root: str | Path | None = None,
+    ) -> None:
+        if speaker not in QWEN3_CUSTOMVOICE_SPEAKERS:
+            raise ValueError(f"지원하지 않는 qwen3-customvoice speaker: {speaker!r}")
+        if not isinstance(instruction, str) or not instruction.strip():
+            raise ValueError("qwen3-customvoice instruction은 비어 있지 않아야 함")
+        if len(instruction.strip()) > 600:
+            raise ValueError("qwen3-customvoice instruction은 600자 이하여야 함")
+        self.request_id = f"tts-{uuid.uuid4().hex}"
+        temp_parent = None
+        if work_root is not None:
+            temp_parent = Path(work_root).expanduser().resolve()
+            temp_parent.mkdir(parents=True, exist_ok=True)
+        self._temp = tempfile.TemporaryDirectory(prefix="qwen-customvoice-", dir=temp_parent)
+        self.work_root = Path(self._temp.name)
+        self.speaker = speaker
+        self.instruction = instruction.strip()
+        self.model_dir = resolve_local_snapshot(
+            ENGINE_MODEL_IDS[self.engine_id], MODEL_REVISIONS[self.engine_id], explicit_dir=model_dir,
+        )
+        selected_python = python_path or os.environ.get("BRUSHVID_QWEN_PYTHON") or sys.executable
+        self.client = worker_client_factory(
+            python_path=selected_python, model_dir=self.model_dir, work_root=self.work_root,
+            device=device, engine_id=self.engine_id,
+            worker_module="brushvid.tts_engines.qwen3_customvoice_worker",
+        )
+        self.metadata = {
+            "engine": self.engine_id,
+            "model": ENGINE_MODEL_IDS[self.engine_id],
+            "modelRevision": MODEL_REVISIONS[self.engine_id],
+            "language": "ko",
+            "packageVersion": "qwen-tts==0.1.1",
+            "speaker": speaker,
+            "instruction": self.instruction,
+            "license": {**ENGINE_LICENSES[self.engine_id], "aiDisclosureRequired": True},
+            "aiDisclosure": (
+                f"이 콘텐츠의 내레이션은 Qwen3-TTS CustomVoice({speaker}) AI 합성 음성으로 제작되었습니다."
+            ),
+        }
+
+    def synthesize_batch(
+        self,
+        sentences: list[str],
+        *,
+        voice: str,
+        language: str,
+        speed: float,
+    ) -> list[AudioResult]:
+        if language != "ko":
+            raise ValueError("qwen3-customvoice language는 ko만 지원함")
+        if voice != self.speaker:
+            raise ValueError("qwen3-customvoice voice/speaker가 adapter 설정과 다름")
+        if not sentences:
+            raise ValueError("Qwen CustomVoice sentences가 비어 있음")
+        try:
+            batch_size = int(os.environ.get("BRUSHVID_QWEN_BATCH_SIZE", "8"))
+        except ValueError as exc:
+            raise ValueError("BRUSHVID_QWEN_BATCH_SIZE는 양의 정수여야 함") from exc
+        if batch_size < 1:
+            raise ValueError("BRUSHVID_QWEN_BATCH_SIZE는 양의 정수여야 함")
+        results: list[AudioResult] = []
+        try:
+            for chunk_index, start in enumerate(range(0, len(sentences), batch_size)):
+                chunk = sentences[start:start + batch_size]
+                request = {
+                    "protocolVersion": PROTOCOL_VERSION,
+                    "requestId": f"{self.request_id}-{chunk_index:03d}",
+                    "engine": self.engine_id,
+                    "modelRevision": MODEL_REVISIONS[self.engine_id],
+                    "language": LANGUAGE,
+                    "speaker": self.speaker,
+                    "instruction": self.instruction,
+                    "sentences": [{"id": f"s{index + 1}", "text": text}
+                                  for index, text in enumerate(chunk)],
+                    "outputDir": f"outputs/chunk-{chunk_index:03d}",
+                }
+                response = self.client.request(request)
+                outputs = response.get("outputs")
+                if not isinstance(outputs, list) or len(outputs) != len(chunk):
+                    raise TtsEngineError("PROTOCOL_ERROR: Qwen CustomVoice output 수 불일치")
+                output_root = (self.work_root / request["outputDir"]).resolve()
+                for expected_index, item in enumerate(outputs):
+                    if (
+                        not isinstance(item, dict)
+                        or item.get("id") != f"s{expected_index + 1}"
+                        or not isinstance(item.get("filename"), str)
+                        or Path(item["filename"]).is_absolute()
+                    ):
+                        raise TtsEngineError("PROTOCOL_ERROR: Qwen CustomVoice output 순서/경로 불일치")
+                    output = (output_root / item["filename"]).resolve()
+                    try:
+                        output.relative_to(output_root)
+                    except ValueError as exc:
+                        raise TtsEngineError("PROTOCOL_ERROR: Qwen CustomVoice output 경로가 work root 밖") from exc
+                    if not output.is_file():
+                        raise TtsEngineError("PROTOCOL_ERROR: Qwen CustomVoice output 파일 없음")
+                    with wave.open(str(output), "rb") as wav:
+                        raw = wav.readframes(wav.getnframes())
+                        samples = np.frombuffer(raw, dtype="<i2").astype(np.float32) / 32767.0
+                        results.append(AudioResult(samples, wav.getframerate(), {
+                            **self.metadata, "nativeSampleRate": wav.getframerate(), "speed": speed,
+                        }))
+            return results
+        finally:
+            self.close()
+
+    def close(self) -> None:
+        self.client.close()
+        self._temp.cleanup()
+
+    def cancel(self) -> None:
         try:
             self.client.cancel()
         finally:

@@ -84,7 +84,7 @@ def create_qwen_segments(*, lines: list[str], tts_dir: Path, cfg: dict) -> tuple
         "\n".join(lines), aggregate_wav, aggregate_srt,
         engine=cfg["engine"], voice=cfg["voice"], speed=float(cfg["speed"]),
         pause_ms=int(cfg["pauseMs"]), lang=cfg.get("language", "ko"),
-        reference=cfg.get("reference"), work_root=tts_dir / ".work",
+        reference=cfg.get("reference"), instruction=cfg.get("instruction"), work_root=tts_dir / ".work",
     )
     entries = result["entries"]
     if len(entries) != len(lines):
@@ -118,7 +118,7 @@ def create_standard_segments(*, lines: list[str], tts_dir: Path, cfg: dict) -> t
             line, raw_wav, raw_srt,
             engine=cfg["engine"], voice=cfg["voice"], speed=float(cfg["speed"]),
             pause_ms=int(cfg["pauseMs"]), lang=cfg.get("language", "ko"),
-            reference=cfg.get("reference"), work_root=tts_dir / ".work",
+            reference=cfg.get("reference"), instruction=cfg.get("instruction"), work_root=tts_dir / ".work",
         )
         identity = (
             result["voice"].get("engine"), result["voice"].get("model"),
@@ -164,7 +164,7 @@ def main() -> None:
     tts_dir.mkdir(parents=True, exist_ok=True)
     stages.mkdir(parents=True, exist_ok=True)
 
-    if cfg["engine"] == "qwen3-base":
+    if cfg["engine"] in {"qwen3-base", "qwen3-customvoice"}:
         raw_scenes, voice_result = create_qwen_segments(lines=lines, tts_dir=tts_dir, cfg=cfg)
     else:
         raw_scenes, voice_result = create_standard_segments(lines=lines, tts_dir=tts_dir, cfg=cfg)

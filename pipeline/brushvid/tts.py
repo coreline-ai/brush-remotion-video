@@ -29,7 +29,7 @@ from .voice_presets import (
 )
 from .tts_contract import ENGINE_IDS, validate_speed
 from .tts_engines.melo import MeloAdapter
-from .tts_engines.qwen import QwenAdapter
+from .tts_engines.qwen import QwenAdapter, QwenCustomVoiceAdapter
 from .tts_engines.base import AudioResult, validate_audio_samples
 from .tts_engines.registry import create_engine, register_engine, supported_engines
 from .tts_engines.supertonic import SupertonicAdapter
@@ -169,6 +169,8 @@ def _register_builtin_engines() -> None:
         register_engine("melo-ko", lambda **kwargs: MeloAdapter(**kwargs))
     if "qwen3-base" not in supported_engines():
         register_engine("qwen3-base", lambda **kwargs: QwenAdapter(**kwargs))
+    if "qwen3-customvoice" not in supported_engines():
+        register_engine("qwen3-customvoice", lambda **kwargs: QwenCustomVoiceAdapter(**kwargs))
 
 
 _register_builtin_engines()
@@ -184,7 +186,7 @@ def format_srt_time(sec: float) -> str:
 
 def synthesize_narration(text: str, out_wav: str | Path, out_srt: str | Path, *,
                          engine: str = "supertonic", voice: str = "F1", pause_ms: int = 300,
-                         speed: float = 1.05, lang: str = "ko", reference=None,
+                         speed: float = 1.05, lang: str = "ko", reference=None, instruction: str | None = None,
                          work_root: str | Path | None = None, synth=None) -> dict:
     """대본 텍스트 → 더빙 wav + SRT. 반환: {wav, srt, entries, durationSec}.
 
@@ -200,10 +202,17 @@ def synthesize_narration(text: str, out_wav: str | Path, out_srt: str | Path, *,
     if not sentences:
         raise ValueError("TTS 입력 텍스트에 문장이 없음")
     batch_results: list[AudioResult] | None = None
-    if synth is None and engine == "qwen3-base":
-        if reference is None:
-            raise ValueError("qwen3-base는 명시적 reference audio/transcript가 필요함")
-        adapter = create_engine("qwen3-base", reference=reference, work_root=work_root)
+    if synth is None and engine in {"qwen3-base", "qwen3-customvoice"}:
+        if engine == "qwen3-base":
+            if reference is None:
+                raise ValueError("qwen3-base는 명시적 reference audio/transcript가 필요함")
+            adapter = create_engine("qwen3-base", reference=reference, work_root=work_root)
+        else:
+            if not isinstance(instruction, str) or not instruction.strip():
+                raise ValueError("qwen3-customvoice는 명시적 instruction이 필요함")
+            adapter = create_engine(
+                "qwen3-customvoice", speaker=voice, instruction=instruction, work_root=work_root,
+            )
         batch_results = adapter.synthesize_batch(
             sentences, voice=voice, language=lang, speed=speed,
         )
@@ -251,7 +260,7 @@ def synthesize_narration(text: str, out_wav: str | Path, out_srt: str | Path, *,
         raw_segment = batch_results[i] if batch_results is not None else synth(s)
         seg = _normalize_audio(
             raw_segment, SR, speed=speed,
-            apply_speed=engine == "qwen3-base",
+            apply_speed=engine in {"qwen3-base", "qwen3-customvoice"},
         )
         dur = len(seg) / SR  # 실제 샘플 길이가 타이밍의 시계
         entries.append({"index": i + 1, "start": t, "end": t + dur, "text": s})

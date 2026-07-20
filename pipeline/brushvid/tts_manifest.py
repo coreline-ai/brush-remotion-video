@@ -77,6 +77,11 @@ def build_engine_manifest(
             "referenceTranscriptSha256": sha256_file(reference["transcript"]),
             "xVectorOnlyMode": False,
         })
+    elif engine == "qwen3-customvoice":
+        manifest.update({
+            "speaker": metadata.get("speaker", config["voice"]),
+            "instruction": metadata.get("instruction", config["instruction"]),
+        })
     return manifest
 
 
