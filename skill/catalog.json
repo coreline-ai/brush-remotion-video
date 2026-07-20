@@ -30,7 +30,7 @@
       "id": "brush-video",
       "folder": "brush-video",
       "role": "production",
-      "summary": "수묵·수채 이미지를 붓이 그려 완성하는 내레이션·TTS·앰비언트 영상을 제작합니다.",
+      "summary": "수묵·수채 이미지를 붓이 그려 완성하는 내레이션·TTS·앰비언트 영상을 제작하며, 무음 15~120초에는 Stable Audio 피아노 BGM을 우선 시도합니다.",
       "entrypoint": "bin/build.py",
       "profiles": [
         "brush"
@@ -53,7 +53,7 @@
       "id": "full-color-motion-video",
       "folder": "full-color-motion-video",
       "role": "production",
-      "summary": "원본 색상을 보존한 정지 이미지에 2D 모션·환경 효과·전환·로컬 오디오를 연결하고 선택형 붓 리빌을 적용합니다.",
+      "summary": "원본 색상을 보존한 정지 이미지에 2D 모션·환경 효과·전환·오디오를 연결하고, 무음 영상에는 Stable Audio 피아노 BGM 우선 정책을 적용합니다.",
       "entrypoint": "bin/build.py",
       "profiles": [
         "full-color-motion"
@@ -78,7 +78,7 @@
       "id": "pen-video",
       "folder": "pen-video",
       "role": "production",
-      "summary": "원본을 자르지 않고 얇고 정교한 펜 윤곽선을 순차적으로 그리는 설명형 영상을 제작합니다.",
+      "summary": "원본을 자르지 않고 얇고 정교한 펜 윤곽선을 순차적으로 그리는 영상을 제작하며, 음성 없는 영상은 Stable Audio 피아노를 우선 시도합니다.",
       "entrypoint": "bin/build.py",
       "profiles": [
         "pen"
@@ -103,7 +103,7 @@
       "id": "pen-brush-video",
       "folder": "pen-brush-video",
       "role": "production",
-      "summary": "펜으로 샤프한 외곽선을 먼저 완성한 뒤 브러시로 색을 채우는 2단계 영상을 제작합니다.",
+      "summary": "펜으로 샤프한 외곽선을 먼저 완성한 뒤 브러시로 색을 채우며, 무음 영상에는 분위기 기반 Stable Audio 피아노를 우선 연결합니다.",
       "entrypoint": "bin/build.py",
       "profiles": [
         "pen-brush"
@@ -129,7 +129,7 @@
       "id": "shorts-brush",
       "folder": "shorts-brush",
       "role": "production",
-      "summary": "1080×1920 세로 화면에서 훅·세이프존·루프 엔딩을 적용한 힐링 브러시 쇼츠를 제작합니다.",
+      "summary": "1080×1920 세로 화면에서 훅·세이프존·루프 엔딩을 적용하고, 15~120초 무음 구간에는 Stable Audio 피아노 BGM을 우선 시도합니다.",
       "entrypoint": "bin/build.py",
       "profiles": [
         "brush"
@@ -153,7 +153,7 @@
       "id": "dark-random-brush-video",
       "folder": "dark-random-brush-video",
       "role": "production",
-      "summary": "우주·심해·야간 등 어두운 16:9 이미지 1/6/60씬을 자유 랜덤 붓 터치로 드러냅니다.",
+      "summary": "우주·심해·야간 등 어두운 16:9 이미지를 자유 랜덤 붓 터치로 드러내며, 무음 영상에는 어두운 분위기의 Stable Audio 피아노를 우선 시도합니다.",
       "entrypoint": "bin/build.py",
       "profiles": [
         "dark-random-brush"
@@ -177,7 +177,7 @@
       "id": "storybook-full-touch-video",
       "folder": "storybook-full-touch-video",
       "role": "production",
-      "summary": "동화 이미지·씬별 TTS·자막·BGM과 펜 외곽선→브러시 채색을 통합한 영상을 제작합니다.",
+      "summary": "동화 이미지·씬별 TTS·자막·BGM과 펜 외곽선→브러시 채색을 통합하며, TTS 영상은 명시적 piano-auto일 때만 Stable Audio를 생성합니다.",
       "entrypoint": "scripts/prepare-storybook-full-touch.py + bin/build.py",
       "profiles": [
         "pen-brush"
@@ -267,8 +267,8 @@
       "id": "piano-bgm",
       "folder": "piano-bgm",
       "role": "production",
-      "summary": "라이선스 검증된 로컬 다중 샘플 피아노로 새 score를 작곡·렌더하고, A 방식 수면 루틴(lullaby·breath·window)·화성·성부 진행·사람 청취 gate까지 검증합니다.",
-      "entrypoint": "bin/piano-bgm.py",
+      "summary": "Stable Audio 3 MLX를 1순위로 시네마틱·웅장한 피아노 BGM 생성 후보를 만들고, 로컬 샘플 score fallback과 라이선스·provenance·사람 청취 gate까지 검증합니다.",
+      "entrypoint": "bin/piano-bgm.py generate/build (Stable Audio 3 MLX 또는 sample-score)",
       "profiles": [
         "sleep-routine"
       ],
@@ -278,12 +278,12 @@
       ],
       "defaultVoice": null,
       "dependsOn": [],
-      "version": "0.1.0",
+      "version": "0.2.0",
       "status": "specialized",
       "interface": {
         "displayName": "Piano BGM",
-        "shortDescription": "실제 샘플 피아노 BGM과 A 방식 수면 루틴을 화성·성부 진행까지 검사해 제작합니다.",
-        "defaultPrompt": "요청한 길이·무드·용도에 맞는 독립 피아노 BGM을 제작해줘. 수면용이면 sleepRoutine(lullaby·breath·window)으로 실제 피아노만 사용하고, 주파수 드론·바이노럴 비트는 넣지 마."
+        "shortDescription": "Stable Audio 3 MLX를 우선 사용하고, 필요하면 샘플 피아노 score fallback까지 검증해 제작합니다.",
+        "defaultPrompt": "요청한 길이·무드·용도에 맞는 피아노 BGM을 제작해줘. 시네마틱·웅장함·featured면 Stable Audio 3 MLX sm-music을 1순위로 사용하고, 수면·명상·음 단위 화성 검사가 필요하면 Noct-Salamander 샘플 score fallback을 사용해 provenance·라이선스·기술 QA·사람 청취 승인까지 진행해줘."
       }
     },
     {

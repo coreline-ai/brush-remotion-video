@@ -376,6 +376,32 @@ bgm:
     assert cfg.bgm.crossfade_sec == 3
 
 
+def test_bgm_piano_auto_contract(tmp_path):
+    cfg = load_project(_write_yaml(tmp_path, """
+projectId: piano-auto-demo
+bgm:
+  mode: piano-auto
+  prompt: "warm cinematic solo piano"
+  negativePrompt: "vocals, speech"
+  cfg: 2.5
+  steps: 8
+"""))
+    assert cfg.bgm.mode == "piano-auto"
+    assert cfg.bgm.prompt == "warm cinematic solo piano"
+    assert cfg.bgm.negative_prompt == "vocals, speech"
+    assert cfg.bgm.cfg == 2.5 and cfg.bgm.steps == 8
+
+
+@pytest.mark.parametrize("body", [
+    "mode: asset\n  prompt: invalid",
+    "mode: piano-auto\n  cfg: 10.1",
+    "mode: piano-auto\n  steps: 17",
+])
+def test_bgm_piano_auto_sampling_contract_rejected(tmp_path, body):
+    with pytest.raises(ValueError, match="bgm"):
+        load_project(_write_yaml(tmp_path, f"projectId: piano-auto-invalid\nbgm:\n  {body}\n"))
+
+
 @pytest.mark.parametrize("body,match", [
     ("mode: asset", "assetId"),
     ("mode: playlist\n  playlist:\n    assetIds: [only-one]", "2~3"),

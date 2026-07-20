@@ -37,7 +37,7 @@ ambient:                     # 앰비언트 모드 전용 (선택)
     - "바람이 지나간 자리에 고요가 남는다"
 
 bgm:                         # input.audio와 별도. 상세: bgm-policy.md
-  mode: asset                # off | synth | asset | playlist
+  mode: asset                # off | synth | asset | playlist | piano-auto
   assetId: youtube-chris-zabriskie-fight-for-your-honor
   gainDb: 5.0                # 생략: 음성 없음 +5 / 음성 있음 +3
   fadeInSec: 1.8
@@ -50,6 +50,9 @@ bgm:                         # input.audio와 별도. 상세: bgm-policy.md
   licensePolicy: strict
 ```
 
+`bgm` 블록을 생략한 15~120초 무음 ambient는 Stable Audio 피아노를 자동 우선 시도한다.
+음성 영상에 생성 BGM을 넣거나 생성을 고정하려면 `bgm.mode: piano-auto`를 명시한다.
+
 ## 모드별 동작 요약
 
 | 모드 | 조건 | 씬 분할 | 자막 | 오디오 |
@@ -57,7 +60,7 @@ bgm:                         # input.audio와 별도. 상세: bgm-policy.md
 | 내레이션 | srt + audio | SRT 구간 그룹핑 | cue로 변환 (긴 문장 자동 분할) | 제공 오디오 mux (**tts 있어도 무시 — 실더빙 우선**) |
 | whisper | audio만 | 생성된 SRT 기준 | 위와 동일 | 제공 오디오 mux |
 | **tts** | (srt 또는 script) + tts | **합성 음성 길이 기준 재계산** | 문장별 cue | 선택한 TTS 엔진 합성 더빙 mux |
-| 앰비언트 | 무입력 | 300f × N 고정 | ambient.cues 수동 | `bgm` 미지정은 기존 합성, 지정 시 synth/로컬 asset/playlist |
+| 앰비언트 | 무입력 | 300f × N 고정 | ambient.cues 수동 | `bgm` 미지정은 Stable Audio 피아노 우선(15~120초), 실패 시 catalog/synth |
 
 TTS 엔진 선택·설치·voice manifest는 [공통 TTS 엔진 카탈로그](tts-engine-catalog.md)와 [supertonic-voice-catalog.md](supertonic-voice-catalog.md),
 첫 사용 설치·모델 다운로드·AI 생성 고지 의무는 SKILL.md의 "TTS" 섹션 참조.

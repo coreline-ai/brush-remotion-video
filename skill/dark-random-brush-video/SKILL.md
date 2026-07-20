@@ -117,6 +117,8 @@ pipeline/.venv/bin/python bin/build.py <project.yaml> --from routes --audit
 - Pixabay 음원은 YouTube 제작·교체·배포에 사용하지 않는다. 로컬 청취·내부 데모·과거 검증용으로만 보존한다.
 - 기본 후보는 `youtube-chris-zabriskie-fight-for-your-honor`, 장편 playlist는 공통 BGM 정책의 YouTube 허용 3곡을 사용한다.
 - 외부 음원은 로컬 catalog 등록, source/license manifest, strict preflight를 통과해야 한다.
+- `bgm`을 생략한 15~120초 무음 영상은 Stable Audio가 어둡고 신비한 피아노 후보를 1순위로 생성한다. 런타임이 없거나 장편이면 위 catalog/synth fallback을 사용한다.
+- 음성/TTS 영상에서 생성 BGM이 필요하면 `bgm.mode: piano-auto`를 명시하고 자동 덕킹을 사용한다.
 - 긴 source pre-roll은 `sourceStartSec`로 제거하고, 시작 즉시 짧은 fade(기본 0.4초)로 들어간다.
 - 끝부분은 약 5초 fade-out, 최종 master는 48kHz stereo로 확인한다.
 - 앞쪽 무음이 길면 합격으로 보지 않는다. Content ID 결과는 라이선스 보증이 아니다.

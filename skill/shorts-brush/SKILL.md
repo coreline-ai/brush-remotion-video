@@ -54,7 +54,7 @@ pipeline/.venv/bin/python bin/build.py <project.yaml>
 | 훅 | 첫 씬 프리워시 짧게(0.5/18f) — 첫 1~2초 안에 그림이 움직임 |
 | 루프 엔딩 | 마지막 씬 outro 순백 수렴(washOpacity 1.0) — 반복 재생이 매끄러움 |
 | 타이틀·위젯 | 사용 시 상단 세이프존(y ≥ 120)·자막 밴드 침범을 검증이 hard-fail로 차단 |
-| BGM | 기본 추천 Satya Yuga 로컬 1곡. Pixabay는 YouTube Shorts 사용 금지. 미등록/미지정 기존 프로젝트는 합성 피아노 |
+| BGM | 15~120초 무음 쇼츠는 Stable Audio 피아노 후보 1순위. Pixabay는 YouTube Shorts 사용 금지. Stable Audio 미설치·장편은 기존 catalog/synth 폴백 |
 
 ## 길이 규정 (2026 쇼츠 기준)
 

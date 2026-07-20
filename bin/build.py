@@ -38,6 +38,7 @@ from brushvid import audio as bv_audio
 from brushvid import background as bv_bg
 from brushvid import bgm as bv_bgm
 from brushvid import mix as bv_mix
+from brushvid import piano_auto_bgm as bv_piano_auto
 from brushvid import motion as bv_motion
 from brushvid import qa as bv_qa
 from brushvid import render as bv_render
@@ -55,7 +56,7 @@ from brushvid.cosmic_random_routes import (
 from brushvid.layout import validate_layout
 from brushvid.layers import alpha_line_thickness, estimate_line_thickness, prepare_pen_brush_layers
 from brushvid.fill_routes import generate_fill_routes, write_fill_routes
-from brushvid.project import ProjectConfig, load_project
+from brushvid.project import BgmConfig, ProjectConfig, load_project
 from brushvid.props import (BRUSH_NO_PULSE_PRESET, build_props, build_scene,
                             default_brush, fit_brush_completion_timing, load_schema,
                             validate_brush_completion_timing, write_props)
@@ -158,13 +159,24 @@ def _sha256_file(path: Path) -> str:
     return hasher.hexdigest()
 
 
+def _generated_piano_manifest_approved(cfg: ProjectConfig, *, repo_root: Path | None = None) -> bool:
+    """Return whether this project has a human-approved generated BGM manifest."""
+    repo_root = REPO_ROOT if repo_root is None else repo_root
+    manifest = repo_root / "output" / "original-audio" / "piano-bgm" / cfg.project_id / "generated-bgm-manifest.json"
+    try:
+        data = json.loads(manifest.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    return data.get("kind") == "generated-piano-bgm" and data.get("status") == "APPROVED"
+
+
 def preflight_project(cfg: ProjectConfig, *, final: bool = False,
                       verify_sources: bool = False) -> dict:
     """렌더 전에 런타임·4K 원본·BGM 계약을 확인한다.
 
-    ``final``은 실제 납품 큐 전용이다. synth BGM과 FHD, 누락된 source manifest를
-    허용하지 않는다. 명시적 ``bgm.mode: off``는 BGM 없는 AAC 무음 트랙 납품으로
-    인정하므로, 무거운 600초 렌더를 시작하기 전에 실패 원인을 확정할 수 있다.
+    ``final``은 실제 납품 큐 전용이다. synth/암묵적 auto BGM과 FHD, 누락된 source
+    manifest를 허용하지 않는다. 명시적 ``bgm.mode: piano-auto``는 사람 청취 승인
+    manifest가 있어야 하며, 명시적 ``off``는 BGM 없는 AAC 무음 트랙 납품으로 인정한다.
     """
     errors: list[str] = []
     warnings: list[str] = []
@@ -184,10 +196,13 @@ def preflight_project(cfg: ProjectConfig, *, final: bool = False,
             errors.append("최종 납품은 ambient 60 scenes + 60 cues 여야 함")
         if cfg.bg_strategy != "user-images" or cfg.bg_fit != "cover" or len(cfg.bg_images) != 60:
             errors.append("최종 납품은 user-images 60장 + fit: cover 여야 함")
-        if cfg.bgm is None or cfg.bgm.mode not in {"off", "asset", "playlist"}:
-            errors.append("최종 납품 BGM은 명시적 off 또는 strict policy의 asset/playlist 여야 함 (synth 불가)")
+        if cfg.bgm is None or cfg.bgm.mode not in {"off", "asset", "playlist", "piano-auto"}:
+            errors.append("최종 납품 BGM은 명시적 off, asset, playlist 또는 승인된 piano-auto여야 함 (암묵적 auto/synth 불가)")
         elif cfg.bgm.mode in {"asset", "playlist"} and cfg.bgm.license_policy != "strict":
             errors.append("최종 납품의 asset/playlist BGM은 strict license policy가 필요함")
+        elif cfg.bgm.mode == "piano-auto":
+            if not _generated_piano_manifest_approved(cfg):
+                errors.append("piano-auto 최종 납품에는 generated-bgm-manifest.json APPROVED가 필요함")
         elif cfg.bgm.mode == "off":
             warnings.append("BGM off — AAC 무음 트랙으로 납품, BGM 라이선스 매니페스트는 생성하지 않음")
     elif cfg.bgm and cfg.bgm.mode == "synth":
@@ -457,6 +472,10 @@ class Pipeline:
             "duckingAttackMs": self.cfg.bgm.ducking_attack_ms,
             "duckingReleaseMs": self.cfg.bgm.ducking_release_ms,
             "licensePolicy": self.cfg.bgm.license_policy,
+            "prompt": self.cfg.bgm.prompt,
+            "negativePrompt": self.cfg.bgm.negative_prompt,
+            "cfg": self.cfg.bgm.cfg,
+            "steps": self.cfg.bgm.steps,
         }
         payload = {"projectMode": self.cfg.mode, "bgm": cfg,
                    "assets": [{"id": a["id"], "sha256": a["sha256"]} for a in self._bgm_assets]}
@@ -1103,9 +1122,25 @@ class Pipeline:
 
         bgm_cfg = self.cfg.bgm
         auto_selected = False
+        generated_candidate = None
 
-        # 정책: 대사(음성/TTS)도 없고 bgm 블록도 없으면 자동으로 로컬 BGM을 붙인다.
-        # 자산이 준비 안 됐으면 아래에서 기존 synth BGM으로 안전하게 폴백한다(빌드 실패 없음).
+        # 정책: 대사(음성/TTS)도 없고 bgm 블록도 없으면 Stable Audio 피아노를
+        # 먼저 시도한다. 런타임/길이/생성 문제가 있으면 기존 catalog와 synth를 유지한다.
+        if bgm_cfg is None and voice is None:
+            try:
+                bgm_cfg = BgmConfig(mode="piano-auto")
+                generated_candidate = bv_piano_auto.build_candidate(
+                    self.cfg, total_sec, bgm_cfg,
+                    output_root=REPO_ROOT / "output" / "original-audio" / "piano-bgm",
+                    projects_root=REPO_ROOT / "projects" / "piano-bgm",
+                )
+                auto_selected = True
+                log.info("auto-bgm: 대사 없음 → Stable Audio piano-auto [%s]", generated_candidate["status"])
+            except bv_piano_auto.PianoAutoBgmError as exc:
+                log.warning("auto-bgm: Stable Audio 후보 미준비 — 기존 catalog/synth 폴백 (%s)", exc)
+                bgm_cfg = None
+
+        # Stable Audio가 없는 환경 또는 120초 초과 영상은 기존 결정적 catalog를 유지한다.
         if bgm_cfg is None and voice is None:
             candidate = bv_bgm.select_auto_bgm(
                 profile=self.cfg.drawing_profile, fmt=self.cfg.fmt, duration_sec=total_sec)
@@ -1114,7 +1149,7 @@ class Pipeline:
                     candidate, distribution=self.cfg.fmt, repo_root=REPO_ROOT)
                 bgm_cfg = candidate
                 auto_selected = True
-                log.info("auto-bgm: 대사 없음 → %s [%s]",
+                log.info("auto-bgm: 기존 catalog fallback → %s [%s]",
                          candidate.asset_id or ", ".join(candidate.asset_ids), candidate.mode)
             except bv_bgm.BgmAssetError as exc:
                 log.warning("auto-bgm: 로컬 자산 미준비 — synth BGM 폴백 (%s)", exc)
@@ -1166,7 +1201,18 @@ class Pipeline:
         if total_sec > 600 and bgm_cfg.mode == "asset":
             log.warning("10분 초과 영상에 단일 BGM 1곡 사용 — 2~3곡 playlist + crossfade 권장")
 
-        if bgm_cfg.mode == "synth":
+        if bgm_cfg.mode == "piano-auto":
+            if generated_candidate is None:
+                try:
+                    generated_candidate = bv_piano_auto.build_candidate(
+                        self.cfg, total_sec, bgm_cfg,
+                        output_root=REPO_ROOT / "output" / "original-audio" / "piano-bgm",
+                        projects_root=REPO_ROOT / "projects" / "piano-bgm",
+                    )
+                except bv_piano_auto.PianoAutoBgmError as exc:
+                    raise ValueError(f"명시적 bgm.mode=piano-auto 생성 실패: {exc}") from exc
+            asset_paths = [Path(generated_candidate["source"])]
+        elif bgm_cfg.mode == "synth":
             raw_bgm = audio_dir / "synth-raw.wav"
             bv_audio.synth_ambient_bgm(raw_bgm, total_sec, seed=self.cfg.seed)
             asset_paths = [raw_bgm]
@@ -1193,6 +1239,8 @@ class Pipeline:
                                "fadeInSec": bgm_cfg.fade_in_sec,
                                "fadeOutSec": bgm_cfg.fade_out_sec,
                                "crossfadeSec": bgm_cfg.crossfade_sec}}
+        if generated_candidate is not None:
+            report["generatedCandidate"] = generated_candidate
         if has_voice:
             duck_enabled = bgm_cfg.ducking_enabled if bgm_cfg.ducking_enabled is not None else True
             master, voice_report = bv_mix.mix_voice_and_bgm(
@@ -1207,6 +1255,7 @@ class Pipeline:
         mix_report = bv_mix.write_mix_report(audio_dir / "mix-report.json", report)
         return {"audio": str(master), "mode": bgm_cfg.mode, "gainDb": gain_db,
                 "autoSelected": auto_selected,
+                "generatedCandidate": generated_candidate,
                 "assetIds": list(bv_bgm.selected_asset_ids(bgm_cfg)),
                 "report": str(mix_report), "signature": signature}
 
@@ -1371,7 +1420,10 @@ def resolved_audit_artifacts(pipe: Pipeline) -> tuple[Path | None, Path | None]:
     license_path = pipe.data_dir / "licenses" / "bgm-manifest.json"
     report_value = mix_payload.get("report")
     report_path = Path(report_value) if report_value else None
-    uses_licensed_bgm = mix_payload.get("mode") in {"asset", "playlist"}
+    if mix_payload.get("mode") == "piano-auto":
+        generated_path = REPO_ROOT / "output" / "original-audio" / "piano-bgm" / pipe.cfg.project_id / "generated-bgm-manifest.json"
+        license_path = generated_path if generated_path.is_file() else None
+    uses_licensed_bgm = mix_payload.get("mode") in {"asset", "playlist", "piano-auto"}
     return (license_path if uses_licensed_bgm and license_path.is_file() else None,
             report_path if report_path and report_path.is_file() else None)
 

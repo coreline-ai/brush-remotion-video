@@ -134,6 +134,11 @@ PRESETS: dict[str, Preset] = {
                                     ((1, "minor"), (4, "minor"), (7, "major"), (5, "minor")), "horror", "low", True),
 }
 
+ENGINE_IDS = ("auto", "stable-audio-3-mlx", "sample-score")
+STABLE_AUDIO_PRESETS = frozenset({
+    "cinematic-piano", "film-ost-piano", "game-bgm-piano", "fantasy-piano", "mystery-horror-piano",
+})
+
 
 # A 방식: melody-led bedtime routines. These select existing acoustic-piano presets;
 # they never add a sine drone, binaural beat, pink-noise pulse, or other frequency layer.
@@ -191,6 +196,11 @@ def normalize_request(request: dict[str, Any]) -> dict[str, Any]:
     duration = float(request["durationSec"])
     if not 15.0 <= duration <= 600.0:
         raise PianoBgmError("durationSec는 15~600초여야 함")
+    engine = request.get("engine", "sample-score")
+    if engine not in ENGINE_IDS:
+        raise PianoBgmError(f"engine은 {ENGINE_IDS} 중 하나여야 함")
+    if engine == "stable-audio-3-mlx" and duration > 120.0:
+        raise PianoBgmError("stable-audio-3-mlx의 sm-music durationSec는 15~120초여야 함")
     tempo = int(request.get("tempoBpm") or (routine["tempoBpm"] if routine else preset.tempo_bpm))
     if not 32 <= tempo <= 160:
         raise PianoBgmError("tempoBpm는 32~160이어야 함")
@@ -204,9 +214,31 @@ def normalize_request(request: dict[str, Any]) -> dict[str, Any]:
         "preset": preset.id, "sleepRoutine": sleep_routine,
         "mood": request.get("mood") or (routine["mood"] if routine else "balanced"),
         "purpose": request.get("purpose", "background"),
+        "engine": engine,
+        "cfg": float(request.get("cfg", 1.0)),
+        "steps": int(request.get("steps", 8)),
         "key": f"{key.label.split()[0]}-{key.mode}", "tempoBpm": tempo, "seed": seed, "output": output,
     }
+    # Optional schema fields stay omitted when absent. Keeping them as explicit
+    # None values would make a normalized request fail schema validation when
+    # compose/load paths normalize it again.
+    if request.get("prompt") is not None:
+        normalized["prompt"] = request["prompt"]
+    if request.get("negativePrompt") is not None:
+        normalized["negativePrompt"] = request["negativePrompt"]
     return normalized
+
+
+def resolve_engine(request: dict[str, Any]) -> dict[str, str]:
+    """Resolve an explicit or auto engine without checking local runtime availability."""
+    engine = request.get("engine", "sample-score")
+    if engine != "auto":
+        return {"engine": engine, "reason": "explicit"}
+    if request["durationSec"] > 120:
+        return {"engine": "sample-score", "reason": "stable-audio-sm-music-max-120s"}
+    if request.get("purpose") == "featured" or request.get("preset") in STABLE_AUDIO_PRESETS:
+        return {"engine": "stable-audio-3-mlx", "reason": "featured-or-cinematic-preset"}
+    return {"engine": "sample-score", "reason": "sleep-or-deterministic-score"}
 
 
 def load_request(path: str | Path) -> dict[str, Any]:
@@ -549,10 +581,10 @@ def probe_audio(path: Path) -> dict[str, Any]:
             "durationSec": float(payload["format"]["duration"])}
 
 
-def measure_loudness(path: Path) -> dict[str, float]:
+def measure_loudness(path: Path, *, target_i: float = -20.0, target_tp: float = -1.5) -> dict[str, float]:
     try:
         result = subprocess.run([media_tool("ffmpeg"), "-hide_banner", "-nostats", "-i", str(path), "-af",
-                                 "loudnorm=I=-20:LRA=7:TP=-1.5:print_format=json", "-f", "null", "-"],
+                                 f"loudnorm=I={target_i}:LRA=7:TP={target_tp}:print_format=json", "-f", "null", "-"],
                                 check=True, capture_output=True, text=True)
         matches = re.findall(r"\{\s*\"input_i\".*?\}", result.stderr, re.S)
         data = json.loads(matches[-1])
@@ -585,7 +617,8 @@ def instrument_record() -> dict[str, Any]:
         raise PianoBgmError("instrument catalog 로드 실패") from exc
 
 
-def qa_project(project_id: str, *, projects_root: Path = PROJECTS_ROOT, output_root: Path = OUTPUT_ROOT) -> dict[str, Any]:
+def qa_project(project_id: str, *, projects_root: Path = PROJECTS_ROOT, output_root: Path = OUTPUT_ROOT,
+              engine_selection: dict[str, str] | None = None) -> dict[str, Any]:
     request, score, performance = load_score_bundle(project_id, projects_root=projects_root)
     lint = lint_score(score)
     output = output_root / project_id
@@ -617,6 +650,8 @@ def qa_project(project_id: str, *, projects_root: Path = PROJECTS_ROOT, output_r
         "deliveryTechnical": delivery_info, "loudness": loudness,
         "source": "new deterministic score events rendered from local multi-sample piano only",
     }
+    if engine_selection is not None:
+        provenance["engineSelection"] = engine_selection
     output.mkdir(parents=True, exist_ok=True)
     (output / "provenance.json").write_text(json.dumps(provenance, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     qa = {"schemaVersion": 1, "projectId": project_id, "status": status, "technicalPassed": technical_ok,
@@ -631,10 +666,101 @@ def qa_project(project_id: str, *, projects_root: Path = PROJECTS_ROOT, output_r
         "license": instrument["license"],
         "policy": "Candidate only. Existing BGM catalog/automatic selection must not use this file until human listening approval and a separate catalog registration review.",
     }
+    if engine_selection is not None:
+        generated_manifest["engineSelection"] = engine_selection
     (output / "generated-bgm-manifest.json").write_text(json.dumps(generated_manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     lines = ["# Piano BGM — YouTube attribution", "", instrument["license"]["attributionText"],
              f"Changes: {instrument['license']['modificationNotice']}", "",
              f"Generated work: {score['presetTitle']} — original score events; {delivery}"]
+    (output / "youtube-description.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return qa
+
+
+def qa_generated_project(project_id: str, *, projects_root: Path = PROJECTS_ROOT,
+                         output_root: Path = OUTPUT_ROOT) -> dict[str, Any]:
+    """Technical QA and provenance for a Stable Audio candidate.
+
+    This deliberately does not reuse the sample-score checks: generated audio
+    has no symbolic score or multi-sample render report. Both engines converge
+    on the same pending human-listening and approval gate, however.
+    """
+    request_path = projects_root / project_id / "request.yaml"
+    try:
+        request = load_request(request_path)
+    except PianoBgmError:
+        raise
+    output = output_root / project_id
+    source = output / "source.wav"
+    raw = output / "raw-48k24.wav"
+    master = output / "master-48k24.wav"
+    delivery = output / f"{project_id}-44k16.wav"
+    generation_path = output / "generation.json"
+    paths = (source, raw, master, delivery, generation_path)
+    if not all(path.is_file() for path in paths):
+        raise PianoBgmError("Stable Audio 산출물이 없음. 먼저 piano-bgm build 또는 generate를 실행해야 함")
+    try:
+        generation = json.loads(generation_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise PianoBgmError(f"Stable Audio generation.json 로드 실패: {generation_path}") from exc
+    source_info, raw_info, master_info, delivery_info = tuple(probe_audio(path) for path in (source, raw, master, delivery))
+    loudness = measure_loudness(delivery, target_i=-23.0, target_tp=-1.0)
+    duration = float(request["durationSec"])
+    source_sha256 = sha256_file(source)
+    delivery_sha256 = sha256_file(delivery)
+    generation_integrity = generation.get("sha256") == source_sha256
+    technical_ok = (
+        source_info["codec"] == "pcm_s16le" and source_info["sampleRateHz"] == 44100 and source_info["channels"] == 2
+        and raw_info["codec"] == "pcm_s24le" and raw_info["sampleRateHz"] == 48000 and raw_info["channels"] == 2
+        and master_info["codec"] == "pcm_s24le" and master_info["sampleRateHz"] == 48000 and master_info["channels"] == 2
+        and delivery_info["codec"] == "pcm_s16le" and delivery_info["sampleRateHz"] == 44100
+        and delivery_info["channels"] == 2 and delivery_info["bitsPerRawSample"] == 16
+        and abs(source_info["durationSec"] - duration) < .02
+        and abs(delivery_info["durationSec"] - duration) < .01
+        and generation_integrity
+        and abs(loudness["integratedLufs"] + 23.0) <= 1.5
+        and loudness["truePeakDbtp"] <= -0.5
+    )
+    status = "PENDING_USER_LISTENING" if technical_ok else "TECHNICAL_FAIL"
+    license_info = {
+        "id": "stable-audio-community",
+        "modelUrl": "https://huggingface.co/stabilityai/stable-audio-3-optimized",
+        "termsUrl": "https://stability.ai/license",
+        "commercialUse": "Subject to the current Stability AI license and account eligibility; verify before monetized release.",
+        "attributionRequired": "Check the current license terms for the intended use.",
+    }
+    provenance = {
+        "schemaVersion": 1, "projectId": project_id, "status": status, "request": request,
+        "engine": "stable-audio-3-mlx", "generation": generation,
+        "license": license_info,
+        "sourceSha256": source_sha256, "generationSha256MatchesSource": generation_integrity,
+        "rawSha256": sha256_file(raw),
+        "masterSha256": sha256_file(master), "deliverySha256": delivery_sha256,
+        "sourceTechnical": source_info, "rawTechnical": raw_info, "masterTechnical": master_info,
+        "deliveryTechnical": delivery_info, "loudness": loudness,
+        "source": "Stable Audio 3 MLX local candidate; technical QA does not establish legal clearance or musical quality",
+    }
+    output.mkdir(parents=True, exist_ok=True)
+    (output / "provenance.json").write_text(json.dumps(provenance, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    qa = {"schemaVersion": 1, "projectId": project_id, "status": status, "technicalPassed": technical_ok,
+          "humanListening": {"status": "PENDING", "required": ["headphones", "laptop-speakers"]},
+          "engine": "stable-audio-3-mlx", "provenance": "provenance.json"}
+    (output / "qa.json").write_text(json.dumps(qa, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    generated_manifest = {
+        "schemaVersion": 1, "kind": "generated-piano-bgm", "assetId": project_id,
+        "status": status, "approvalRequired": True, "distribution": request["output"]["distribution"],
+        "engine": "stable-audio-3-mlx", "localPath": _manifest_path(delivery), "durationSec": duration,
+        "sourceSha256": source_sha256, "deliverySha256": delivery_sha256,
+        "format": {"sampleRateHz": 44100, "bitDepth": 16, "channels": 2},
+        "provenance": "provenance.json", "qa": "qa.json", "license": license_info,
+        "policy": "Candidate only. Existing BGM catalog/automatic selection must not use this file until human listening approval and a separate catalog registration review.",
+    }
+    (output / "generated-bgm-manifest.json").write_text(json.dumps(generated_manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    lines = ["# Piano BGM — AI generation disclosure", "",
+             "This candidate was generated locally with Stable Audio 3 MLX.",
+             "Model: stabilityai/stable-audio-3-optimized",
+             "License terms: https://stability.ai/license",
+             "Model card: https://huggingface.co/stabilityai/stable-audio-3-optimized", "",
+             "Human listening approval is required before monetized YouTube publication."]
     (output / "youtube-description.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
     return qa
 

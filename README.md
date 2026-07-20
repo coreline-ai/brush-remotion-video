@@ -40,7 +40,7 @@ project.yaml ─▶ stt ─▶ cues ─▶ background ─▶ clean ─▶ routes
 | 단일 진실 | [src/schema.ts](src/schema.ts) — Zod 스키마 v1이 render-props의 유일한 정의 (JSON Schema로 일방향 내보내기) |
 | 프로파일 | `brush`(수묵 리빌) \| `pen`(잉크 스케치) \| `pen-brush`(외곽선→채색) \| `dark-random-brush`(다크 랜덤 터치, runtime 호환키 `cosmic-random-brush`) — 엔진 공유 |
 | 포맷 | `format: youtube`(1920×1080) \| `shorts`(1080×1920, 훅·루프 엔딩 자동) |
-| 오디오 모드 | 내레이션 · whisper · TTS(여성팩 `female-01`~`female-10`, F1~F5/M1~M5 호환) · 앰비언트 + 로컬 BGM `off|synth|asset|playlist` |
+| 오디오 모드 | 내레이션 · whisper · TTS(여성팩 `female-01`~`female-10`, F1~F5/M1~M5 호환) · 앰비언트 + BGM `off|synth|asset|playlist|piano-auto` |
 | 품질 게이트 | 골든 픽셀 diff ≤ 2% + video-auditor 경계/빠른 spike/느린 완료 pulse/LUFS/True Peak/라이선스 검수 + FIELD-LOG 환류 |
 
 ---
@@ -54,17 +54,17 @@ project.yaml ─▶ stt ─▶ cues ─▶ background ─▶ clean ─▶ routes
 | 스킬 | 구분 | 역할 | 진입점 | 상태 |
 | --- | --- | --- | --- | --- |
 | [brush-director](skill/director/SKILL.md) | 설계 | 일반 영상 요청과 일상적인 카메라 표현을 전문 연출 브리프·한/영 Camera Prompt Pack·project.yaml 초안으로 변환하며 직접 렌더하지 않습니다. | `conversation -> brief + optional camera prompt pack + project.yaml draft` | 정식 v1.1.0 |
-| [brush-video](skill/brush-video/SKILL.md) | 제작 | 수묵·수채 이미지를 붓이 그려 완성하는 내레이션·TTS·앰비언트 영상을 제작합니다. | `bin/build.py` | 정식 v1.0.0 |
-| [full-color-motion-video](skill/full-color-motion-video/SKILL.md) | 제작 | 원본 색상을 보존한 정지 이미지에 2D 모션·환경 효과·전환·로컬 오디오를 연결하고 선택형 붓 리빌을 적용합니다. | `bin/build.py` | 정식 v1.0.0 |
-| [pen-video](skill/pen-video/SKILL.md) | 제작 | 원본을 자르지 않고 얇고 정교한 펜 윤곽선을 순차적으로 그리는 설명형 영상을 제작합니다. | `bin/build.py` | 정식 v1.0.0 |
-| [pen-brush-video](skill/pen-brush-video/SKILL.md) | 제작 | 펜으로 샤프한 외곽선을 먼저 완성한 뒤 브러시로 색을 채우는 2단계 영상을 제작합니다. | `bin/build.py` | 정식 v1.0.0 |
-| [shorts-brush](skill/shorts-brush/SKILL.md) | 제작 | 1080×1920 세로 화면에서 훅·세이프존·루프 엔딩을 적용한 힐링 브러시 쇼츠를 제작합니다. | `bin/build.py` | 정식 v1.0.0 |
-| [dark-random-brush-video](skill/dark-random-brush-video/SKILL.md) | 제작 | 우주·심해·야간 등 어두운 16:9 이미지 1/6/60씬을 자유 랜덤 붓 터치로 드러냅니다. | `bin/build.py` | 전문화 v0.3.0 |
-| [storybook-full-touch-video](skill/storybook-full-touch-video/SKILL.md) | 제작 | 동화 이미지·씬별 TTS·자막·BGM과 펜 외곽선→브러시 채색을 통합한 영상을 제작합니다. | `scripts/prepare-storybook-full-touch.py + bin/build.py` | 전문화 v0.1.0 |
+| [brush-video](skill/brush-video/SKILL.md) | 제작 | 수묵·수채 이미지를 붓이 그려 완성하는 내레이션·TTS·앰비언트 영상을 제작하며, 무음 15~120초에는 Stable Audio 피아노 BGM을 우선 시도합니다. | `bin/build.py` | 정식 v1.0.0 |
+| [full-color-motion-video](skill/full-color-motion-video/SKILL.md) | 제작 | 원본 색상을 보존한 정지 이미지에 2D 모션·환경 효과·전환·오디오를 연결하고, 무음 영상에는 Stable Audio 피아노 BGM 우선 정책을 적용합니다. | `bin/build.py` | 정식 v1.0.0 |
+| [pen-video](skill/pen-video/SKILL.md) | 제작 | 원본을 자르지 않고 얇고 정교한 펜 윤곽선을 순차적으로 그리는 영상을 제작하며, 음성 없는 영상은 Stable Audio 피아노를 우선 시도합니다. | `bin/build.py` | 정식 v1.0.0 |
+| [pen-brush-video](skill/pen-brush-video/SKILL.md) | 제작 | 펜으로 샤프한 외곽선을 먼저 완성한 뒤 브러시로 색을 채우며, 무음 영상에는 분위기 기반 Stable Audio 피아노를 우선 연결합니다. | `bin/build.py` | 정식 v1.0.0 |
+| [shorts-brush](skill/shorts-brush/SKILL.md) | 제작 | 1080×1920 세로 화면에서 훅·세이프존·루프 엔딩을 적용하고, 15~120초 무음 구간에는 Stable Audio 피아노 BGM을 우선 시도합니다. | `bin/build.py` | 정식 v1.0.0 |
+| [dark-random-brush-video](skill/dark-random-brush-video/SKILL.md) | 제작 | 우주·심해·야간 등 어두운 16:9 이미지를 자유 랜덤 붓 터치로 드러내며, 무음 영상에는 어두운 분위기의 Stable Audio 피아노를 우선 시도합니다. | `bin/build.py` | 전문화 v0.3.0 |
+| [storybook-full-touch-video](skill/storybook-full-touch-video/SKILL.md) | 제작 | 동화 이미지·씬별 TTS·자막·BGM과 펜 외곽선→브러시 채색을 통합하며, TTS 영상은 명시적 piano-auto일 때만 Stable Audio를 생성합니다. | `scripts/prepare-storybook-full-touch.py + bin/build.py` | 전문화 v0.1.0 |
 | [seamless-short-video](skill/seamless-short-video/SKILL.md) | 제작 | 이전 씬 말미 ~2초 동작 연속(정본)과 Last Frame·Multi-Signal Handoff로 캐릭터·동작이 이어지는 연속형 숏폼 I2V를 반자동 제작합니다. Remotion 붓 라인과 독립. | `bin/seamless-short.py` | 정식 v1.0.0 |
 | [brush-qa-review](skill/qa-review/SKILL.md) | QA | 파이프라인의 씬 캡처와 capture manifest를 검토해 수정 요청과 재빌드 시작점을 제시합니다. | `bin/qa.py` | 정식 v1.0.0 |
 | [video-auditor](skill/video-auditor/SKILL.md) | 감사 | 완성 MP4의 하드컷·번쩍임·정지·무음·클리핑·음량·규격을 독립적으로 검사합니다. | `bin/audit.py` | 정식 v1.0.0 |
-| [piano-bgm](skill/piano-bgm/SKILL.md) | 제작 | 라이선스 검증된 로컬 다중 샘플 피아노로 새 score를 작곡·렌더하고, A 방식 수면 루틴(lullaby·breath·window)·화성·성부 진행·사람 청취 gate까지 검증합니다. | `bin/piano-bgm.py` | 전문화 v0.1.0 |
+| [piano-bgm](skill/piano-bgm/SKILL.md) | 제작 | Stable Audio 3 MLX를 1순위로 시네마틱·웅장한 피아노 BGM 생성 후보를 만들고, 로컬 샘플 score fallback과 라이선스·provenance·사람 청취 gate까지 검증합니다. | `bin/piano-bgm.py generate/build (Stable Audio 3 MLX 또는 sample-score)` | 전문화 v0.2.0 |
 | [promo-widget-video](skill/promo-widget-video/SKILL.md) | 제작 | KIMI-K3 분석에서 자산화한 다크 프로모 위젯 31종(게이지·바·리더보드·카운트업·데이터 패널·UI 크롬·배지)으로 위젯 씬 시퀀스를 props JSON 하나로 조립·렌더합니다. 붓/펜 라인과 독립. | `src/promo/PromoWidgetGallery.tsx` | 전문화 v0.1.0 |
 <!-- END GENERATED SKILL CATALOG -->
 
@@ -116,7 +116,7 @@ python3 bin/camera-prompt-catalog.py check
 - **배경 전략**: `imagegen`(codex 내장, API 키 불필요) · `preset`(PIL 결정적 합성) · `user-images`(contain-fit)
 - **위젯**: 씬 여백에 카드 위젯 15종 (`widgets: authored`) — [카탈로그](skill/brush-video/references/widget-catalog.md)
 - **내레이션 동기**: 매크로 존(오브젝트) 단위 드로잉 순서 + 자막 큐와 질량 비례 동기 (`sync` 스테이지 자동)
-- **BGM**: 로컬 등록 음원, -23 LUFS 기준, 기본 +5dB, 내레이션 자동 덕킹, 2~3곡 크로스페이드 — [정책](skill/_shared/references/bgm-policy.md)
+- **BGM**: 무음 15~120초는 Stable Audio 피아노 후보를 1순위로 시도하고, 실패 시 기존 catalog/synth로 fallback. 음성 영상은 명시적 `piano-auto`에서만 생성하며 -23 LUFS·덕킹·승인 gate를 적용한다 — [정책](skill/_shared/references/bgm-policy.md)
 - **YouTube 배포 금지**: Pixabay 음원은 YouTube 일반 영상·Shorts 제작/교체/배포에 사용하지 않으며 preflight에서 차단한다. 로컬 청취·내부 데모·과거 검증용으로만 보존한다.
 - **완료 연출**: 일반 가로 brush는 `integrated-develop` 단일 레이어 + 밝기 고정·채도 정착 + phase-aware QA가 기본
 

@@ -53,7 +53,7 @@ motion:
 
 ## V1 — 원본색 모션 영상
 
-`examples/full-color-motion/project.yaml`은 3×10초 FHD 데모다. `overlays: none`과 `bgm.mode: off`로 최소 화면/오디오 경로도 검증할 수 있다.
+`examples/full-color-motion/project.yaml`은 3×10초 FHD 데모다. `overlays: none`과 `bgm.mode: off`로 최소 화면/오디오 경로도 검증할 수 있다. BGM을 생략한 15~120초 무음 영상은 공통 정책에 따라 Stable Audio 피아노를 자동 우선 생성하고, 내레이션 영상은 `bgm.mode: piano-auto`를 명시할 때만 덕킹한다.
 
 ```bash
 cd /Volumes/Eprojects/project_202606/brush_remotion_video

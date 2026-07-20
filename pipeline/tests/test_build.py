@@ -72,6 +72,21 @@ def test_resolved_audit_artifacts_ignore_stale_license_when_bgm_is_off(tmp_path)
     assert buildmod.resolved_audit_artifacts(pipe) == (None, report_path)
 
 
+def test_generated_piano_manifest_final_gate_requires_approval(tmp_path, monkeypatch):
+    monkeypatch.setattr(buildmod, "REPO_ROOT", tmp_path)
+    cfg = buildmod.ProjectConfig(project_id="final-piano", bgm=BgmConfig(mode="piano-auto"))
+    manifest = tmp_path / "output" / "original-audio" / "piano-bgm" / cfg.project_id / "generated-bgm-manifest.json"
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text(json.dumps({
+        "kind": "generated-piano-bgm", "status": "PENDING_USER_LISTENING",
+    }), encoding="utf-8")
+    assert buildmod._generated_piano_manifest_approved(cfg) is False
+    manifest.write_text(json.dumps({
+        "kind": "generated-piano-bgm", "status": "APPROVED",
+    }), encoding="utf-8")
+    assert buildmod._generated_piano_manifest_approved(cfg) is True
+
+
 def test_bgm_off_normalizes_voice_and_writes_voice_only_report(tmp_path, monkeypatch):
     monkeypatch.setattr(buildmod, "REPO_ROOT", tmp_path)
     voice = tmp_path / "voice.wav"
@@ -688,6 +703,79 @@ def test_auto_bgm_attaches_local_music_when_no_voice(tmp_path, monkeypatch):
     assert result["autoSelected"] is True
     assert result["mode"] == "asset"
     assert captured["assetIds"] == ("youtube-chris-zabriskie-fight-for-your-honor",)
+
+
+def test_auto_bgm_prefers_piano_candidate_when_stable_runtime_is_available(tmp_path, monkeypatch):
+    """무음 ambient 자동 BGM은 기존 catalog보다 Stable Audio piano-auto를 먼저 시도한다."""
+    monkeypatch.setattr(buildmod, "REPO_ROOT", tmp_path)
+    cfg = buildmod.ProjectConfig(project_id="auto-piano", title="별빛 호수", drawing_profile="brush")
+    pipe = buildmod.Pipeline(cfg)
+    pipe._write_scenes([{"durationInFrames": 900}])
+    source = tmp_path / "piano-auto.wav"
+    source.write_bytes(b"generated")
+    captured = {}
+
+    def generate(candidate_cfg, duration, bgm_cfg, **_kwargs):
+        captured["duration"] = duration
+        captured["mode"] = bgm_cfg.mode
+        return {"mode": "piano-auto", "engine": "stable-audio-3-mlx", "source": str(source),
+                "manifest": "generated-bgm-manifest.json", "status": "PENDING_USER_LISTENING"}
+
+    def prepare(paths, out, **_kwargs):
+        captured["source"] = str(paths[0])
+        Path(out).write_bytes(b"bgm")
+        return Path(out), {"tracks": []}
+
+    monkeypatch.setattr(buildmod.bv_piano_auto, "build_candidate", generate)
+    monkeypatch.setattr(buildmod.bv_mix, "prepare_bgm", prepare)
+    monkeypatch.setattr(buildmod.bv_mix, "copy_master",
+                        lambda _src, out: (Path(out).write_bytes(b"master") or Path(out)))
+    monkeypatch.setattr(buildmod.bv_mix, "write_mix_report", lambda out, _r: Path(out))
+    result = pipe.stage_mix()
+    assert result["mode"] == "piano-auto"
+    assert result["generatedCandidate"]["status"] == "PENDING_USER_LISTENING"
+    assert captured == {"duration": 30.0, "mode": "piano-auto", "source": str(source)}
+
+
+def test_explicit_piano_auto_is_available_with_voice_and_uses_ducking(tmp_path, monkeypatch):
+    """내레이션 영상은 명시적인 piano-auto일 때만 생성 BGM을 붙인다."""
+    monkeypatch.setattr(buildmod, "REPO_ROOT", tmp_path)
+    voice = tmp_path / "voice.wav"
+    cfg = buildmod.ProjectConfig(project_id="voice-piano-auto", audio=voice,
+                                 srt=tmp_path / "voice.srt", bgm=BgmConfig(mode="piano-auto"))
+    pipe = buildmod.Pipeline(cfg)
+    pipe._write_scenes([{"durationInFrames": 900}])
+    source = tmp_path / "piano-auto.wav"
+    source.write_bytes(b"generated")
+    captured = {}
+
+    monkeypatch.setattr(buildmod.bv_piano_auto, "build_candidate",
+                        lambda *_a, **_k: {"mode": "piano-auto", "engine": "stable-audio-3-mlx",
+                                          "source": str(source), "status": "PENDING_USER_LISTENING"})
+    monkeypatch.setattr(buildmod.bv_mix, "prepare_bgm",
+                        lambda paths, out, **_k: (captured.setdefault("bgm", str(paths[0])) or Path(out), {"tracks": []}))
+    monkeypatch.setattr(buildmod.bv_mix, "mix_voice_and_bgm",
+                        lambda voice_path, _bgm, out, **_k: (captured.setdefault("voice", str(voice_path)) or Path(out),
+                                                            {"ducking": {"enabled": True}}))
+    monkeypatch.setattr(buildmod.bv_mix, "write_mix_report", lambda out, _r: Path(out))
+    result = pipe.stage_mix()
+    assert result["mode"] == "piano-auto"
+    assert captured == {"bgm": str(source), "voice": str(voice)}
+
+
+def test_explicit_piano_auto_surfaces_runtime_failure(tmp_path, monkeypatch):
+    """명시 opt-in은 Stable Audio 미설치를 조용히 synth로 바꾸지 않는다."""
+    monkeypatch.setattr(buildmod, "REPO_ROOT", tmp_path)
+    cfg = buildmod.ProjectConfig(project_id="explicit-piano-error", bgm=BgmConfig(mode="piano-auto"))
+    pipe = buildmod.Pipeline(cfg)
+    pipe._write_scenes([{"durationInFrames": 900}])
+
+    def fail(*_args, **_kwargs):
+        raise buildmod.bv_piano_auto.PianoAutoBgmError("Stable Audio 경로 없음")
+
+    monkeypatch.setattr(buildmod.bv_piano_auto, "build_candidate", fail)
+    with pytest.raises(ValueError, match="명시적 bgm.mode=piano-auto"):
+        pipe.stage_mix()
 
 
 def test_auto_bgm_falls_back_to_synth_when_assets_missing(tmp_path, monkeypatch):

@@ -637,6 +637,42 @@ def check_license_manifest(path: str | Path | None) -> tuple[list[Issue], dict |
     except (OSError, json.JSONDecodeError) as exc:
         return [Issue("FAIL", "bgm-license", f"BGM 라이선스 매니페스트 파싱 실패: {exc}")], None
     issues: list[Issue] = []
+    if data.get("kind") == "generated-piano-bgm":
+        status = data.get("status")
+        if status not in {"PENDING_USER_LISTENING", "APPROVED"}:
+            issues.append(Issue("FAIL", "bgm-generated-status", f"generated BGM 승인 상태 오류: {status}"))
+        elif status == "PENDING_USER_LISTENING":
+            issues.append(Issue("WARN", "bgm-generated-pending", "Stable Audio 생성 BGM은 사람 청취 승인 전 상태입니다"))
+        if data.get("engine") != "stable-audio-3-mlx":
+            issues.append(Issue("FAIL", "bgm-generated-engine", "generated BGM engine metadata 누락 또는 오류"))
+        if not data.get("provenance") or not data.get("qa"):
+            issues.append(Issue("FAIL", "bgm-generated-provenance", "generated BGM provenance/qa 경로 누락"))
+        license_info = data.get("license") or {}
+        if not license_info.get("modelUrl") or not license_info.get("termsUrl"):
+            issues.append(Issue("FAIL", "bgm-generated-license", "Stable Audio model/terms URL 누락"))
+        digest = data.get("deliverySha256") or data.get("sha256") or ""
+        if not re.fullmatch(r"[0-9a-fA-F]{64}", digest):
+            issues.append(Issue("FAIL", "bgm-generated-sha256", "generated BGM SHA-256 형식 오류"))
+        local_path = data.get("localPath")
+        if not local_path:
+            issues.append(Issue("FAIL", "bgm-generated-path", "generated BGM localPath 누락"))
+        else:
+            audio_path = Path(local_path)
+            if not audio_path.is_absolute():
+                audio_path = REPO_ROOT / audio_path
+            if not audio_path.is_file():
+                issues.append(Issue("FAIL", "bgm-generated-path", f"generated BGM 로컬 파일 없음: {audio_path}"))
+            elif re.fullmatch(r"[0-9a-fA-F]{64}", digest):
+                hasher = hashlib.sha256()
+                with audio_path.open("rb") as handle:
+                    for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                        hasher.update(chunk)
+                if hasher.hexdigest().lower() != digest.lower():
+                    issues.append(Issue("FAIL", "bgm-generated-sha256", "generated BGM SHA-256 불일치"))
+        return issues, {
+            "path": str(manifest_path), "kind": "generated-piano-bgm", "status": status,
+            "engine": data.get("engine"), "assetId": data.get("assetId"),
+        }
     assets = data.get("assets")
     if not isinstance(assets, list) or not assets:
         issues.append(Issue("FAIL", "bgm-license", "BGM 라이선스 매니페스트 assets가 비어 있음"))

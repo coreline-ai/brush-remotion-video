@@ -1,0 +1,11 @@
+projectId: auto-cinematic-30s
+kind: piano-bgm
+durationSec: 30
+preset: cinematic-piano
+mood: grand-dramatic
+purpose: featured
+engine: auto
+seed: 20260720
+output:
+  distribution: local
+  preview: true

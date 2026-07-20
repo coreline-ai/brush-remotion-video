@@ -156,31 +156,35 @@ bgm:
 
 ## 자동 BGM (기본 정책 — bgm 블록 생략 시)
 
-`bgm` 블록을 아예 쓰지 않아도 **대사(음성/TTS)가 없는 영상에는 로컬 BGM이 자동으로 붙는다.**
-매번 `assetId`를 손으로 지정할 필요가 없다.
+`bin/build.py`를 사용하는 영상 스킬에서 `bgm` 블록을 생략하면 **대사(음성/TTS)가 없는
+15~120초 영상은 Stable Audio 3 MLX 피아노 후보를 1순위로 자동 생성**한다. Stable Audio
+환경변수가 없거나 길이·생성 조건을 만족하지 않으면 기존 로컬 catalog, 마지막으로 synth BGM으로
+안전하게 fallback한다. 빌드 중 인터넷 다운로드는 하지 않는다.
 
 | 상황 | 동작 |
 |---|---|
-| 대사 없음(ambient) + `bgm` 없음 | **자동 로컬 BGM 선택** (아래 표) |
-| 대사 있음(narration/tts/whisper) + `bgm` 없음 | 음성만 사용 (BGM 안 붙임) — 원하면 `bgm:` 명시 |
+| 대사 없음(ambient) + 15~120초 + `bgm` 없음 | **Stable Audio 피아노 후보 1순위** → catalog → synth |
+| 대사 있음(narration/tts/whisper) + `bgm` 없음 | 음성만 사용 (자동 생성 안 함) — 원하면 `bgm.mode: piano-auto` 명시 |
 | 완전 무음 원함 | `bgm: { mode: "off" }` 명시 |
 | 특정 곡 고정 | 그때만 `bgm: { mode: asset, assetId: ... }` |
-| 로컬 자산 미준비 | 기존 synth 합성 BGM으로 안전 폴백 (빌드 실패 없음) |
+| Stable Audio 미설치·15초 미만·120초 초과·생성 실패 | 기존 catalog → synth로 안전 폴백 (implicit auto) |
 
-자동 선택 기준 (프로파일·포맷·길이만으로 **결정적** — 같은 입력이면 항상 같은 곡):
+Stable Audio prompt 기준과 fallback catalog 기준 (프로파일·포맷·길이만으로 **결정적** — 같은 입력이면 같은 후보):
 
 | 상황 | 자동 선택 |
 |---|---|
-| 일반 brush / ambient | `youtube-chris-zabriskie-fight-for-your-honor` |
-| pen | `youtube-chris-zabriskie-chance-luck-finale` |
-| pen-brush | `youtube-jesse-gallagher-satya-yuga` |
-| dark-random-brush (runtime 호환키: cosmic-random-brush) | `youtube-chris-zabriskie-fight-for-your-honor` |
-| 밝은 쇼츠(format: shorts) | `youtube-jesse-gallagher-satya-yuga` |
-| 10분(600초) 초과 | 허용 3곡 playlist 자동 (Honor→Chance/Luck→Satya Yuga) |
+| 일반 brush / ambient | Stable Audio `ambient-piano`; 실패 시 `youtube-chris-zabriskie-fight-for-your-honor` |
+| pen | Stable Audio `minimal-ambient`; 실패 시 `youtube-chris-zabriskie-chance-luck-finale` |
+| pen-brush / full-color-motion | Stable Audio `cinematic-piano`; 실패 시 `youtube-jesse-gallagher-satya-yuga` |
+| dark-random-brush (runtime 호환키: cosmic-random-brush) | Stable Audio `mystery-horror-piano`; 실패 시 `youtube-chris-zabriskie-fight-for-your-honor` |
+| 밝은 쇼츠(format: shorts) | 프로파일 prompt를 유지하고 Stable Audio 우선; 실패 시 `youtube-jesse-gallagher-satya-yuga` |
+| 120초 초과 | Stable Audio 제외, 기존 catalog/synth fallback (10분 초과는 허용 3곡 playlist) |
 
 구현: `bin/build.py` `stage_mix()`가 `cfg.bgm is None and voice is None`일 때
-`brushvid.bgm.select_auto_bgm(profile, fmt, duration_sec)`로 후보를 고르고 preflight한다.
-preflight 실패(자산 미등록/해시 불일치) 시 synth로 폴백한다.
+`brushvid.piano_auto_bgm.build_candidate()`를 먼저 호출한다. 후보가 준비되면 기존
+`prepare_bgm()`과 같은 정규화·fade·mix 경로를 사용한다. 후보 실패 시
+`brushvid.bgm.select_auto_bgm(profile, fmt, duration_sec)`를 호출하고 catalog preflight 실패 시
+synth로 폴백한다. `STABLE_AUDIO_3_MLX_ROOT`로 로컬 MLX 설치 위치를 지정한다.
 
 ## 모드 (bgm 블록을 명시할 때)
 
@@ -190,12 +194,14 @@ preflight 실패(자산 미등록/해시 불일치) 시 synth로 폴백한다.
 | `synth` | 기존 결정적 피아노 합성을 공통 믹싱 경로로 처리 |
 | `asset` | 등록한 로컬 음원 1곡 |
 | `playlist` | 등록한 2~3곡을 정규화하고 크로스페이드 |
+| `piano-auto` | Stable Audio 3 MLX 피아노 후보 생성 후 공통 믹싱·QA; 음성 영상은 명시할 때만 사용 |
 
 플레이리스트가 영상보다 짧으면 각 곡을 따로 반복하지 않는다. 지정 순서 전체를
 `A → B → C → A`로 반복하고 모든 경계에 크로스페이드를 적용한다.
 
-`bgm` 블록이 없는 기존 프로젝트는 하위 호환된다. 앰비언트는 기존 합성 BGM,
-내레이션/TTS/whisper는 기존 음성만 사용한다.
+`bgm` 블록이 없는 기존 프로젝트는 하위 호환된다. Stable Audio 환경이 준비된
+15~120초 앰비언트는 피아노 후보를 먼저 시도하고, 그 외에는 기존 catalog/synth를 사용한다.
+내레이션/TTS/whisper는 기존 음성만 유지하며 생성 BGM이 필요하면 `piano-auto`를 명시한다.
 
 ## 기본값
 
@@ -229,13 +235,37 @@ preflight 실패(자산 미등록/해시 불일치) 시 synth로 폴백한다.
 최종 자동 검수와 별도로 이어폰·노트북 스피커에서 내레이션 가독성, 펌핑,
 곡 전환, 시작/종료의 자연스러움을 직접 청취한다.
 
-## generated-piano BGM 후보 (piano-bgm 스킬)
+## generated BGM 후보 (piano-bgm 스킬·기존 영상 공용 자동 BGM)
 
-`bin/piano-bgm.py`가 만드는 BGM은 완성곡을 가져온 asset이 아니라, 로컬 Noct-Salamander CC BY 3.0 샘플을
-새 score event로 연주한 **generated candidate**다. `output/original-audio/piano-bgm/<projectId>/generated-bgm-manifest.json`의
-상태가 `APPROVED`가 되기 전에는 기존 BGM catalog·자동 선택·YouTube delivery에 등록하거나 사용하지 않는다.
+`piano-bgm`의 생성 BGM은 완성곡을 가져온 asset이 아니라, (1) Stable Audio 3 MLX `sm-music`이 만든
+생성 후보 또는 (2) `bin/piano-bgm.py`가 로컬 Noct-Salamander CC BY 3.0 샘플을 새 score event로
+연주한 **generated candidate**다. `output/original-audio/piano-bgm/<projectId>/generated-bgm-manifest.json`에
+request·prompt·model·SHA-256과 사람 청취 상태를 기록한다. 일반 preview/build와 auditor에서는
+`PENDING_USER_LISTENING` 후보를 사용할 수 있지만, `bin/build.py --final`은 명시적
+`bgm.mode: piano-auto`와 manifest `APPROVED` 없이는 거부한다.
 
 - `TECHNICAL_PASS`/`PENDING_USER_LISTENING`은 사람이 이어폰과 노트북 스피커에서 모두 승인하기 전의 중간 상태다.
-- `provenance.json`의 request/score/performance/renderer/sample archive hash와 `youtube-description.txt`의 CC BY attribution·변경 고지를 보존한다.
-- 사람이 승인한 candidate도 `bgm.mode: asset`에 넣기 전에는 별도 catalog 등록/라이선스 검토가 필요하다. 이 단계는 현 자동 BGM 선택 정책을 바꾸지 않는다.
+- Noct 경로는 `provenance.json`의 request/score/performance/renderer/sample archive hash와 `youtube-description.txt`의 CC BY attribution·변경 고지를 보존한다.
+- Stable Audio 경로는 model ID/bundle/runtime, prompt/negative prompt, cfg/steps/seconds/seed, 생성일,
+  model/install version, WAV SHA-256, [model card](https://huggingface.co/stabilityai/stable-audio-3-optimized),
+  [Stability AI License](https://stability.ai/license)를 보존한다.
+- Stable Audio의 Community License 상업 사용 조건은 프로젝트 라이선스 승인과 별도이며, YouTube의 AI 공개·
+  수익화·Content ID 정책을 함께 확인한다.
+- 자동 생성 후보는 다음으로 청취 검토한다.
+
+  ```bash
+  pipeline/.venv/bin/python bin/piano-bgm.py review --project-id <projectId>
+  pipeline/.venv/bin/python bin/piano-bgm.py approve --project-id <projectId> \
+    --review-result output/original-audio/piano-bgm/<projectId>/listening-result.json
+  ```
+- 사람이 승인한 candidate도 전역 catalog에 자동 등록하지 않으며, 최종 `--final`은 명시적인 `piano-auto` 설정과 승인 manifest를 요구한다.
 - shared sample source 기반 결과는 Content ID에 등록하지 않는다.
+
+## 스킬별 적용 경계
+
+`bin/build.py`를 공용 진입점으로 사용하는 `brush-video`, `full-color-motion-video`, `pen-video`,
+`pen-brush-video`, `shorts-brush`, `dark-random-brush-video`, `storybook-full-touch-video`에
+위 자동 정책을 적용한다. `seamless-short-video`(`bin/seamless-short.py`)와
+`promo-widget-video`(독립 props/Remotion 라인)는 이 공용 BGM 자동화의 대상이 아니다.
+`brush-director`는 `piano-auto`를 YAML에 제안할 수 있지만 직접 생성하지 않고, `brush-qa-review`와
+`video-auditor`는 후보를 생성하지 않고 승인·기술 검수만 보조한다.

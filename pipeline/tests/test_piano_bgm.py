@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from brushvid.piano_bgm import (Key, PRESETS, SLEEP_ROUTINES, PianoBgmError, compose, lint_score,
-                                normalize_request, performance_from_score,
+                                normalize_request, performance_from_score, resolve_engine,
                                 write_score_bundle, load_score_bundle)
 
 
@@ -30,6 +30,39 @@ def test_schema_rejects_unknown_preset_and_invalid_duration():
         normalize_request({"projectId": "bad-preset", "kind": "piano-bgm", "durationSec": 30, "preset": "bossa"})
     with pytest.raises(PianoBgmError, match="schema"):
         normalize_request({"projectId": "too-short", "kind": "piano-bgm", "durationSec": 12, "preset": "new-age"})
+
+
+def test_engine_defaults_preserve_sample_score_and_auto_selects_by_intent():
+    legacy = request("cinematic-piano")
+    assert legacy["engine"] == "sample-score"
+    assert resolve_engine(legacy)["engine"] == "sample-score"
+
+    featured = normalize_request({"projectId": "featured", "kind": "piano-bgm", "durationSec": 30,
+                                  "preset": "cinematic-piano", "purpose": "featured", "engine": "auto"})
+    assert resolve_engine(featured) == {"engine": "stable-audio-3-mlx", "reason": "featured-or-cinematic-preset"}
+
+    sleep = normalize_request({"projectId": "sleep", "kind": "piano-bgm", "durationSec": 30,
+                               "sleepRoutine": "lullaby", "engine": "auto"})
+    assert resolve_engine(sleep)["engine"] == "sample-score"
+
+
+def test_stable_audio_request_rejects_duration_over_model_limit():
+    with pytest.raises(PianoBgmError, match="15~120"):
+        normalize_request({"projectId": "too-long", "kind": "piano-bgm", "durationSec": 121,
+                           "preset": "cinematic-piano", "engine": "stable-audio-3-mlx"})
+
+
+@pytest.mark.parametrize("field,value", (("cfg", -0.1), ("cfg", 10.1), ("steps", 0), ("steps", 17)))
+def test_stable_audio_sampling_bounds_are_schema_validated(field: str, value: float):
+    with pytest.raises(PianoBgmError, match="schema"):
+        normalize_request({"projectId": "bad-sampling", "kind": "piano-bgm", "durationSec": 30,
+                           "preset": "cinematic-piano", "engine": "stable-audio-3-mlx", field: value})
+
+
+def test_auto_long_request_falls_back_to_sample_score():
+    long_request = normalize_request({"projectId": "long-feature", "kind": "piano-bgm", "durationSec": 121,
+                                      "preset": "cinematic-piano", "purpose": "featured", "engine": "auto"})
+    assert resolve_engine(long_request) == {"engine": "sample-score", "reason": "stable-audio-sm-music-max-120s"}
 
 
 @pytest.mark.parametrize("preset", tuple(PRESETS))

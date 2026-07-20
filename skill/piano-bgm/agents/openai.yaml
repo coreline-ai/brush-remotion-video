@@ -1,4 +1,4 @@
 interface:
   display_name: "Piano BGM"
-  short_description: "실제 샘플 피아노 BGM과 A 방식 수면 루틴을 화성·성부 진행까지 검사해 제작합니다."
-  default_prompt: "요청한 길이·무드·용도에 맞는 독립 피아노 BGM을 제작해줘. 수면용이면 sleepRoutine(lullaby·breath·window)으로 실제 피아노만 사용하고, 주파수 드론·바이노럴 비트는 넣지 마."
+  short_description: "Stable Audio 3 MLX를 우선 사용하고, 필요하면 샘플 피아노 score fallback까지 검증해 제작합니다."
+  default_prompt: "요청한 길이·무드·용도에 맞는 피아노 BGM을 제작해줘. 시네마틱·웅장함·featured면 Stable Audio 3 MLX sm-music을 1순위로 사용하고, 수면·명상·음 단위 화성 검사가 필요하면 Noct-Salamander 샘플 score fallback을 사용해 provenance·라이선스·기술 QA·사람 청취 승인까지 진행해줘."

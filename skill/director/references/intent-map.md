@@ -51,7 +51,7 @@
 
 | 표현 | 번역 | 파라미터 |
 |---|---|---|
-| 잔잔한 음악 / 피아노 / BGM | YouTube 허용 Honor | `bgm{mode: asset, assetId: youtube-chris-zabriskie-fight-for-your-honor}` |
+| 잔잔한 음악 / 피아노 / BGM | ambient는 Stable Audio 피아노 자동 우선 | `bgm.mode: piano-auto` 또는 BGM 블록 생략 |
 | 외곽선 후 채색 + 잔잔한 음악 | Satya Yuga + pen-brush | `drawing.profile: pen-brush` + `youtube-jesse-gallagher-satya-yuga` |
 | Pixabay 음악 / Pixabay BGM | **YouTube·Shorts 사용 금지** | 로컬 청취·내부 데모만 허용하고 배포 YAML에는 넣지 않음 |
 | 10분 초과 / 긴 영상 | 2~3곡 playlist | `bgm.mode: playlist`, `crossfadeSec: 3` |

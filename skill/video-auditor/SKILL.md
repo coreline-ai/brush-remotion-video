@@ -29,6 +29,11 @@ pipeline/.venv/bin/python bin/audit.py <video.mp4> \
   --voice-manifest data/{pid}/tts/voice-manifest.json
 ```
 
+`bin/build.py`가 Stable Audio 후보를 사용하면 `--license-manifest`에
+`output/original-audio/piano-bgm/<projectId>/generated-bgm-manifest.json`을 연결한다.
+`PENDING_USER_LISTENING`은 기술 검수 실패가 아니라 청취 승인 대기 WARN이며, `APPROVED`가
+아닌 후보는 `bin/build.py --final`에서 최종 납품용으로 거부된다.
+
 - `--props`: 주면 씬 경계를 정확히 판정 (없으면 순백 프레임으로 자동 추정 — 독립 실행)
   표준 public routes도 찾을 수 있으면 integrated-develop 완료 구간의 느린 luma 역전까지 검사한다.
 - 산출: `audit-report.md`(사람) + `audit-report.json`(기계) + `evidence/*.png`(문제 지점 전후 프레임) + **FIELD-LOG 초안**

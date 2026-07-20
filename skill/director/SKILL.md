@@ -39,7 +39,7 @@ description: >-
 
 - **실측 범위 밖 값 제안 금지** — intent-map의 권장 범위 안에서만
 - **연속 제작 시 직전 영상과 변주** — mood-presets의 "운용 규칙"을 따라 직전 프로젝트의 프리셋·seed를 확인하고 겹치지 않게 제안
-- **미구현 기능을 약속하지 않기** — 환경음(빗소리 등)은 확장 후보로 안내한다. BGM 트랙 크로스페이드는 로컬 등록 음원 2~3곡 playlist로 지원한다.
+- **미구현 기능을 약속하지 않기** — 환경음(빗소리 등)은 확장 후보로 안내한다. BGM 트랙 크로스페이드는 로컬 등록 음원 2~3곡 playlist로 지원하며, 15~120초 영상의 분위기형 피아노가 필요하면 `bgm.mode: piano-auto`를 project.yaml에 제안한다. 실행·생성·승인은 brush-video/build 라인의 책임이다.
 - **Camera Prompt Pack을 YAML로 위장하지 않기** — `camera:`/`cameraMotion:` 같은 미지원 필드를
   `project.yaml`에 넣지 않는다. `external-required`는 외부 영상 생성·촬영 단계가 필요하다고 그대로 표시한다.
 - **기법 과잉 결합 금지** — primary는 1개, 충돌하지 않는 secondary는 최대 1개다.
@@ -63,7 +63,7 @@ description: >-
 | 무드 | ❄️ 겨울밤 프리셋 — 별빛 파티클(starTwinkle, 은은하게 0.04) + 느긋한 등속 드로잉 | drawSpeedScale 1.12 |
 | 소재 | 겨울 소재 손그림 배경 (imagegen, 잉크+수채) | strategy: imagegen |
 | 포맷 | 쇼츠 세로형 | format: shorts |
-| 오디오 | YouTube 허용 Honor 로컬 BGM (미등록이면 합성 피아노 폴백을 명시적으로 선택) | bgm.assetId |
+| 오디오 | ambient는 Stable Audio 피아노 자동 우선, 특정곡은 로컬 asset, 음성 영상은 명시적 piano-auto | bgm.mode / bgm.assetId |
 | 전환 | 아웃트로 워시 24f — 순백 수렴 | outroFadeFrames 24 |
 
 ```yaml

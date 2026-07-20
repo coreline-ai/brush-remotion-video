@@ -36,7 +36,7 @@ description: >-
    background:
      strategy: imagegen       # imagegen | preset(PIL, 결정적) | user-images
    widgets: none              # none | authored (auto는 준비 중)
-   bgm:                       # 선택: off | synth | asset | playlist
+   bgm:                       # 선택: off | synth | asset | playlist | piano-auto
      mode: asset
      assetId: youtube-chris-zabriskie-fight-for-your-honor
      gainDb: 5
@@ -138,10 +138,13 @@ pipeline/.venv/bin/python bin/bgm-assets.py sources
 pipeline/.venv/bin/python bin/bgm-assets.py status
 ```
 
-- **자동 BGM (기본)**: `bgm` 블록을 안 써도 **대사 없는(ambient) 영상엔 로컬 BGM이 자동으로 붙는다.**
-  대사(음성/TTS)가 있으면 음성만 쓰고, 완전 무음은 `bgm: { mode: "off" }`로 끈다. 특정 곡은 그때만 `assetId` 지정.
-  자동 선택(결정적): brush/dark→Honor · pen→Chance/Luck · pen-brush/shorts→Satya Yuga · 10분 초과→허용 3곡 playlist.
-  로컬 자산 미준비 시 synth 폴백. 상세: [공통 BGM 정책](../_shared/references/bgm-policy.md) §자동 BGM.
+- **자동 BGM (기본)**: `bgm` 블록을 안 쓴 15~120초 대사 없는(ambient) 영상은
+  Stable Audio 3 MLX 피아노 후보를 1순위로 자동 생성한다. `STABLE_AUDIO_3_MLX_ROOT`가 없거나
+  길이·생성 조건을 벗어나면 기존 catalog, 마지막으로 synth로 폴백한다.
+  대사(음성/TTS)가 있는 영상은 음성만 유지하며, 필요하면 `bgm: { mode: piano-auto }`를 명시한다.
+  완전 무음은 `bgm: { mode: "off" }`로 끈다.
+- 자동 생성 후보는 `PENDING_USER_LISTENING`으로 기록되며 `--final` 전에는 이어폰·노트북 스피커
+  청취 승인이 필요하다. 상세: [공통 BGM 정책](../_shared/references/bgm-policy.md) §자동 BGM.
 - 내레이션이 있으면 기본 `+3dB`와 자동 덕킹, 없으면 기본 `+5dB`
 - BGM만 고치면 `--from mix --audit`로 영상 프레임 재렌더 없이 재실행한다.
 - project.yaml이 없는 대사 없는 완성 MP4는 `bin/replace-bgm.py`로 영상 stream-copy 상태에서

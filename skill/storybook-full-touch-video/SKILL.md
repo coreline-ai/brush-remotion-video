@@ -101,6 +101,9 @@ bgm:
 
 Pixabay 음원은 YouTube/Shorts 제작·교체·배포에 사용하지 않는다. 동화 영상도 예외가 아니며
 YouTube Audio Library 또는 검증된 CC BY/artist-site 자산만 사용한다.
+동화는 기본적으로 TTS 내레이션이 있으므로 `bgm`을 생략해도 Stable Audio를 자동 생성하지 않는다.
+생성 피아노가 필요한 경우에만 `bgm.mode: piano-auto`를 명시하면 Stable Audio 후보와 자동 덕킹,
+사람 청취 승인 manifest를 사용한다.
 
 ## 실행
 

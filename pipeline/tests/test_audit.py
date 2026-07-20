@@ -324,6 +324,24 @@ def test_license_manifest_rules(tmp_path):
     assert issues[0].severity == "FAIL" and issues[0].kind == "bgm-license"
 
 
+def test_generated_piano_manifest_is_pending_warning_not_legacy_asset_failure(tmp_path):
+    manifest = tmp_path / "generated-bgm-manifest.json"
+    audio = tmp_path / "delivery.wav"
+    audio.write_bytes(b"generated-audio")
+    import hashlib
+    digest = hashlib.sha256(audio.read_bytes()).hexdigest()
+    manifest.write_text(json.dumps({
+        "kind": "generated-piano-bgm", "assetId": "demo", "engine": "stable-audio-3-mlx",
+        "status": "PENDING_USER_LISTENING", "provenance": "provenance.json", "qa": "qa.json",
+        "localPath": str(audio), "deliverySha256": digest,
+        "license": {"modelUrl": "https://huggingface.co/stabilityai/stable-audio-3-optimized",
+                     "termsUrl": "https://stability.ai/license"},
+    }), encoding="utf-8")
+    issues, summary = A.check_license_manifest(manifest)
+    assert summary["kind"] == "generated-piano-bgm"
+    assert [(issue.severity, issue.kind) for issue in issues] == [("WARN", "bgm-generated-pending")]
+
+
 def _valid_voice_manifest():
     return {
         "schemaVersion": 1,

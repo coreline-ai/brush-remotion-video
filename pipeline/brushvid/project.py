@@ -42,7 +42,7 @@ DRAWING_PROFILES = (
 # public name is content-agnostic; keep the historical runtime key for golden/build compatibility.
 DRAWING_PROFILE_ALIASES = {"dark-random-brush": "cosmic-random-brush"}
 DRAWING_SYNCS = ("auto", "off")
-BGM_MODES = ("off", "synth", "asset", "playlist")
+BGM_MODES = ("off", "synth", "asset", "playlist", "piano-auto")
 BGM_LICENSE_POLICIES = ("strict", "warn")
 MOTION_MOVEMENTS = ("push-in", "push-out", "pan-left", "pan-right", "rise", "fall", "arc-left", "arc-right")
 MOTION_EFFECTS = ("none", "rays", "mist", "birds", "stars", "storm", "sparkles", "lanterns",
@@ -72,6 +72,10 @@ class BgmConfig:
     ducking_attack_ms: int = 120
     ducking_release_ms: int = 600
     license_policy: str = "strict"
+    prompt: str | None = None
+    negative_prompt: str | None = None
+    cfg: float = 2.0
+    steps: int = 8
 
 
 @dataclass(frozen=True)
@@ -385,7 +389,7 @@ def load_project(yaml_path: str | Path) -> ProjectConfig:
         bgm_raw = raw.get("bgm")
         _require(isinstance(bgm_raw, dict), "bgm 은 매핑이어야 함")
         allowed_bgm = {"mode", "assetId", "gainDb", "sourceStartSec", "fadeInSec", "fadeOutSec",
-                       "playlist", "ducking", "licensePolicy"}
+                       "playlist", "ducking", "licensePolicy", "prompt", "negativePrompt", "cfg", "steps"}
         unknown_bgm = sorted(set(bgm_raw) - allowed_bgm)
         _require(not unknown_bgm, f"bgm 지원하지 않는 옵션: {', '.join(unknown_bgm)}")
 
@@ -451,13 +455,28 @@ def load_project(yaml_path: str | Path) -> ProjectConfig:
         _require(license_policy in BGM_LICENSE_POLICIES,
                  f"bgm.licensePolicy 는 {BGM_LICENSE_POLICIES} 중 하나여야 함")
 
+        prompt = bgm_raw.get("prompt")
+        negative_prompt = bgm_raw.get("negativePrompt")
+        _require(prompt is None or (isinstance(prompt, str) and 1 <= len(prompt.strip()) <= 1000),
+                 "bgm.prompt 는 1~1000자의 문자열이어야 함")
+        _require(negative_prompt is None or (isinstance(negative_prompt, str) and 1 <= len(negative_prompt.strip()) <= 1000),
+                 "bgm.negativePrompt 는 1~1000자의 문자열이어야 함")
+        cfg_scale = float(bgm_raw.get("cfg", 2.0))
+        steps = int(bgm_raw.get("steps", 8))
+        _require(bgm_mode == "piano-auto" or (prompt is None and negative_prompt is None and "cfg" not in bgm_raw and "steps" not in bgm_raw),
+                 "prompt/negativePrompt/cfg/steps 는 bgm.mode=piano-auto 에서만 사용 가능")
+        _require(0.0 <= cfg_scale <= 10.0, "bgm.cfg 는 0~10")
+        _require(1 <= steps <= 16, "bgm.steps 는 1~16")
+
         bgm_cfg = BgmConfig(
             mode=bgm_mode, asset_id=asset_id, asset_ids=asset_ids, gain_db=gain_db,
             source_start_sec=source_start, fade_in_sec=fade_in,
             fade_out_sec=fade_out, crossfade_sec=crossfade,
             ducking_enabled=duck_enabled, ducking_amount_db=duck_amount,
             ducking_attack_ms=duck_attack, ducking_release_ms=duck_release,
-            license_policy=license_policy,
+            license_policy=license_policy, prompt=prompt.strip() if isinstance(prompt, str) else None,
+            negative_prompt=negative_prompt.strip() if isinstance(negative_prompt, str) else None,
+            cfg=cfg_scale, steps=steps,
         )
 
     amb = raw.get("ambient") or {}
